@@ -112,8 +112,8 @@ test('The Journey is fifth with twelve independent paper notes and persistent li
   await page.goBack();await expect(book.locator('[data-journey-panel="software"]')).toBeVisible();
   if(info.project.name==='desktop'){
     const paper=await book.locator('[data-nb-binding]').boundingBox();const rail=await tabs.boundingBox();
-    expect(rail!.x).toBeGreaterThan(paper!.x);
-    expect(rail!.x+rail!.width).toBeLessThanOrEqual(paper!.x+paper!.width);
+    expect(rail!.x).toBeGreaterThanOrEqual(paper!.x+paper!.width-5);
+    for(const label of await tabs.locator('.journey-tab-label').all())await expect(label).toHaveCSS('opacity','1');
   }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   const journeyBox=await book.locator('[data-nb-binding]').boundingBox();
