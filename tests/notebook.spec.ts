@@ -112,12 +112,13 @@ test('The Journey is fifth with twelve independent paper notes and persistent li
   await page.goBack();await expect(book.locator('[data-journey-panel="software"]')).toBeVisible();
   if(info.project.name==='desktop'){
     const paper=await book.locator('[data-nb-binding]').boundingBox();const rail=await tabs.boundingBox();
-    expect(rail!.x).toBeGreaterThanOrEqual(paper!.x+paper!.width-5);
+    expect(rail!.x).toBeGreaterThan(paper!.x);
+    expect(rail!.x+rail!.width).toBeLessThanOrEqual(paper!.x+paper!.width);
   }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
-  const journeyWidth=await book.locator('[data-nb-binding]').evaluate(el=>el.getBoundingClientRect().width);
+  const journeyBox=await book.locator('[data-nb-binding]').boundingBox();
   await main.getByRole('link',{name:'06 What Went Wrong'}).click();
   await expect(tabs).not.toBeVisible();
-  const otherWidth=await book.locator('[data-nb-binding]').evaluate(el=>el.getBoundingClientRect().width);
-  expect(journeyWidth).toBeCloseTo(otherWidth,1);
+  const otherBox=await book.locator('[data-nb-binding]').boundingBox();
+  for(const key of ['x','width','height'] as const)expect(journeyBox![key]).toBeCloseTo(otherBox![key],1);
 });

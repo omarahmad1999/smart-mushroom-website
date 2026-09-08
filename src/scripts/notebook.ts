@@ -27,7 +27,7 @@ if (book) {
   function render() {
     const spread = Math.floor(current / 2);
     book!.toggleAttribute('data-journey',spread===journeyIndex);
-    spreads.forEach((el,i) => el.toggleAttribute('data-active',i===spread));
+    spreads.forEach((el,i) => {el.toggleAttribute('data-active',i===spread);el.setAttribute('aria-hidden',String(i!==spread));});
     pages.forEach((el,i) => el.toggleAttribute('data-active',mobile.matches?i===current:Math.floor(i/2)===spread));
     jumps.forEach(link => { if(Number(link.dataset.nbJump)===spread)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current'); });
     previous.forEach(button=>button.disabled=current===0);
