@@ -1,0 +1,25 @@
+---
+import type { MarkdownInstance } from 'astro';
+interface Note {order:number;slug:string;title:string;heading:string;reference:string}
+const notes=Object.values(import.meta.glob<MarkdownInstance<Note>>('../content/journey/*.md',{eager:true})).sort((a,b)=>a.frontmatter.order-b.frontmatter.order);
+const colours=['#dce2c2','#eed4b7','#d4dfdd','#dfd3e2','#cee0d8','#f0dfac','#e7e3d5','#d4ddbd','#e3d1bc','#efccbd','#cedce7','#d9dfb8'];
+---
+<div class="journey-notes">
+  <nav class="journey-tabs" aria-label="The Journey mini sections">{notes.map(({frontmatter:n},i)=><a href={`#journey-${n.slug}`} data-journey-tab={n.slug} style={`--tab-paper:${colours[i]}`}><span>{String(n.order).padStart(2,'0')}</span>{n.title}</a>)}</nav>
+  {notes.map(({frontmatter:n,Content},i)=><section id={`journey-${n.slug}`} data-journey-panel={n.slug} class="journey-note" aria-labelledby={`journey-title-${n.slug}`} style={`--tab-paper:${colours[i]}`}>
+    <p class="journey-number">THE JOURNEY <span>/</span> {String(n.order).padStart(2,'0')} OF 12</p>
+    <h3 id={`journey-title-${n.slug}`}>{n.title}</h3>
+    <p class="journey-heading">{n.heading}</p>
+    <div class="journey-body"><Content /></div>
+    <a class="journey-reference" href={`#${n.reference}`}>Open the reference notes ↗</a>
+  </section>)}
+</div>
+<style>
+:global(.notebook:not([data-enhanced])) .journey-tabs{position:static;width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:25px}
+.journey-notes{margin-top:8px}.journey-tabs{position:absolute;left:calc(100% + 5px);top:16px;width:147px;display:flex;flex-direction:column;gap:6px;z-index:6}.journey-tabs a{display:flex;align-items:center;gap:9px;min-height:46px;padding:10px 11px 10px 15px;background:var(--tab-paper);border:1px solid #86796535;border-left:0;border-radius:0 5px 7px 0;color:#39473c;box-shadow:2px 3px 2px #473b2720;transform:rotate(.5deg);text-decoration:none;font-family:var(--hand);font-size:21px;line-height:1.05;transition:transform .18s,box-shadow .18s}.journey-tabs a:nth-child(even){transform:rotate(-.7deg)}.journey-tabs a>span{font-family:var(--font-body);font-size:8px;opacity:.7;flex:none}.journey-tabs a:hover,.journey-tabs a[aria-current=page]{transform:translateX(5px);box-shadow:2px 4px 6px #473b2730}.journey-tabs a[aria-current=page]{border-right:3px solid #9d573a;color:#853c27}.journey-note{scroll-margin-top:125px;margin:0 0 25px;padding:22px 23px 25px;background:linear-gradient(110deg,#fff5,transparent),var(--tab-paper);box-shadow:1px 4px 8px #49381e17;position:relative;min-height:380px;border-radius:1px 2px 5px 2px}.journey-note:before{content:'';position:absolute;left:35%;top:-10px;width:70px;height:21px;background:#cbbb9160;transform:rotate(-3deg);pointer-events:none}.journey-number{font-family:var(--font-body);font-size:8px;letter-spacing:.8px;color:#6c705d}.journey-number span{margin:0 8px}.journey-note h3{font-family:var(--hand);font-size:37px;line-height:1.05;margin:18px 0 7px}.journey-heading{font-family:var(--hand);font-size:23px;color:#8c4d34;margin-bottom:20px;line-height:1.2}.journey-body{font-family:var(--font-display);font-size:17px;line-height:1.55}.journey-body :global(p){margin-bottom:18px}.journey-body :global(h3){font-family:var(--hand);font-size:24px;color:#8c4d34;margin:22px 0 8px}.journey-reference{font-size:10px;text-underline-offset:4px;display:inline-block;margin-top:8px}
+:global(.notebook[data-enhanced]) .journey-note:not([data-active]){display:none}
+@media(max-width:1100px){.journey-tabs{position:static;width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:26px}.journey-tabs a{border:1px solid #86796535;border-radius:2px 4px 6px 2px;font-size:18px;padding:8px;min-height:49px;gap:6px}.journey-tabs a:hover,.journey-tabs a[aria-current=page]{transform:translateY(-2px)}.journey-note{padding:20px;min-height:0}.journey-note h3{font-size:33px}}
+@media(max-width:760px){.journey-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.journey-tabs a{font-size:20px}.journey-body{font-size:17px}}
+@media(prefers-reduced-motion:reduce){.journey-tabs a{transition:none}}
+@media print{.journey-tabs{display:none}:global(.notebook[data-enhanced]) .journey-note:not([data-active]){display:block}.journey-note{break-inside:avoid}}
+</style>

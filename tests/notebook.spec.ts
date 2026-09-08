@@ -7,7 +7,7 @@ test('notebook turns pages, jumps sections, restores history and enlarges photog
   await expect(book).toHaveAttribute('data-enhanced','true');
   const status=book.locator('[data-nb-status]');
   const mobile=info.project.name==='mobile';
-  await expect(status).toContainText(mobile?'Page 1 / 10':'Pages 1–2 / 10');
+  await expect(status).toContainText(mobile?'Page 1 / 12':'Pages 1–2 / 12');
   await expect(book.getByRole('button',{name:'Previous notebook page',exact:true})).toBeDisabled();
   await book.getByRole('link',{name:/Enlarge photograph/}).first().click();
   const dialog=book.locator('dialog');await expect(dialog).toBeVisible();
@@ -18,14 +18,14 @@ test('notebook turns pages, jumps sections, restores history and enlarges photog
   await book.getByLabel('Photo note: The Idea',{exact:true}).click();
   await expect(book.locator('#notebook-idea .nb-annotation')).toHaveAttribute('open','');
   await book.getByRole('button',{name:'Next notebook page',exact:true}).click();
-  await expect(status).toContainText(mobile?'Page 2 / 10':'Pages 3–4 / 10');
+  await expect(status).toContainText(mobile?'Page 2 / 12':'Pages 3–4 / 12');
   await expect(book.locator('[data-nb-fold] .nb-leaf')).toHaveCount(1);
   await expect(book.locator('[data-nb-fold] .nb-leaf')).toHaveCount(0);
   await book.locator('.nb-tabs').getByRole('link',{name:'04 Vision Lab'}).click();
   await expect(status).toContainText('Vision Lab');
   await expect(page).toHaveURL(/#notebook-vision$/);
   await page.reload();await expect(status).toContainText('Vision Lab');
-  await book.locator('.nb-tabs').getByRole('link',{name:'05 What Went Wrong'}).click();
+  await book.locator('.nb-tabs').getByRole('link',{name:'06 What Went Wrong'}).click();
   if(mobile)await book.getByRole('button',{name:'Next notebook page',exact:true}).click();
   await expect(book.getByRole('button',{name:'Next notebook page',exact:true})).toBeDisabled();
   await page.goBack();await expect(status).toContainText(mobile?'What Went Wrong':'Vision Lab');
@@ -53,7 +53,7 @@ test('all entries and image links remain readable without JavaScript',async({bro
   const context=await browser.newContext({javaScriptEnabled:false,viewport:info.project.use.viewport});
   const page=await context.newPage();await page.goto(`${test.info().project.use.baseURL}/documentation/`);
   const book=page.locator('[data-notebook]');
-  await expect(book.locator('.nb-spread')).toHaveCount(5);
+  await expect(book.locator('.nb-spread')).toHaveCount(6);
   for(const spread of await book.locator('.nb-spread').all())await expect(spread).toBeVisible();
   await expect(book.locator('[data-nb-controls]')).toBeHidden();
   await expect(book.locator('[data-nb-image]').first()).toHaveAttribute('href','/media/photo-incubation-2026-08-19.webp');
@@ -89,4 +89,32 @@ test('page folds keep separate faces through both directions and land on the inc
     await book.locator('.nb-leaf').evaluate(el=>el.getAnimations()[0].finish());
     await expect(book.locator('.nb-leaf')).toHaveCount(0);
   }
+});
+
+
+test('The Journey is fifth with twelve independent paper notes and persistent links',async({page},info)=>{
+  await page.goto('/documentation/#notebook-journey');
+  const book=page.locator('[data-notebook]');
+  const main=book.locator('.nb-tabs');
+  await expect(main.locator('a').nth(4)).toHaveText('05The Journey');
+  await expect(main.locator('a').nth(5)).toHaveText('06What Went Wrong');
+  if(info.project.name==='mobile')await book.getByRole('button',{name:'Next notebook page',exact:true}).click();
+  const tabs=book.getByRole('navigation',{name:'The Journey mini sections'});
+  await expect(tabs.getByRole('link')).toHaveCount(12);
+  for(const tab of await tabs.getByRole('link').all()){
+    const slug=await tab.getAttribute('data-journey-tab');await tab.click();
+    await expect(book.locator(`[data-journey-panel="${slug}"]`)).toBeVisible();
+    await expect(book.locator('[data-journey-panel]:visible')).toHaveCount(1);
+    await expect(tab).toHaveAttribute('aria-current','page');
+    await expect(page).toHaveURL(new RegExp(`#journey-${slug}$`));
+  }
+  await page.reload();await expect(book.locator('[data-journey-panel="mushroom-cultivation"]')).toBeVisible();
+  await page.goBack();await expect(book.locator('[data-journey-panel="software"]')).toBeVisible();
+  if(info.project.name==='desktop'){
+    const paper=await book.locator('[data-nb-binding]').boundingBox();const rail=await tabs.boundingBox();
+    expect(rail!.x).toBeGreaterThanOrEqual(paper!.x+paper!.width-5);
+  }
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await main.getByRole('link',{name:'06 What Went Wrong'}).click();
+  await expect(tabs).not.toBeVisible();
 });

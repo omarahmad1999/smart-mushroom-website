@@ -11,11 +11,22 @@ if (book) {
   const mobile = matchMedia('(max-width:760px)');
   const reduced = matchMedia('(prefers-reduced-motion:reduce)');
   const contents = book.querySelector<HTMLDetailsElement>('.nb-contents')!;
+  const journeyIndex=spreads.findIndex(el=>el.id==='notebook-journey');
+  const journeyTabs=[...book.querySelectorAll<HTMLAnchorElement>('[data-journey-tab]')];
+  const journeyPanels=[...book.querySelectorAll<HTMLElement>('[data-journey-panel]')];
+  let journeySelection=journeyTabs[0]?.dataset.journeyTab;
+  function selectJourney(slug:string) {
+    journeySelection=slug;
+    journeyTabs.forEach(link=>{if(link.dataset.journeyTab===slug)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
+    journeyPanels.forEach(panel=>panel.toggleAttribute('data-active',panel.dataset.journeyPanel===slug));
+  }
+  if(journeySelection)selectJourney(journeySelection);
   let current = 0;
   let animation: Animation | undefined;
 
   function render() {
     const spread = Math.floor(current / 2);
+    book!.toggleAttribute('data-journey',spread===journeyIndex);
     spreads.forEach((el,i) => el.toggleAttribute('data-active',i===spread));
     pages.forEach((el,i) => el.toggleAttribute('data-active',mobile.matches?i===current:Math.floor(i/2)===spread));
     jumps.forEach(link => { if(Number(link.dataset.nbJump)===spread)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current'); });
@@ -55,6 +66,8 @@ if (book) {
   }
   function fromHash() {
     const hash=location.hash.slice(1);
+    const journey=journeyPanels.find(panel=>panel.id===hash);
+    if(journey&&journeyIndex>=0){selectJourney(journey.dataset.journeyPanel!);turn(journeyIndex*2+(mobile.matches?1:0),false,false);return;}
     const i=spreads.findIndex(el=>hash===el.id||hash===`${el.id}--notes`);
     if(i>=0)turn(i*2+(mobile.matches&&hash.endsWith('--notes')?1:0),false,false);
   }
@@ -65,6 +78,7 @@ if (book) {
   previous.forEach(button=>button.addEventListener('click',()=>advance(-1)));
   next.forEach(button=>button.addEventListener('click',()=>advance(1)));
   jumps.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();const wasContents=contents.contains(link);contents.open=false;turn(Number(link.dataset.nbJump)*2);if(wasContents)book.querySelector<HTMLElement>(`.nb-tabs [data-nb-jump="${link.dataset.nbJump}"]`)?.focus({preventScroll:true});}));
+  journeyTabs.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();selectJourney(link.dataset.journeyTab!);turn(journeyIndex*2+(mobile.matches?1:0),false,false);history.pushState(null,'',link.hash);status.textContent=`The Journey · ${link.textContent?.trim()}`;}));
   mobile.addEventListener('change',()=>turn(current,false,false));
   window.addEventListener('hashchange',fromHash);
   window.addEventListener('popstate',fromHash);

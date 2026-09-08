@@ -1,5 +1,5 @@
 ---
-order: 5
+order: 6
 slug: lessons
 tab: What Went Wrong
 kicker: Leave room for the inconvenient parts
