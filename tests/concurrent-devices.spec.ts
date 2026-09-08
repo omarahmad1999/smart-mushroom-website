@@ -15,7 +15,13 @@ test('fan, humidifier and LED stay active together through exploration and play 
   const action=section.locator('[data-study-action]');
   const choose=async(id:string)=>{await section.locator(`[data-study-select="${id}"]`).click();};
   for(const [id,name] of [['fan','fan'],['humidity','mist'],['light','light']]){
-    await choose(id);await action.click();
+    await choose(id);
+    // Activation restores its framing even after the visitor manually zooms.
+    await section.locator('[data-study-zoom="in"]').click();
+    await action.click();
+    const mobile=await section.locator('[data-study-viewport]').evaluate(el=>el.clientWidth<700);
+    const zoom=id==='light'?1:id==='humidity'?(mobile?1.7:1.35):3.5*(mobile?1.2:1);
+    await expect(section).toHaveAttribute('data-study-view',new RegExp(`,${zoom.toFixed(2).replace('.', '\\.')}$`));
     await expect(section).toHaveAttribute(`data-study-${name}-active`,'true');
   }
   await expect(section).toHaveAttribute('data-study-lighting','tent');
@@ -33,7 +39,10 @@ test('fan, humidifier and LED stay active together through exploration and play 
   await expect(section).toHaveAttribute('data-study-fan-active','false');
   await expect(section).toHaveAttribute('data-study-mist-active','true');
   await expect(section).toHaveAttribute('data-study-lighting','tent');
-  await choose('light');await action.click();
+  await choose('light');
+  const beforeOff=await section.getAttribute('data-study-view');
+  await action.click();
+  await expect(section).toHaveAttribute('data-study-view',beforeOff!);
   await expect(section).toHaveAttribute('data-study-lighting','day');
   await expect(section).toHaveAttribute('data-study-mist-active','true');
   await expect.poll(()=>page.evaluate(()=>Reflect.get(window,'deviceAudio').find((r:any)=>r.audio.src.endsWith('light-switch.mp3'))?.plays??0)).toBeGreaterThanOrEqual(2);

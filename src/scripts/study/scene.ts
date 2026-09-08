@@ -357,6 +357,17 @@ export function mountMaterialStudy(section: HTMLElement) {
     actionButton.setAttribute('aria-pressed', String(active));
     section.querySelector<HTMLElement>('[data-study-action-label]')!.textContent = labels[action][Number(active)];
   }
+  function focusComponent(id: Component) {
+    const item = componentById[id];
+    const focus = V(item.focus[0], item.focus[1], item.focus[2]);
+    // Shift the focused object away from the desktop explanation card.
+    if (viewport.clientWidth > 700) {
+      const right = V(1, 0, 0).applyQuaternion(camera.quaternion);
+      focus.addScaledVector(right, 0.38);
+    }
+    const overhead=['mosfets','mosfet-led','breadboard','cobbler','keyboard','mouse','ssd','adapter12','adapter24','power-strip'].includes(id)||id.startsWith('wago-');
+    moveTo(focus,item.zoom*(viewport.clientWidth<700?1.20:1),id==='monitor'?focus.clone().add(V(.15,.65,5.5)):overhead?focus.clone().add(V(0,5.2,2.8)):undefined);
+  }
   function select(id: Component, fromList = false) {
     if (!alive || !componentById[id]) return;
     finishAssembly(); stopRotation(); selected = id;
@@ -373,14 +384,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     screenPreview.hidden=id!=='monitor'||!screenOn;
     if(id==='monitor'&&!screenOn)setScreen(true);
     section.querySelectorAll<HTMLElement>('[data-study-select], [data-study-hotspot]').forEach(button => button.setAttribute('aria-pressed', String((button.dataset.studySelect || button.dataset.studyHotspot) === id)));
-    const focus = V(item.focus[0], item.focus[1], item.focus[2]);
-    // Shift the focused object away from the desktop explanation card.
-    if (viewport.clientWidth > 700) {
-      const right = V(1, 0, 0).applyQuaternion(camera.quaternion);
-      focus.addScaledVector(right, 0.38);
-    }
-    const overhead=['mosfets','mosfet-led','breadboard','cobbler','keyboard','mouse','ssd','adapter12','adapter24','power-strip'].includes(id)||id.startsWith('wago-');
-    moveTo(focus,item.zoom*(viewport.clientWidth<700?1.20:1),id==='monitor'?focus.clone().add(V(.15,.65,5.5)):overhead?focus.clone().add(V(0,5.2,2.8)):undefined);
+    focusComponent(id);
     const terminalTable=section.querySelector<HTMLElement>('[data-study-terminals]')!;
     terminalTable.hidden=id!=='mosfets'&&id!=='mosfet-led';
     if(!terminalTable.hidden) {
@@ -414,10 +418,13 @@ export function mountMaterialStudy(section: HTMLElement) {
     if(demos.has(action)){stopDemo(action);draw();wake();status.textContent='Component switched off. Other active components remain on.';return;}
     if(!demos.size)demoStarted=performance.now();demos.add(action);
     if(action==='fan'||action==='mist')sounds.loop(action);
-    if (action === 'fan' && fanAirflow) fanAirflow.visible = true;
+    if (action === 'fan') {
+      if (fanAirflow) fanAirflow.visible = true;
+      focusComponent(selected);
+    }
     if (action === 'mist') {
       devices.mist.visible = true;
-
+      moveTo(V(1.12,2.10,-.10),viewport.clientWidth<700?1.7:1.35,V(6.0,5.4,9.2));
     }
     if (action === 'camera') { (selected==='camera2'?devices.cameraField2:devices.cameraField).visible=true; }
     if (action === 'light') {
@@ -425,12 +432,12 @@ export function mountMaterialStudy(section: HTMLElement) {
       ambient.intensity=.07;key.intensity=.13;fill.intensity=.025;scene.environmentIntensity=.025;
       illustrativeLight.intensity=17;tentFill.intensity=1.20;litFloor.visible=true;
       renderer.setClearColor('#17242a',1);section.dataset.studyLighting='tent';
-
+      moveTo(target.clone(),1,originalCamera.clone());
       devices.lightEmitters.forEach(mesh => { (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.8; });
     }
     syncDemos();
     syncAction(); draw(); wake();
-
+    viewport.scrollIntoView({block:'center',behavior:reduceMotion.matches?'instant':'smooth'});
     status.textContent = `${action === 'fan' ? 'Airflow' : action === 'mist' ? 'Mist path' : action === 'camera' ? 'Camera viewing area' : 'LED lighting'} demonstration shown. ${reduceMotion.matches ? 'Motion is reduced.' : 'Illustration only.'}`;
   }
   function zoom(direction: string) {
