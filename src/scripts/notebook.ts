@@ -30,15 +30,23 @@ if (book) {
     animation?.cancel();fold.replaceChildren();
     if(to!==old&&animate&&!reduced.matches){
       const backwards=to<old;
-      const outgoing=pages[mobile.matches?old:old+(backwards?0:1)].cloneNode(true) as HTMLElement;
-      outgoing.removeAttribute('data-nb-page');
-      outgoing.setAttribute('data-active','');
-      outgoing.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
-      outgoing.querySelectorAll('details').forEach(el=>el.open=false);
+      const copyPage=(index:number)=>{
+        const copy=pages[index].cloneNode(true) as HTMLElement;
+        copy.removeAttribute('data-nb-page');copy.setAttribute('data-active','');
+        copy.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+        copy.querySelectorAll('details').forEach(el=>el.open=false);
+        return copy;
+      };
+      const outgoing=copyPage(mobile.matches?old:old+(backwards?0:1));
       const leaf=document.createElement('div');leaf.className=`nb-leaf${backwards?' is-backward':''}`;leaf.inert=true;
       const front=document.createElement('div');front.className='nb-leaf-front';front.append(outgoing);
-      const back=document.createElement('div');back.className='nb-leaf-back';leaf.append(front,back);fold.append(leaf);
-      animation=leaf.animate([{transform:'rotateY(0deg)',filter:'brightness(1)'},{transform:`rotateY(${backwards?90:-90}deg)`,filter:'brightness(.89)',offset:.55},{transform:`rotateY(${backwards?178:-178}deg)`,filter:'brightness(1)'}],{duration:580,easing:'cubic-bezier(.25,.65,.25,1)'});
+      const back=document.createElement('div');back.className='nb-leaf-back';
+      // The reverse is the incoming facing page, so it lands without a blank-paper flash.
+      if(!mobile.matches)back.append(copyPage(to+(backwards?1:0)));
+      leaf.append(front,back);fold.append(leaf);
+      // A filter on this parent flattens preserve-3d and exposes mirrored front text.
+      // Keep shading on the faces and rotate only the unflattened paper leaf.
+      animation=leaf.animate([{transform:'rotateY(0deg)'},{transform:`rotateY(${backwards?180:-180}deg)`}],{duration:580,easing:'cubic-bezier(.25,.65,.25,1)',fill:'forwards'});
       animation.onfinish=()=>leaf.remove();
     }
     current=to;render();

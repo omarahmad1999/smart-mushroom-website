@@ -72,3 +72,21 @@ test('horizontal gestures turn the paper without requiring a page corner',async(
   await expect(page.locator('[data-nb-status]')).not.toContainText('Page 1 /');
   await expect(page.locator('[data-nb-status]')).not.toContainText('Pages 1–2');
 });
+
+test('page folds keep separate faces through both directions and land on the incoming page',async({page},info)=>{
+  await page.goto('/documentation/');
+  const book=page.locator('[data-notebook]');
+  for(const direction of ['next','prev']){
+    const state=await book.evaluate((root,direction)=>{
+      (root.querySelector(`[data-nb-controls] [data-nb-${direction}]`) as HTMLButtonElement).click();
+      const leaf=root.querySelector<HTMLElement>('.nb-leaf')!;
+      const animation=leaf.getAnimations()[0];animation.pause();animation.currentTime=470;
+      return {filter:getComputedStyle(leaf).filter,transformStyle:getComputedStyle(leaf).transformStyle,faces:[...leaf.children].map(el=>getComputedStyle(el).backfaceVisibility),back:leaf.querySelector('.nb-leaf-back')?.textContent};
+    },direction);
+    expect(state.filter).toBe('none');expect(state.transformStyle).toBe('preserve-3d');
+    expect(state.faces).toEqual(['hidden','hidden']);
+    if(info.project.name==='desktop')expect(state.back).toContain(direction==='next'?'Follow the wire':'Why grow a connected habitat?');
+    await book.locator('.nb-leaf').evaluate(el=>el.getAnimations()[0].finish());
+    await expect(book.locator('.nb-leaf')).toHaveCount(0);
+  }
+});
