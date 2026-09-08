@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 220" fill="none">
+  <title>Illustration of an external solid state drive</title>
+  <defs><linearGradient id="case" x1="82" y1="53" x2="188" y2="163" gradientUnits="userSpaceOnUse"><stop stop-color="#53606a"/><stop offset="1" stop-color="#253640"/></linearGradient></defs>
+  <path d="M38 97 160 37Q166 34 172 38L240 77Q247 81 240 86L117 149Q110 153 103 149L38 110Q29 104 38 97Z" fill="url(#case)" stroke="#192a35" stroke-width="3"/>
+  <path d="M32 104 32 119Q32 123 39 127L103 166Q111 171 119 167L242 104Q246 102 246 97V82Q245 86 240 88L117 151Q110 155 103 151L38 112Q33 110 32 104Z" fill="#1c2d38" stroke="#192a35" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M48 100 168 42" stroke="#79848c" stroke-width="2" opacity=".7"/>
+  <path d="M78 130 93 139 93 145 78 136Z" fill="#0b1821" stroke="#78858d" stroke-width="1.5"/>
+  <path d="M64 135 48 147Q36 156 48 169L67 187" stroke="#1a2b36" stroke-width="6" stroke-linecap="round"/>
+  <path d="M146 93 171 80" stroke="#c38a64" stroke-width="3" stroke-linecap="round"/>
+  <path d="M58 116 65 120" stroke="#a8bdab" stroke-width="2" stroke-linecap="round"/>
+</svg>

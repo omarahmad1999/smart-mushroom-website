@@ -1,0 +1,68 @@
+---
+import '@fontsource/dm-sans/400.css';
+import '@fontsource/dm-sans/500.css';
+import '@fontsource/dm-sans/600.css';
+import '@fontsource/newsreader/400.css';
+import '@fontsource/newsreader/400-italic.css';
+import '../styles/global.css';
+import Logo from '../components/Logo.astro';
+import Icon from '../components/Icon.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import ResourceLink from '../components/ResourceLink.astro';
+import { site } from '../config/site';
+interface Props { title?: string; description?: string; }
+const { title = site.title, description = site.description } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#f6f3eb" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="header-inner">
+        <Logo />
+        <nav class="desktop-nav" aria-label="Main navigation">
+          <a href="/#experiment">The experiment</a>
+          <a href="/#material-study">Inside the tent</a>
+          <a href="/documentation/">Field notes</a>
+          <a href="/learning-log/">Learning log</a>
+        </nav>
+        <div class="header-resources"><ResourceLink href={site.githubUrl} resource="GitHub" class="button button-dark header-github" label="GitHub"><Icon name="github" /></ResourceLink><ResourceLink href={site.grafanaUrl} resource="Grafana" class="button button-dark header-grafana" label="View Data in Grafana" /></div>
+        <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-navigation"><Icon name="menu" /></button>
+      </div>
+      <nav id="mobile-navigation" class="mobile-nav" aria-label="Mobile navigation" hidden>
+        <a href="/#experiment">The experiment <Icon name="arrow-right" /></a>
+        <a href="/#material-study">Inside the tent <Icon name="arrow-right" /></a>
+        <a href="/#cultivation">The cultivation cycle <Icon name="arrow-right" /></a>
+        <a href="/#architecture">How it works <Icon name="arrow-right" /></a>
+        <a href="/documentation/">Field notes <Icon name="arrow-right" /></a>
+        <a href="/learning-log/">Learning log <Icon name="arrow-right" /></a>
+        <ResourceLink href={site.githubUrl} resource="GitHub" class="button button-dark" label="GitHub"><Icon name="github" /></ResourceLink>
+        <ResourceLink href={site.grafanaUrl} resource="Grafana" class="button button-dark" label="View Data in Grafana" />
+      </nav>
+    </header>
+    <main id="main"><slot /></main>
+    <SiteFooter />
+    <dialog class="resource-dialog" aria-labelledby="resource-dialog-title">
+      <button type="button" class="dialog-close icon-button" aria-label="Close"><Icon name="close" /></button>
+      <span class="eyebrow">EXPLORE THE PROJECT</span>
+      <h2 id="resource-dialog-title">A link still to come.</h2>
+      <p data-resource-message>The public project link is not available here yet.</p>
+      <p class="dialog-note">You can explore the experiment, hardware, and system documentation on this site.</p>
+      <a href="/documentation/" class="button button-dark">Read the documentation <Icon name="arrow-right" /></a>
+    </dialog>
+    <script>
+      import '../scripts/site';
+    </script>
+  </body>
+</html>

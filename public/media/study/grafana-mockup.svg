@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+ <defs><linearGradient id="fade" x2="0" y2="1"><stop stop-color="#78b795" stop-opacity=".20"/><stop offset="1" stop-color="#78b795" stop-opacity="0"/></linearGradient></defs>
+ <rect width="1280" height="800" rx="12" fill="#111318"/>
+ <path d="M0 62H1280M188 62V744M0 744H1280" stroke="#31343d" stroke-width="2"/>
+ <g font-family="Arial,sans-serif">
+  <circle cx="31" cy="31" r="15" fill="#ed8d40"/><circle cx="34" cy="29" r="7" fill="#111318"/>
+  <text x="58" y="39" font-size="24" font-weight="bold" fill="#f2f2f4">Grafana</text>
+  <text x="1050" y="37" font-size="17" fill="#e4ae79">ILLUSTRATIVE MOCK-UP</text>
+  <g fill="#9298a5" font-size="18"><text x="23" y="110">Home</text><text x="23" y="157">Explore</text><text x="23" y="261">Connections</text></g>
+  <rect x="12" y="184" width="164" height="40" rx="5" fill="#292c36"/><rect x="12" y="184" width="3" height="40" fill="#ef914a"/>
+  <text x="24" y="210" font-size="18" fill="#eeeeef">Dashboards</text>
+  <text x="221" y="108" font-size="16" fill="#9097a4">Dashboards / Smart Mushroom Hub</text>
+  <text x="221" y="150" font-size="32" font-weight="bold" fill="#e5e7ec">Inside the growing space</text>
+  <text x="221" y="181" font-size="17" fill="#989eaa">A visual preview of the experiment dashboard.</text>
+  <g fill="#1b1e25" stroke="#353943"><rect x="220" y="210" width="324" height="146" rx="5"/><rect x="560" y="210" width="324" height="146" rx="5"/><rect x="900" y="210" width="348" height="146" rx="5"/><rect x="220" y="377" width="664" height="332" rx="5"/><rect x="900" y="377" width="348" height="332" rx="5"/></g>
+  <g font-size="19" fill="#d8dce4"><text x="242" y="244">Temperature</text><text x="582" y="244">Relative humidity</text><text x="922" y="244">Carbon dioxide</text><text x="242" y="414">Growing conditions</text><text x="922" y="414">Camera observations</text></g>
+  <g font-size="44" fill="#83bca0"><text x="242" y="301">—</text><text x="582" y="301">—</text><text x="922" y="301">—</text></g>
+  <g font-size="15" fill="#818b98"><text x="242" y="330">Preview only</text><text x="582" y="330">Preview only</text><text x="922" y="330">Preview only</text></g>
+  <g stroke="#303540"><path d="M244 466H857M244 521H857M244 576H857M244 631H857"/><path d="M244 446V650M397 446V650M551 446V650M704 446V650M857 446V650"/></g>
+  <path d="M244 579C296 578 314 516 367 543S445 568 495 538S579 527 626 547S716 514 757 519S815 534 857 485V650H244Z" fill="url(#fade)"/>
+  <path d="M244 579C296 578 314 516 367 543S445 568 495 538S579 527 626 547S716 514 757 519S815 534 857 485" stroke="#79b991" stroke-width="3" fill="none"/>
+  <path d="M244 611C309 608 339 587 393 598S465 582 522 592S602 606 654 582S761 597 799 578S835 586 857 568" stroke="#d4a663" stroke-width="3" fill="none"/>
+  <text x="242" y="687" font-size="15" fill="#929aa8">Illustrative shapes · no measured values</text>
+  <rect x="922" y="442" width="304" height="181" rx="4" fill="#252b2d"/>
+  <g fill="none" stroke="#5c7365" stroke-width="3"><rect x="1020" y="465" width="110" height="134"/><path d="M1020 506H1130M1020 555H1130M1075 465V485M1075 514V535"/></g>
+  <g fill="#ada68d"><rect x="1061" y="484" width="29" height="49" rx="13"/><rect x="1061" y="540" width="29" height="49" rx="13"/></g>
+  <text x="922" y="660" font-size="16" fill="#9ca5af">Prepared images &amp; timelapses</text>
+  <text x="922" y="686" font-size="15" fill="#929aa8">No live stream in this preview</text>
+  <text x="221" y="777" font-size="19" fill="#d0b28c">STATIC MOCK-UP · Actual experiment data is available only in Grafana.</text>
+ </g>
+</svg>

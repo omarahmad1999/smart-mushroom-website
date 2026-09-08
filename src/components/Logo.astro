@@ -1,0 +1,14 @@
+---
+interface Props { small?: boolean }
+const { small = false } = Astro.props;
+---
+<a class:list={['brand', { 'brand-small': small }]} href="/" aria-label="Smart Mushroom Hub home">
+  <svg class="brand-mark" viewBox="0 0 44 44" width="44" height="44" fill="none" aria-hidden="true">
+    <path d="M8 23c0-8 6-15 14-15s14 7 14 15H8Z" stroke="currentColor" stroke-width="1.6"/>
+    <path d="M18 23v9c0 3 8 3 8 0v-9M12 19l3-2m4-5 1 3m9 0-2 3m5 2-2 1M5 29h8m18 0h8M10 34h4m16 0h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>
+  <span>smart mushroom<span class="brand-sub">A LIVING EXPERIMENT</span></span>
+</a>
+<style>
+.brand{display:inline-flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-size:18px;font-weight:600;letter-spacing:-.6px;line-height:1.2;flex-shrink:0}.brand-mark{flex:none}.brand-sub{display:block;font-size:8px;letter-spacing:2.35px;font-weight:500;margin-top:6px}.brand-small{font-size:16px}
+</style>

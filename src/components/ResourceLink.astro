@@ -1,0 +1,6 @@
+---
+import Icon from './Icon.astro';
+interface Props { href?: string; resource: string; class?: string; label?: string; }
+const { href, resource, class: className = '', label } = Astro.props;
+---
+{href ? <a href={href} class={className} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}><slot />{label && <span>{label}</span>}<Icon /></a> : <button class={className} type="button" data-resource-unavailable={resource}><slot />{label && <span>{label}</span>}<Icon /></button>}

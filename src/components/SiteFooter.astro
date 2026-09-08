@@ -1,0 +1,18 @@
+---
+import Logo from './Logo.astro';
+import Icon from './Icon.astro';
+import ResourceLink from './ResourceLink.astro';
+import { site } from '../config/site';
+---
+<footer class="photo-footer">
+  <img class="footer-photo" src="/media/footer.webp" alt="" width="1920" height="1281" loading="lazy" decoding="async" />
+  <div class="footer-content">
+    <div class="footer-heading"><Logo small /><a href="#main" class="footer-back">Back to top <Icon name="arrow-up-right" /></a></div>
+    <p class="footer-motto">Curiosity,<br /><em>carefully cultivated.</em></p>
+    <div class="footer-links"><nav aria-label="Footer navigation"><a href="/#experiment">The experiment</a><a href="/documentation/">Field notes</a><a href="/learning-log/">Learning log</a></nav><div class="footer-socials"><ResourceLink href={site.githubUrl} resource="GitHub" class="footer-social" label="GitHub"><Icon name="github" /></ResourceLink><ResourceLink href={site.grafanaUrl} resource="Grafana" class="footer-social" label="Grafana"><Icon name="grafana" /></ResourceLink></div></div>
+    <div class="footer-fineprint"><span>An independent cultivation & engineering project.</span><span>© 2026 Smart Mushroom Hub</span></div>
+  </div>
+</footer>
+<style>
+.photo-footer{position:relative;isolation:isolate;overflow:hidden;color:#f8f6ed;background:#102321}.footer-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 53%;z-index:-2}.photo-footer::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#071713c9,#07171355),linear-gradient(0deg,#06130ef0,transparent 70%);z-index:-1}.footer-content{width:min(1600px,calc(100% - 2 * var(--page-pad)));margin:auto;padding:55px 0 28px}.footer-heading{display:flex;align-items:center;justify-content:space-between;gap:20px}.footer-heading :global(.brand){color:#f8f6ed}.footer-back{display:flex;align-items:center;gap:12px;text-decoration:none;font-size:11px;min-height:44px}.footer-motto{font-family:var(--font-display);font-size:clamp(46px,6vw,88px);line-height:1.04;letter-spacing:-.03em;margin:75px 0}.footer-motto em{color:#dce4ce}.footer-links{display:flex;justify-content:space-between;gap:25px;align-items:center;padding-bottom:24px}.footer-links nav{display:flex;gap:28px;flex-wrap:wrap}.footer-links nav a{font-size:12px;text-decoration:none;min-height:44px;display:inline-flex;align-items:center}.footer-links a:hover{text-decoration:underline}.footer-socials{display:flex;gap:12px}.footer-socials :global(.footer-social){display:flex;align-items:center;gap:10px;color:#f8f6ed;border:1px solid #ffffff4d;padding:12px 16px;background:#10232166;border-radius:4px;font-size:12px;text-decoration:none;min-height:46px}.footer-socials :global(.footer-social>svg:last-child){display:none}.footer-socials :global(.footer-social:hover){background:#234139}.footer-fineprint{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #ffffff40;padding-top:23px;font-size:10px;color:#d4ddcf}@media(max-width:700px){.footer-content{padding-top:36px}.footer-motto{margin:65px 0 50px}.footer-links{align-items:start;flex-direction:column}.footer-fineprint{flex-direction:column;gap:12px}.footer-back{font-size:10px;gap:5px}.footer-links nav{gap:20px}}
+</style>

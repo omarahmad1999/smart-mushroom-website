@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 330" fill="none">
+  <title>Illustration of an uninterruptible power supply</title>
+  <defs>
+    <linearGradient id="front" x1="54" y1="108" x2="168" y2="306" gradientUnits="userSpaceOnUse"><stop stop-color="#394853"/><stop offset="1" stop-color="#192a35"/></linearGradient>
+    <linearGradient id="side" x1="168" y1="158" x2="244" y2="223" gradientUnits="userSpaceOnUse"><stop stop-color="#263842"/><stop offset="1" stop-color="#14242e"/></linearGradient>
+  </defs>
+  <path d="M48 94 134 52 240 113 154 157Z" fill="#59626a" stroke="#192a35" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M48 94 154 157 154 306 48 245Z" fill="url(#front)" stroke="#192a35" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M154 157 240 113 240 264 154 306Z" fill="url(#side)" stroke="#14242e" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M66 112 139 155" stroke="#71808a" stroke-width="2"/>
+  <path d="M62 194 138 238M62 203 138 247M62 212 138 256M62 221 138 265M62 230 138 274" stroke="#10202a" stroke-width="4" stroke-linecap="round"/>
+  <path d="M171 181 221 155M171 192 221 166M171 203 221 177M171 214 221 188M171 225 221 199M171 236 221 210M171 247 221 221M171 258 221 232" stroke="#0c1a23" stroke-width="4" stroke-linecap="round"/>
+  <ellipse cx="99" cy="169" rx="12" ry="16" transform="rotate(-28 99 169)" fill="#172731" stroke="#91a39a" stroke-width="2"/>
+  <path d="M99 160 99 168" stroke="#9ebeab" stroke-width="2" stroke-linecap="round"/>
+  <path d="M65 135 78 143" stroke="#d18d61" stroke-width="3" stroke-linecap="round"/>
+  <path d="M58 251 68 257 68 266 58 260ZM216 277 230 270 230 278 216 285Z" fill="#0c1a23"/>
+</svg>
