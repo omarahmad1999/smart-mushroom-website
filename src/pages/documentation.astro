@@ -1,4 +1,5 @@
 ---
+import FieldNotebook from '../components/FieldNotebook.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Icon from '../components/Icon.astro';
 import ResourceLink from '../components/ResourceLink.astro';
@@ -28,16 +29,8 @@ const hardware = [
   <div class="documentation-page section-wrap">
     <a href="/#experiment" class="return-link"><span aria-hidden="true">←</span> Back to the experiment</a>
 
-    <header class="documentation-hero">
-      <p class="eyebrow"><span class="eyebrow-dot"></span> THE PROJECT NOTEBOOK</p>
-      <div class="hero-columns">
-        <h1>Notes from<br /><em>inside the system.</em></h1>
-        <div class="hero-context">
-          <p>A closer look at the hardware, the software, and the decisions behind a small growing experiment.</p>
-          <span>PROJECT DOCUMENTATION <span aria-hidden="true">/</span> SEPTEMBER 2026</span>
-        </div>
-      </div>
-    </header>
+    <FieldNotebook />
+    <header id="reference-notes" class="reference-heading"><p class="eyebrow">THE REFERENCE SHELF</p><h2>The details behind the pages.</h2><p>Hardware, schedules, software, and the limits of what we know.</p></header>
 
     <div class="documentation-layout">
       <aside class="documentation-sidebar">
@@ -148,18 +141,11 @@ const hardware = [
 </BaseLayout>
 
 <style>
+  .reference-heading{border-top:1px solid var(--line);padding-top:45px;scroll-margin-top:120px}.reference-heading .eyebrow{color:var(--olive)}.reference-heading h2{font-size:clamp(32px,4vw,46px);margin:17px 0 12px}.reference-heading>p:last-child{font-size:13px;color:var(--muted)}
   .documentation-page { padding-top: 35px; padding-bottom: 110px; }
   .return-link { display: inline-flex; align-items: center; gap: 12px; color: var(--muted); text-decoration: none; font-size: 11px; padding-block: 7px; }
   .return-link span { font-size: 18px; }
   .return-link:hover { color: var(--orange); }
-  .documentation-hero { margin-top: 56px; padding-bottom: 60px; border-bottom: 1px solid var(--line); }
-  .documentation-hero > .eyebrow { color: var(--olive); margin-bottom: 27px; }
-  .hero-columns { display: grid; grid-template-columns: 1.3fr .75fr; align-items: end; gap: 60px; }
-  .hero-columns h1 { font-size: clamp(49px, 6vw, 80px); line-height: .99; letter-spacing: -.045em; }
-  .hero-columns h1 em { color: var(--olive); font-weight: 400; }
-  .hero-context > p { max-width: 310px; color: var(--muted); font-size: 14px; line-height: 1.8; }
-  .hero-context > span { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; color: #77816a; font-size: 8px; letter-spacing: 1px; }
-  .hero-context > span > span { color: #a2a993; }
   .documentation-layout { display: grid; grid-template-columns: 245px minmax(0, 700px); justify-content: space-between; column-gap: 70px; padding-top: 55px; }
   .documentation-sidebar nav { position: sticky; top: 35px; }
   .documentation-sidebar .eyebrow { color: var(--olive); font-size: 8px; letter-spacing: 1.5px; }
@@ -210,15 +196,10 @@ const hardware = [
   .documentation-closing p { font-family: var(--font-display); font-size: 30px; color: var(--olive); font-style: italic; }
   @media (max-width: 1050px) {
     .documentation-layout { grid-template-columns: 210px minmax(0, 1fr); gap: 40px; }
-    .hero-columns { gap: 40px; }
     .hardware-list > div { grid-template-columns: 110px 1fr; gap: 18px; }
   }
   @media (max-width: 760px) {
     .documentation-page { padding-top: 23px; padding-bottom: 75px; }
-    .documentation-hero { margin-top: 40px; padding-bottom: 38px; }
-    .hero-columns { grid-template-columns: 1fr; gap: 28px; }
-    .hero-context > p { max-width: 430px; font-size: 13px; }
-    .hero-context > span { margin-top: 20px; }
     .documentation-layout { display: block; padding-top: 30px; }
     .documentation-sidebar { border-bottom: 1px solid var(--line); padding-bottom: 24px; margin-bottom: 33px; }
     .documentation-sidebar nav { position: static; }
