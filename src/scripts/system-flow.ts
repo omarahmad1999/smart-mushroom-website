@@ -1,7 +1,8 @@
 import { gsap } from 'gsap';
+import type { FlowSounds } from './flow-sounds';
 
 /** A finite, authored explanation. No readings, clocks from devices, or services. */
-export function mountSystemFlow(root: HTMLElement) {
+export function mountSystemFlow(root: HTMLElement,sounds?:FlowSounds) {
   const canvas=root.querySelector<HTMLElement>('[data-pathway-canvas]')!;
   const controls=root.querySelector<HTMLElement>('[data-pathway-controls]')!;
   const pauseButton=root.querySelector<HTMLButtonElement>('[data-pathway-pause]')!;
@@ -13,7 +14,9 @@ export function mountSystemFlow(root: HTMLElement) {
   const events={signal:abort.signal};
   const select=(query:string)=>Array.from(root.querySelectorAll<SVGElement>(query));
   const flowName=root.dataset.flowName!;
+  const soundOwner=root.dataset.systemFlow!;
   const branched=root.dataset.systemFlow==='observe';
+  const canSound=()=>active&&visible&&!document.hidden&&!userPaused&&!reduced.matches;
   const names=Array.from(root.querySelectorAll<SVGElement>('[data-flow-layout="wide"] [data-flow-node]'),node=>node.dataset.flowNode!);
   const lastId=names.at(-1)!;
   const firstStage=branched?'sensors':names[0];
@@ -36,6 +39,7 @@ export function mountSystemFlow(root: HTMLElement) {
     controls.hidden=reduced.matches;
   }
   function resetAppearance() {
+    sounds?.stop(soundOwner);
     gsap.set(select('[data-flow-letter],.pathway-liquid'),{opacity:0});
     gsap.set(select('.pathway-corner-dot'),{fill:'#cdd1d3'});
     gsap.set(select('.pathway-aura,.pathway-light,.pathway-halo,.pathway-rim,.pathway-name-highlight'),{opacity:0});
@@ -101,6 +105,13 @@ export function mountSystemFlow(root: HTMLElement) {
       .set(shapes.map(item=>item.shape),{opacity:0},time+duration);
   }
   function activate(ids:string[],time:number) {
+    timeline.call(()=>{
+      if(!canSound())return;
+      sounds?.stop(soundOwner);
+      sounds?.play(ids.includes(lastId)?'complete':'node',soundOwner,rimDuration/timeline.timeScale());
+      if(!ids.includes(lastId))sounds?.play('scramble',soundOwner);
+    },[],time);
+
     for(const id of ids) {
       const part=(name:string)=>select(`[data-flow-node="${id}"] ${name}`);
       timeline.to(part('.pathway-aura'),{opacity:.18,duration:.25,ease:'sine.out'},time)
@@ -122,6 +133,10 @@ export function mountSystemFlow(root: HTMLElement) {
   }
   function pulse(id:string,time:number,duration:number) {
     const pulse=select(`[data-flow-pulse="${id}"]`);
+    // The two sensor branches move together: play one sweep, not two.
+    if(id!=='scd41')timeline.call(()=>{
+      if(canSound())sounds?.play('travel',soundOwner,duration/timeline.timeScale());
+    },[],time);
     timeline.set(pulse,{opacity:1,attr:{'stroke-dashoffset':.12}},time)
       .to(pulse,{attr:{'stroke-dashoffset':-1},duration,ease:'none'},time)
       .set(pulse,{opacity:0},time+duration);
@@ -201,7 +216,7 @@ export function mountSystemFlow(root: HTMLElement) {
     if(!alive)return;
     if(reduced.matches){stillView();return;}
     if(active&&visible&&!document.hidden&&!userPaused&&!complete) timeline.play();
-    else timeline.pause();
+    else {timeline.pause();sounds?.stop(soundOwner);}
     syncControls();
   }
   function restart() {
@@ -209,8 +224,8 @@ export function mountSystemFlow(root: HTMLElement) {
     resetAppearance();status.textContent=`Following the ${flowName} pathway.`;
     syncPlayback();
   }
-  pauseButton.addEventListener('click',()=>{userPaused=!userPaused;syncPlayback();},events);
-  replayButton.addEventListener('click',restart,events);
+  pauseButton.addEventListener('click',()=>{userPaused=!userPaused;syncPlayback();if(!userPaused)sounds?.play('click',soundOwner);},events);
+  replayButton.addEventListener('click',()=>{restart();sounds?.play('click',soundOwner);},events);
   const intersection=new IntersectionObserver(entries=>{
     visible=entries[0].isIntersecting;syncPlayback();
   },{threshold:0});
@@ -226,13 +241,14 @@ export function mountSystemFlow(root: HTMLElement) {
     syncPlayback();
   },events);
   window.addEventListener('pagehide',event=>{
-    timeline.pause();
+    timeline.pause();sounds?.stop(soundOwner);
     if(event.persisted)return;
     alive=false;intersection.disconnect();abort.abort();timeline.kill();
   },events);
   window.addEventListener('pageshow',syncPlayback,events);
   resetAppearance();syncControls();if(reduced.matches)stillView();
   return {
+    restart,
     setActive(value:boolean, replay=false) {
       active=value;
       if(value&&replay)restart();else syncPlayback();

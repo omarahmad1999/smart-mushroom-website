@@ -66,3 +66,17 @@ Device loops start through visitor interaction and stop when the demonstration i
 ## Footer photograph
 
 `public/media/footer.webp` is a resized WebP copy of the supplied `media_for_astro_website/footer.jpg`, used as the shared footer background. It is decorative reference photography, not a photograph documenting this experiment's crop. The original file is unchanged.
+
+## Connected System sound effects
+
+The diagram uses short edited excerpts from the previously selected Mixkit sound effects, under the [Mixkit Sound Effects Free License](https://mixkit.co/license/#sfxFree). Source catalogue: [Mixkit sci-fi sounds](https://mixkit.co/free-sound-effects/sci-fi/). These are incorporated sound cues for this website, not a sound library or downloads offered to visitors. Original WAV downloads stay outside the project; keep the licensed clips out of any public source/template distribution.
+
+| Runtime clip | Mixkit title and asset ID | Source excerpt |
+| --- | --- | --- |
+| `node.mp3` | Sci Fi interface zoom — 890 | 0.218–0.868 s |
+| `travel.mp3` | Fast sci fi transition sweep — 3114 | 0.143–0.793 s |
+| `scramble.mp3` | Small sci fi glitch — 1030 | 0.772–0.992 s |
+| `complete.mp3` | Sci Fi confirmation — 914 | 0.132–0.932 s |
+| `click.mp3` | Sci fi click — 900 | 0.115–0.275 s |
+
+Source files: `https://assets.mixkit.co/active_storage/sfx/{id}/{id}.wav`. Excerpts are mono 44.1 kHz MP3, filtered at 110–7000 Hz, peak-balanced, and faded at both ends. The browser plays them softly; sweep duration follows the visual handoff. Sound is opt-in for each page visit and disabled for reduced motion. It has no connection to experiment data.
