@@ -79,4 +79,6 @@ The diagram uses short edited excerpts from the previously selected Mixkit sound
 | `complete.mp3` | Sci Fi confirmation — 914 | 0.132–0.932 s |
 | `click.mp3` | Sci fi click — 900 | 0.115–0.275 s |
 
-Source files: `https://assets.mixkit.co/active_storage/sfx/{id}/{id}.wav`. Excerpts are mono 44.1 kHz MP3, filtered at 110–7000 Hz, peak-balanced, and faded at both ends. The browser plays them softly; sweep duration follows the visual handoff. Sound is opt-in for each page visit and disabled for reduced motion. It has no connection to experiment data.
+Source files: `https://assets.mixkit.co/active_storage/sfx/{id}/{id}.wav`. Excerpts are mono 44.1 kHz MP3, filtered at 110–7000 Hz, peak-balanced, and faded at both ends. The browser plays them softly; sweep duration follows the visual handoff. Diagram sound defaults on and unlocks on the first click, tap, or keypress; reduced motion keeps it disabled. It has no connection to experiment data.
+
+`public/media/study/light-switch.mp3` is a mono MP3 copy of the supplied `light_switch.mp3`, with tiny edge fades, used for LED switching across browsers. Fan and humidifier retain their previously prepared 6-second and 20-second excerpts and can now loop simultaneously.

@@ -153,7 +153,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   let selected: Component = 'bag';
   let labelsVisible = true;
   let mushroomsVisible = true;
-  let demo: Demo | null = null;
+  const demos=new Set<Demo>();
   let demoStarted = 0;
   let tween: { start: number; from: THREE.Vector3; to: THREE.Vector3; fromTarget: THREE.Vector3; toTarget: THREE.Vector3; fromZoom: number; toZoom: number } | null = null;
   const buildOrder=[tent.frame,bench.furniture,...Object.values(groups).filter(group=>group!==tent.frame&&group!==bench.furniture&&group!==tent.cover),tent.cover,wiring];
@@ -180,7 +180,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     // PointsMaterial uses pixel units with an orthographic camera. Preserve a
     // soft plume of world-sized particles through zoom and responsive resizing.
     (devices.mist.material as THREE.PointsMaterial).size=.23*viewport.clientHeight*camera.zoom/(camera.top-camera.bottom);
-    if(demo==='light') {
+    if(demos.has('light')) {
       // Separate render passes keep tent lights from illuminating the workbench.
       camera.layers.set(0);renderer.render(scene,camera);
       renderer.autoClear=false;camera.layers.set(1);renderer.render(scene,camera);
@@ -225,29 +225,42 @@ export function mountMaterialStudy(section: HTMLElement) {
     section.querySelector('[data-study-build]')?.setAttribute('aria-pressed', 'false');
   }
 
-  function stopDemo() {
-    demo = null;
-    sounds.stopLoop();
-    devices.mist.visible = devices.cameraField.visible = devices.cameraField2.visible = false;
-    if (fanAirflow) { fanAirflow.visible = false; fanAirflow.position.y = 0; }
-    if (lightBeam) lightBeam.visible = false;
-    illustrativeLight.intensity = tentFill.intensity = 0;litFloor.visible=false;
-    ambient.intensity=1;key.intensity=2.5;fill.intensity=.4;scene.environmentIntensity=.25;
-    renderer.setClearColor(0x000000,0);section.dataset.studyLighting="day";
-    devices.lightEmitters.forEach((mesh, index) => { (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = emitterIntensities[index]; });
-    section.dataset.studyDemo = 'none';
+  function syncDemos() {
+    section.dataset.studyDemo=[...demos].join(' ')||'none';
+    for(const [id,action] of [['fan','fan'],['humidity','mist'],['light','light']] as const){
+      section.dataset[`study${action[0].toUpperCase()+action.slice(1)}Active`]=String(demos.has(action));
+      section.querySelectorAll<HTMLElement>(`[data-study-hotspot="${id}"],[data-study-select="${id}"]`).forEach(button=>{
+        button.dataset.deviceActive=String(demos.has(action));
+        button.setAttribute('aria-description',demos.has(action)?'Illustration switched on':'Illustration switched off');
+      });
+    }
     syncAction();
+  }
+  function stopDemo(action?:Demo) {
+    const stop=(name:Demo)=>!action||action===name;
+    if(action)demos.delete(action);else demos.clear();
+    if(stop('fan')){sounds.stopLoop('fan');if(fanAirflow){fanAirflow.visible=false;fanAirflow.position.y=0;}}
+    if(stop('mist')){sounds.stopLoop('mist');devices.mist.visible=false;}
+    if(stop('camera'))devices.cameraField.visible=devices.cameraField2.visible=false;
+    if(stop('light')){
+      if(lightBeam)lightBeam.visible=false;
+      illustrativeLight.intensity=tentFill.intensity=0;litFloor.visible=false;
+      ambient.intensity=1;key.intensity=2.5;fill.intensity=.4;scene.environmentIntensity=.25;
+      renderer.setClearColor(0x000000,0);section.dataset.studyLighting='day';
+      devices.lightEmitters.forEach((mesh,index)=>{(mesh.material as THREE.MeshStandardMaterial).emissiveIntensity=emitterIntensities[index];});
+    }
+    syncDemos();
   }
 
   function updateDemo(now: number, dt: number) {
-    if (!demo) return;
+    if (!demos.size) return;
     const elapsed = (now - demoStarted) / 1000;
     if (reduceMotion.matches) return;
-    if (demo === 'fan') {
+    if (demos.has('fan')) {
       devices.fanRotor.rotation.y += dt * 7.5;
       if (fanAirflow) fanAirflow.position.y = Math.sin(elapsed * 3) * 0.045;
     }
-    if (demo === 'mist') {
+    if (demos.has('mist')) {
       const positions = devices.mist.geometry.getAttribute('position');
       for (let i = 0; i < positions.count; i++) {
         const phase=(elapsed*.24+i/positions.count)%1, angle=i*2.39996+elapsed*.16;
@@ -287,7 +300,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     controls.update(dt);
     draw();
     renderingFrame = false;
-    const animatedDemo = !reduceMotion.matches && (demo === 'fan' || demo === 'mist');
+    const animatedDemo = !reduceMotion.matches && (demos.has('fan') || demos.has('mist'));
     if (tween || assembly || animatedDemo || controls.autoRotate || now < keepMovingUntil) animationFrame = requestAnimationFrame(loop);
   }
   function wake(duration = 500) {
@@ -307,7 +320,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     section.querySelectorAll<HTMLElement>('button[data-study-region]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.studyRegion === region)));
   }
   function regionView(region: Region) {
-    finishAssembly(); stopRotation(); stopDemo(); detail.hidden = true; setRegionState(region);
+    finishAssembly(); stopRotation(); detail.hidden = true; setRegionState(region);
     if (region === 'overview') moveTo(target.clone(), 1, originalCamera.clone());
     if (region === 'tent') moveTo(V(0.55, 2.12, -0.12), viewport.clientWidth < 700 ? 2.20 : 1.40, V(6.1, 6.2, 9.1));
     if (region === 'workbench') moveTo(V(-2.40, 1.31, .02), viewport.clientWidth < 700 ? 2.0 : 1.8, V(2.5, 6.5, 8.2));
@@ -335,7 +348,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   }
   function syncAction() {
     const action = componentById[selected].action;
-    const active = action === 'mushrooms' ? mushroomsVisible : action === 'cover' ? tent.cover.visible : action === 'wiring' ? wiring.visible : action === 'screen' ? screenOn : action === demo;
+    const active = action === 'mushrooms' ? mushroomsVisible : action === 'cover' ? tent.cover.visible : action === 'wiring' ? wiring.visible : action === 'screen' ? screenOn : demos.has(action as Demo);
     const labels: Record<VisualAction, [string, string]> = {
       mushrooms: ['Show illustrated mushrooms', 'Hide illustrated mushrooms'], cover: ['Show the covering', 'Remove the covering'], wiring: ['Show the connections', 'Hide the connections'],
       screen: ['Turn screen on', 'Turn screen off'], fan: ['Turn fan on', 'Turn fan off'], mist: ['Turn humidifier on', 'Turn humidifier off'], light: ['Show the lighting', 'Return to natural light'], camera: ['Show the camera view', 'Hide the camera view'],
@@ -346,7 +359,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   }
   function select(id: Component, fromList = false) {
     if (!alive || !componentById[id]) return;
-    finishAssembly(); stopRotation(); stopDemo(); selected = id;
+    finishAssembly(); stopRotation(); selected = id;
     const item = componentById[id];
     section.dataset.studySelected = id;
     setRegionState('component');
@@ -398,13 +411,13 @@ export function mountMaterialStudy(section: HTMLElement) {
     if (action === 'mushrooms' || action === 'cover' || action === 'wiring') { setLayer(action); viewport.scrollIntoView({block:'center',behavior:reduceMotion.matches?'instant':'smooth'}); return; }
     if(action==='screen'){setScreen(!screenOn);status.textContent=screenOn?'Screen on. Static Grafana mock-up shown.':'Screen off.';return;}
     if(action==='light')sounds.switch('light');
-    if (demo === action) { stopDemo(); draw(); status.textContent = 'Demonstration stopped.'; return; }
-    stopDemo(); demo = action; demoStarted = performance.now();
+    if(demos.has(action)){stopDemo(action);draw();wake();status.textContent='Component switched off. Other active components remain on.';return;}
+    if(!demos.size)demoStarted=performance.now();demos.add(action);
     if(action==='fan'||action==='mist')sounds.loop(action);
     if (action === 'fan' && fanAirflow) fanAirflow.visible = true;
     if (action === 'mist') {
       devices.mist.visible = true;
-      moveTo(V(1.12,2.10,-.10),viewport.clientWidth<700?1.7:1.35,V(6.0,5.4,9.2));
+
     }
     if (action === 'camera') { (selected==='camera2'?devices.cameraField2:devices.cameraField).visible=true; }
     if (action === 'light') {
@@ -412,12 +425,12 @@ export function mountMaterialStudy(section: HTMLElement) {
       ambient.intensity=.07;key.intensity=.13;fill.intensity=.025;scene.environmentIntensity=.025;
       illustrativeLight.intensity=17;tentFill.intensity=1.20;litFloor.visible=true;
       renderer.setClearColor('#17242a',1);section.dataset.studyLighting='tent';
-      moveTo(target.clone(),1,originalCamera.clone());
+
       devices.lightEmitters.forEach(mesh => { (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.8; });
     }
-    section.dataset.studyDemo = action;
+    syncDemos();
     syncAction(); draw(); wake();
-    viewport.scrollIntoView({block:"center",behavior:reduceMotion.matches?"instant":"smooth"});
+
     status.textContent = `${action === 'fan' ? 'Airflow' : action === 'mist' ? 'Mist path' : action === 'camera' ? 'Camera viewing area' : 'LED lighting'} demonstration shown. ${reduceMotion.matches ? 'Motion is reduced.' : 'Illustration only.'}`;
   }
   function zoom(direction: string) {
@@ -426,6 +439,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     camera.updateProjectionMatrix(); draw(); status.textContent = `View zoom ${Math.round(camera.zoom * 100)} percent.`;
   }
   function replayBuild() {
+    stopDemo();
     regionView('overview');
     if (reduceMotion.matches) { section.dataset.studyBuild = 'idle'; draw(); status.textContent = 'The assembled habitat is shown. Motion is reduced.'; return; }
     assembly = { start: performance.now(), saved: buildOrder.map(object => ({ object, position: object.position.clone(), visible: object.visible })) };
@@ -439,7 +453,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   section.querySelectorAll<HTMLElement>('[data-study-select]').forEach(button => button.addEventListener('click', () => select(button.dataset.studySelect as Component, true), eventOptions));
   section.querySelectorAll<HTMLElement>('button[data-study-region]').forEach(button => button.addEventListener('click', () => regionView(button.dataset.studyRegion as Region), eventOptions));
   section.querySelector('[data-study-reset]')?.addEventListener('click', () => regionView('overview'), eventOptions);
-  section.querySelector('[data-study-close]')?.addEventListener('click', () => { stopDemo(); detail.hidden = true; draw(); status.textContent = 'Component explanation closed.'; }, eventOptions);
+  section.querySelector('[data-study-close]')?.addEventListener('click', () => { detail.hidden = true; draw(); status.textContent = 'Component explanation closed.'; }, eventOptions);
   actionButton.addEventListener('click', runAction, eventOptions);
   section.querySelector('[data-study-sound]')?.addEventListener('click',event=>{
     soundEnabled=!soundEnabled;sounds.setEnabled(soundEnabled);
@@ -458,7 +472,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','Home','Escape'].includes(event.key)) return;
     event.preventDefault(); finishAssembly(); tween = null; stopRotation();
     if (event.key === 'Home') regionView('overview');
-    else if (event.key === 'Escape') { stopDemo(); detail.hidden = true; status.textContent = 'Rotation paused. Explanation closed.'; }
+    else if (event.key === 'Escape') { detail.hidden = true; status.textContent = 'Rotation paused. Explanation closed.'; }
     else if (['+','=','-'].includes(event.key)) zoom(event.key === '-' ? 'out' : 'in');
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') controls.rotateLeft(event.key === 'ArrowLeft' ? 0.12 : -0.12);
     else controls.rotateUp(event.key === 'ArrowUp' ? 0.09 : -0.09);
@@ -506,6 +520,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   renderer.shadowMap.needsUpdate=true; draw(); fallback.hidden=true; detail.hidden=true;
   Object.assign(section.dataset,{studyState:'ready',studySelected:'bag',studyMushrooms:'true',studyCover:'false',studyWiring:'false',studyLabels:'true',studyDemo:'none',studyBuild:'idle',studyRegion:'overview',studyLighting:'day',studyScreen:'off',studySound:'true'});
   studyButtons.forEach(button => button.disabled=false); syncAction();
+  syncDemos();
   status.textContent='Interactive habitat ready. Select any component to explore.';
   window.addEventListener('pageshow',()=>sounds.suspend(!inView||document.hidden),eventOptions);
   window.addEventListener('pagehide', event => {

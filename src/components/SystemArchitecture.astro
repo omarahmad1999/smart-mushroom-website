@@ -56,7 +56,7 @@ const routes = [
             </button>
           ))}
         </div>
-        <div class="schematic-tools"><p class="schematic-label"><span class="schematic-mark" aria-hidden="true">⌁</span> Illustrated system flow</p><button type="button" class="flow-sound" data-flow-sound aria-label="Diagram sound effects" aria-pressed="false" hidden><span aria-hidden="true">♫</span> <span data-flow-sound-label>Sound off</span></button></div>
+        <div class="schematic-tools"><p class="schematic-label"><span class="schematic-mark" aria-hidden="true">⌁</span> Illustrated system flow</p><button type="button" class="flow-sound" data-flow-sound aria-label="Diagram sound effects" aria-pressed="true" hidden><span aria-hidden="true">♫</span> <span data-flow-sound-label>Sound on</span></button></div>
       </div>
 
       {routes.map((route) => (
@@ -193,6 +193,18 @@ const routes = [
       flow.setActive(root.dataset.systemFlow===tabs[0].dataset.route);
     });
 
+    let unlocking=false;
+    const unlockDefault=async(event:Event)=>{
+      if(motion.matches||!sounds.enabled||sounds.ready||unlocking||soundButton.contains(event.target as Node))return;
+      unlocking=true;
+      const ready=await sounds.enable();unlocking=false;
+      if(motion.matches)sounds.disable();
+      syncSound();
+      if(ready&&!motion.matches)flows.get(tabs.find(tab=>tab.getAttribute('aria-selected')==='true')!.dataset.route!)?.restart();
+    };
+    document.addEventListener('pointerdown',unlockDefault,{capture:true});
+    document.addEventListener('keydown',unlockDefault,{capture:true});
+
     soundButton.addEventListener('click',async()=>{
       if(sounds.enabled){sounds.disable();syncSound();return;}
       soundButton.disabled=true;soundLabel.textContent='Loading sound';
@@ -205,6 +217,7 @@ const routes = [
     motion.addEventListener('change',()=>{if(motion.matches)sounds.disable();syncSound();});
     document.addEventListener('visibilitychange',()=>{if(document.hidden)sounds.stop();});
     window.addEventListener('pagehide',event=>{sounds.stop();if(!event.persisted)sounds.dispose();});
+    if(motion.matches)sounds.disable();
     syncSound();
 
     tabs.forEach((tab, index) => {

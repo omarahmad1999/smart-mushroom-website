@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 test.setTimeout(90_000);
-test('diagram sound is opt-in, plays local cues, and stops with pause and mute',async({page})=>{
+test('diagram sound defaults on, unlocks on interaction, and stops with pause and mute',async({page})=>{
   await page.addInitScript(()=>{
     const NativeAudio=window.Audio;
     const state={players:[] as HTMLAudioElement[],played:[] as string[]};
@@ -16,9 +16,9 @@ test('diagram sound is opt-in, plays local cues, and stops with pause and mute',
   });
   await page.goto('/#architecture');
   const button=page.getByRole('button',{name:'Diagram sound effects'});
-  await expect(button).toHaveAttribute('aria-pressed','false');
+  await expect(button).toHaveAttribute('aria-pressed','true');
   expect(await page.evaluate(()=>Reflect.get(window,'flowAudioTest').players.length)).toBe(0);
-  await button.click();
+  await page.getByRole('tab',{name:/Observe/}).click();
   await expect(button).toHaveAttribute('aria-pressed','true');
   const observe=page.locator('[data-system-flow="observe"]');
   await expect(observe).toHaveAttribute('data-flow-state','complete',{timeout:20000});

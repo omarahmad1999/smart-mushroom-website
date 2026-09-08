@@ -196,7 +196,7 @@ test('fan, mist, light and camera demonstrations start and stop through the insp
   const inspector = section.locator('[data-study-detail]');
   const action = inspector.locator('[data-study-action]');
 
-  for (const [index, [component, demonstration]] of demonstrations.entries()) {
+  for (const [component, demonstration] of demonstrations) {
     await section.locator(`button[data-study-select="${component}"]`).click();
     await expect(inspector).toBeVisible();
     await expect(action).toHaveAttribute('data-study-action', demonstration);
@@ -208,12 +208,12 @@ test('fan, mist, light and camera demonstrations start and stop through the insp
       await expect(section).toHaveAttribute('data-study-lighting','tent');
       await expect(section.locator('.ms-scene-shell')).toHaveCSS('background-color','rgb(23, 36, 42)');
     }
-    if (index % 2 === 0) {
+    {
       await action.click();
       await expect(action).toHaveAttribute('aria-pressed', 'false');
       await expect(section).toHaveAttribute('data-study-demo', 'none');
     }
-    // Alternating cases close an active demo, exercising cleanup on dismissal.
+    // Explicit switching stops the device; dismissing the inspector only closes it.
     await section.locator('[data-study-close]').click();
     await expect(inspector).toBeHidden();
     await expect(section).toHaveAttribute('data-study-demo', 'none');
@@ -323,6 +323,7 @@ test('screen, sound excerpts and photograph behave as independent visual control
     await expect.poll(async()=>(await audioState(clip))?.paused).toBe(true);
     await viewport.scrollIntoViewIfNeeded();
     await expect.poll(async()=>(await audioState(clip))?.paused).toBe(false);
+    await action.click();
     await section.locator('[data-study-close]').click();
     await expect.poll(async()=>(await audioState(clip))?.paused).toBe(true);
   }
