@@ -44,7 +44,7 @@ const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../cont
 </section>
 <script>import '../scripts/notebook';</script>
 <style>
-@media(min-width:1101px){.notebook[data-journey] .nb-binding{margin-right:160px}.notebook[data-journey] .nb-page{min-height:800px}.notebook[data-journey] .nb-writing-page{padding-inline:28px}}
+@media(min-width:1101px){.notebook{--journey-rail:clamp(85px,calc(100vw - 1190px),147px)}.notebook[data-journey] .nb-binding{transform:translateX(calc((var(--journey-rail) + 10px) / -2))}}
 .nb-tabs{flex-wrap:wrap}.nb-tabs>a:nth-child(6){background:#e5c9b9}.nb-tabs>a:nth-child(5){background:#d6d6bd}
 @media(max-width:760px){.nb-tabs{flex-wrap:nowrap}}
 

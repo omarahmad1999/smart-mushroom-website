@@ -115,6 +115,9 @@ test('The Journey is fifth with twelve independent paper notes and persistent li
     expect(rail!.x).toBeGreaterThanOrEqual(paper!.x+paper!.width-5);
   }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  const journeyWidth=await book.locator('[data-nb-binding]').evaluate(el=>el.getBoundingClientRect().width);
   await main.getByRole('link',{name:'06 What Went Wrong'}).click();
   await expect(tabs).not.toBeVisible();
+  const otherWidth=await book.locator('[data-nb-binding]').evaluate(el=>el.getBoundingClientRect().width);
+  expect(journeyWidth).toBeCloseTo(otherWidth,1);
 });
