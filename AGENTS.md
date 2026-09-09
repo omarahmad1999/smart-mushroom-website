@@ -13,3 +13,9 @@ The user explicitly requires all future project changes to be saved locally in G
 ## Website architecture
 
 This is a static explanatory frontend. Grafana owns all actual experiment data and its visualization. Do not add sensor-data APIs, database connections, aggregation, polling, WebSockets, data caching, or a replacement dashboard. Website interactions explain authored illustrations and content.
+
+## Notebook dimensions and content overflow
+
+- Keep the notebook's current dimensions unchanged across all sections and responsive layouts. Use commit `b67bcf0` as the accepted size baseline; content additions must not enlarge or shrink it, including through automatic layout growth.
+- If supplied content does not fit, tell the user what overflows and discuss arrangement options in the conversation before implementing a workaround.
+- Do not independently resize the notebook, shrink text or images, truncate content, or add pages to accommodate overflow. Wait for the user's agreed arrangement before making those changes.
