@@ -1,6 +1,7 @@
 ---
 import '@fontsource/caveat/400.css';
 import JourneyNotes from './JourneyNotes.astro';
+import BuildPhotos from './BuildPhotos.astro';
 import type { MarkdownInstance } from 'astro';
 interface Entry { order:number; slug:string; tab:string; kicker?:string; title:string; image:string; alt:string; caption:string; source:string; scribble:string; note:string; annotation:string; x:number; y:number; reference:string }
 const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../content/notebook/*.md', { eager:true })).sort((a,b)=>a.frontmatter.order-b.frontmatter.order);
@@ -26,11 +27,11 @@ const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../cont
         <div class="nb-page nb-photo-page" data-nb-page={i*2}>
           <div class="nb-running"><span>SMART MUSHROOM HUB</span><span>COLLECTED OBSERVATIONS</span></div>
           <p class="nb-scribble">{e.scribble}</p>
-          <figure class:list={['nb-photo',{'nb-portrait':e.slug==='build'||e.slug==='lessons'}]}>
+          {e.slug==='build' ? <BuildPhotos /> : <figure class:list={['nb-photo',{'nb-portrait':e.slug==='build'||e.slug==='lessons'}]}>
             <a href={e.image} data-nb-image data-caption={`${e.caption}. ${e.source}.`} aria-label={`Enlarge photograph: ${e.caption}`}><img src={e.image} alt={e.alt} loading={i===0?'eager':'lazy'} width={e.slug==='build'||e.slug==='lessons'?1200:1600} height={e.slug==='build'||e.slug==='lessons'?1600:900} /></a>
             <details class="nb-annotation" style={`--pin-x:${e.x}%;--pin-y:${e.y}%`}><summary aria-label={`Photo note: ${e.tab}`}>1</summary><p>{e.annotation}</p></details>
             <figcaption>{e.caption}</figcaption>
-          </figure>
+          </figure>}
           <p class="nb-source">{e.source}</p>
           <p class="nb-margin-note"><span aria-hidden="true">↳</span> {e.note}</p>
           <div class="nb-folio"><span>CLICK THE PHOTO TO LOOK CLOSER</span><span>{String(i*2+1).padStart(2,'0')}</span></div>

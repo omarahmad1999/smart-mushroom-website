@@ -3,10 +3,10 @@ order: 2
 slug: build
 tab: The Build
 title: The hardware, at a glance.
-image: /media/hardware-setup.webp
+image: /media/notebook/build/workbench-cropped.webp
 alt: Supplied workbench photograph showing the UPS, wiring, breadboard and computing hardware.
 caption: The workbench, before the tidy illustration
-source: Supplied hardware photograph · date unspecified
+source: Supplied setup photographs
 scribble: Follow the wire back to its purpose.
 note: The messy part belongs in the notebook, too.
 annotation: The ribbon and breakout connect the Pi to the breadboard. The interactive tent shows a simplified, labelled version of this wiring.

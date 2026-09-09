@@ -1,0 +1,14 @@
+---
+const photographs=[
+  {image:'/media/notebook/build/workbench-cropped.webp',label:'The workbench',alt:'Cropped workbench photograph showing the UPS, wiring, breakout and computing hardware.',width:970,height:1320},
+  {image:'/media/notebook/build/entire-setup.webp',label:'The entire setup',alt:'The enclosed mushroom tent beside its workbench and humidifier.',width:1050,height:1400},
+];
+---
+<div class="build-photos" aria-label="Workbench and entire setup photographs">
+  {photographs.map(photo=><figure><a href={photo.image} data-nb-image data-caption={`${photo.label} · 22 August 2026`} aria-label={`Enlarge photograph: ${photo.label}`}><img src={photo.image} alt={photo.alt} width={photo.width} height={photo.height} loading="lazy" /></a><figcaption>{photo.label}<time datetime="2026-08-22">22 August 2026</time></figcaption></figure>)}
+</div>
+<style>
+.build-photos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:8px 0 0}.build-photos figure{min-width:0;position:relative;margin:0;padding:9px 9px 12px;background:#fffdf7;box-shadow:2px 6px 12px #42351f25;transform:rotate(-2deg)}.build-photos figure:nth-child(2){transform:rotate(2deg)}.build-photos figure:before{content:'';position:absolute;top:-10px;left:30%;width:40%;height:24px;background:#d3be8b65;transform:rotate(5deg);pointer-events:none}.build-photos a{display:block;cursor:zoom-in}.build-photos img{width:100%;height:280px;object-fit:cover;object-position:center}.build-photos figcaption{font-family:var(--hand);font-size:23px;line-height:1.12;text-align:center;margin-top:12px}.build-photos time{display:block;font-size:18px;margin-top:6px;color:#73765e}
+@media(max-width:1100px){.build-photos{gap:10px}.build-photos figure{padding:6px 6px 10px}.build-photos img{height:230px}.build-photos figcaption{font-size:20px}.build-photos time{font-size:16px}}
+@media(max-width:760px){.build-photos img{height:220px}.build-photos figcaption{font-size:20px}.build-photos time{font-size:16px}}
+</style>

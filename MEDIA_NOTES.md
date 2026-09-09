@@ -99,3 +99,9 @@ Public derivatives in `public/media/notebook/idea/` are orientation-corrected We
 `public/media/notebook/cover/mushroom-growth-sheet.png` is an AI-generated pencil/coloured-pencil sprite sheet with twelve stages of an illustrative oyster cluster growing. The generated artwork is not an experiment observation. Equal grid cells were assembled with FFmpeg into `mushroom-growth.mp4`: approximately 5.2 seconds at 12 fps, stepped growth, a mature-stage hold, and a fade to cream paper before looping. `mushroom-growth-poster.webp` shows the final stage for reduced motion and before playback. No audio or runtime generation is involved.
 
 The cover is absolutely positioned within the existing notebook binding; it adds no page or layout height. Open the notebook or choose a chapter to reveal the unchanged pages. View cover reopens it. Playback pauses offscreen, when the tab is hidden, when the cover is closed, or on explicit pause; reduced motion uses a still image.
+
+## Page 03 — paired setup photographs
+
+`entire_setup.jpg` in `media_for_astro_website/mushroom_pics_for_notebook/` records EXIF DateTimeOriginal `2026:08:22 17:33:32`. Both page-03 captions display 22 August 2026 as requested by the user; the workbench photograph's displayed date is user-assigned from that reference, not independently verified EXIF.
+
+`public/media/notebook/build/entire-setup.webp` is a 1050 × 1400 derivative of the supplied entire-setup photograph. `workbench-cropped.webp` crops the existing 1200 × 1600 workbench image to x=230, y=0, width=970, height=1320, excluding the person's visible clothing/body at the left and bottom. Page 03 and its enlargement use this cropped derivative. The originals and images used elsewhere remain unchanged.
