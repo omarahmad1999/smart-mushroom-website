@@ -2,7 +2,6 @@
 order: 1
 slug: idea
 tab: The Idea
-kicker: A question worth growing
 title: Why create a controlled habitat?
 image: /media/photo-incubation-2026-08-19.webp
 alt: Controlled-camera photograph of hanging cultivation bags inside the tent.

@@ -2,7 +2,6 @@
 order: 2
 slug: build
 tab: The Build
-kicker: Behind the growing space
 title: The hardware, at a glance.
 image: /media/hardware-setup.webp
 alt: Supplied workbench photograph showing the UPS, wiring, breadboard and computing hardware.

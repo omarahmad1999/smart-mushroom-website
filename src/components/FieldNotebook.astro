@@ -2,7 +2,7 @@
 import '@fontsource/caveat/400.css';
 import JourneyNotes from './JourneyNotes.astro';
 import type { MarkdownInstance } from 'astro';
-interface Entry { order:number; slug:string; tab:string; kicker:string; title:string; image:string; alt:string; caption:string; source:string; scribble:string; note:string; annotation:string; x:number; y:number; reference:string }
+interface Entry { order:number; slug:string; tab:string; kicker?:string; title:string; image:string; alt:string; caption:string; source:string; scribble:string; note:string; annotation:string; x:number; y:number; reference:string }
 const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../content/notebook/*.md', { eager:true })).sort((a,b)=>a.frontmatter.order-b.frontmatter.order);
 ---
 <section class="notebook" data-notebook aria-label="Interactive field notebook">
@@ -35,10 +35,11 @@ const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../cont
           <p class="nb-margin-note"><span aria-hidden="true">↳</span> {e.note}</p>
           <div class="nb-folio"><span>CLICK THE PHOTO TO LOOK CLOSER</span><span>{String(i*2+1).padStart(2,'0')}</span></div>
         </div>
-        <div class="nb-page nb-writing-page" data-nb-page={i*2+1}>
+        <div class:list={["nb-page", "nb-writing-page", {"nb-without-kicker": ["idea", "build"].includes(e.slug)}]} data-nb-page={i*2+1}>
           <div class="nb-running"><span>0{i+1} / {e.tab.toUpperCase()}</span><span>RESEARCH IN PROGRESS</span></div>
-          <p class="nb-kicker">{e.kicker}</p><h2>{e.title}</h2>
+          {!["idea", "build"].includes(e.slug) && <p class="nb-kicker">{e.kicker}</p>}<h2>{e.title}</h2>
           {e.slug==='journey' ? <JourneyNotes /> : <><div class="nb-entry"><Content /></div>{!['idea','build'].includes(e.slug) && <a class="nb-reference" href={`#${e.reference}`}>Open the reference notes <span aria-hidden="true">↗</span></a>}</>}
+          {["idea", "build"].includes(e.slug) && <div class="nb-kicker nb-kicker-spacer" aria-hidden="true">&#160;</div>}
           <div class="nb-folio"><span>SMART MUSHROOM HUB / FIELD NOTES</span><span>{String(i*2+2).padStart(2,'0')}</span></div>
         </div>
       </article>)}
@@ -52,6 +53,8 @@ const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../cont
 </section>
 <script>import '../scripts/notebook';</script>
 <style>
+.nb-without-kicker h2{margin-top:12px}.nb-without-kicker .nb-kicker-spacer{margin-top:20px}
+
 .nb-entry :global(.hardware-notebook){width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1.5px solid #6c7156;border-radius:5px 3px 7px 2px;font-family:var(--hand);font-size:19px;line-height:1.08;background:#fcf8ed90;box-shadow:1px 1px 0 #8d92774d,-1px 0 0 #8d927730;transform:rotate(-.25deg)}
 .nb-entry :global(.hardware-notebook th),.nb-entry :global(.hardware-notebook td){text-align:left;vertical-align:top;padding:7px 8px;border-bottom:1px solid #8d92778c;overflow-wrap:break-word}
 .nb-entry :global(.hardware-notebook th){width:24%;font-weight:400;color:#9a5134;border-right:1.5px solid #8d92779c;background:#e8e6ce35}
