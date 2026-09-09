@@ -85,7 +85,7 @@ test('page folds keep separate faces through both directions and land on the inc
     },direction);
     expect(state.filter).toBe('none');expect(state.transformStyle).toBe('preserve-3d');
     expect(state.faces).toEqual(['hidden','hidden']);
-    if(info.project.name==='desktop')expect(state.back).toContain(direction==='next'?'Follow the wire':'Why grow a connected habitat?');
+    if(info.project.name==='desktop')expect(state.back).toContain(direction==='next'?'Follow the wire':'Why create a controlled habitat?');
     await book.locator('.nb-leaf').evaluate(el=>el.getAnimations()[0].finish());
     await expect(book.locator('.nb-leaf')).toHaveCount(0);
   }

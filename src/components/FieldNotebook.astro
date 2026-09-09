@@ -44,6 +44,15 @@ const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../cont
 </section>
 <script>import '../scripts/notebook';</script>
 <style>
+.nb-entry :global(.idea-gallery){display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:25px 0 24px}
+.nb-entry :global(.idea-gallery figure){position:relative;margin:0;padding:6px 6px 8px;background:#fffdf7;box-shadow:1px 4px 7px #49381e22;transform:rotate(-2deg)}
+.nb-entry :global(.idea-gallery figure:nth-child(even)){transform:rotate(2deg)}
+.nb-entry :global(.idea-gallery figure:before){content:'';position:absolute;top:-7px;left:28%;width:44%;height:15px;background:#d3be8b65;transform:rotate(-5deg);pointer-events:none}
+.nb-entry :global(.idea-gallery a){display:block;cursor:zoom-in}
+.nb-entry :global(.idea-gallery img){display:block;width:100%;height:132px;object-fit:cover}
+.nb-entry :global(.idea-gallery figcaption){font-family:var(--hand);font-size:17px;text-align:center;line-height:1.2;margin-top:7px;white-space:nowrap}
+@media(max-width:1100px){.nb-entry :global(.idea-gallery){grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.nb-entry :global(.idea-gallery img){height:145px}}
+
 .nb-tabs{flex-wrap:wrap}.nb-tabs>a:nth-child(6){background:#e5c9b9}.nb-tabs>a:nth-child(5){background:#d6d6bd}
 @media(max-width:760px){.nb-tabs{flex-wrap:nowrap}}
 
