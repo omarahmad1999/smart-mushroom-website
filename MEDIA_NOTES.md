@@ -93,3 +93,9 @@ Page 02 includes four supplied photographs from `media_for_astro_website/mushroo
 - `manual_mushroom_dry.jpeg`: EXIF DateTimeOriginal, 19 April 2025.
 
 Public derivatives in `public/media/notebook/idea/` are orientation-corrected WebP images, maximum 1400 pixels per side. Embedded metadata is omitted from public files. These are the user's earlier at-home experiments, not photographs from the 2026 controlled-tent run. Page 01 retains its existing image and text.
+
+## Animated notebook cover
+
+`public/media/notebook/cover/mushroom-growth-sheet.png` is an AI-generated pencil/coloured-pencil sprite sheet with twelve stages of an illustrative oyster cluster growing. The generated artwork is not an experiment observation. Equal grid cells were assembled with FFmpeg into `mushroom-growth.mp4`: approximately 5.2 seconds at 12 fps, stepped growth, a mature-stage hold, and a fade to cream paper before looping. `mushroom-growth-poster.webp` shows the final stage for reduced motion and before playback. No audio or runtime generation is involved.
+
+The cover is absolutely positioned within the existing notebook binding; it adds no page or layout height. Open the notebook or choose a chapter to reveal the unchanged pages. View cover reopens it. Playback pauses offscreen, when the tab is hidden, when the cover is closed, or on explicit pause; reduced motion uses a still image.

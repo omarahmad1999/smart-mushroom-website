@@ -10,9 +10,17 @@ const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../cont
     <div><p class="eyebrow"><span class="eyebrow-dot"></span> THE PROJECT NOTEBOOK</p><h1>Notes from<br /><em>inside the system.</em></h1></div>
     <p class="nb-intro-note">A few questions.<br />A lot of looking closely.<svg viewBox="0 0 110 50" fill="none" aria-hidden="true"><path d="M8 7Q84 0 84 38M71 29l14 12 13-15" /></svg></p>
   </header>
-  <div class="nb-toolbar"><span>FIELD NOTES <span aria-hidden="true">/</span> VOLUME 01</span><details class="nb-contents"><summary>In this notebook <span aria-hidden="true">＋</span></summary><nav aria-label="Notebook contents">{entries.map(({frontmatter:e},i)=><a href={`#notebook-${e.slug}`} data-nb-jump={i}><span>0{i+1}</span>{e.tab}</a>)}<a href="#reference-notes">Full reference notes ↗</a></nav></details></div>
+  <div class="nb-toolbar"><span>FIELD NOTES <span aria-hidden="true">/</span> VOLUME 01</span><button class="nb-show-cover" data-nb-show-cover hidden>View cover</button><details class="nb-contents"><summary>In this notebook <span aria-hidden="true">＋</span></summary><nav aria-label="Notebook contents">{entries.map(({frontmatter:e},i)=><a href={`#notebook-${e.slug}`} data-nb-jump={i}><span>0{i+1}</span>{e.tab}</a>)}<a href="#reference-notes">Full reference notes ↗</a></nav></details></div>
   <nav class="nb-tabs" aria-label="Notebook sections">{entries.map(({frontmatter:e},i)=><a href={`#notebook-${e.slug}`} data-nb-jump={i}><span>0{i+1}</span>{e.tab}</a>)}</nav>
-  <div class="nb-binding" data-nb-binding>
+  <div class="nb-binding" data-nb-binding tabindex="-1">
+    <div class="nb-cover" data-nb-cover hidden>
+      <p class="nb-cover-edition">SMART MUSHROOM HUB <span>/</span> VOLUME 01</p>
+      <h2>Field notebook</h2>
+      <p class="nb-cover-subtitle">A little growing, a little learning.</p>
+      <div class="nb-cover-art"><video data-nb-cover-video muted playsinline loop preload="none" poster="/media/notebook/cover/mushroom-growth-poster.webp" aria-label="Hand-drawn oyster mushrooms growing from tiny pins into open caps"><source src="/media/notebook/cover/mushroom-growth.mp4" type="video/mp4" /></video></div>
+      <div class="nb-cover-actions"><button class="nb-open-cover" data-nb-open-cover>Open the notebook <span aria-hidden="true">↗</span></button><button class="nb-cover-pause" data-nb-cover-pause aria-label="Pause cover animation">Pause animation</button></div>
+      <p class="nb-cover-caption">An illustrated growth sequence · Pencil & coloured pencil</p>
+    </div>
     <div class="nb-spreads">
       {entries.map(({frontmatter:e,Content},i)=><article class="nb-spread" id={`notebook-${e.slug}`} data-nb-spread={i} aria-label={e.tab}>
         <div class="nb-page nb-photo-page" data-nb-page={i*2}>
@@ -44,6 +52,13 @@ const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../cont
 </section>
 <script>import '../scripts/notebook';</script>
 <style>
+.nb-show-cover{background:transparent;font-size:11px;text-decoration:underline;text-underline-offset:4px;padding:10px;color:#745a3d;letter-spacing:0}
+.nb-cover{position:absolute;inset:7px 7px 12px;z-index:9;background:#fbf7ec;box-shadow:inset 8px 0 18px #6b57421a;border:1px solid #d7cbb4;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:35px 24px;border-radius:3px}
+.nb-cover:before{content:'';position:absolute;inset:16px;border:1px solid #bdc2a5;pointer-events:none}.nb-cover-edition{font-size:9px;letter-spacing:2px;color:#747e60}.nb-cover-edition span{margin:0 12px;color:#bd9471}.nb-cover h2{font-family:var(--hand);font-size:64px;line-height:1.1;margin:20px 0 5px;color:#45553b}.nb-cover-subtitle{font-family:var(--hand);font-size:25px;color:#a3613d}.nb-cover-art{height:48%;max-height:420px;aspect-ratio:312/418;max-width:85%;margin:0 0 16px}.nb-cover-art video{width:100%;height:100%;object-fit:contain;display:block}.nb-cover-actions{display:flex;flex-direction:column;align-items:center;gap:10px}.nb-open-cover{background:#536145;color:#fff9e9;padding:13px 23px;border-radius:3px;font-size:12px;display:flex;gap:28px;align-items:center}.nb-open-cover:hover{background:#394a30}.nb-cover-pause{background:transparent;font-size:10px;color:#76694f;padding:8px;text-decoration:underline;text-underline-offset:4px}.nb-cover-caption{font-size:8px;color:#81836f;margin-top:15px;letter-spacing:.3px}
+.notebook[data-cover] .nb-corner,.notebook[data-cover] :global(.journey-tabs){visibility:hidden}.notebook[data-cover] .nb-controls,.notebook[data-cover] .nb-hint{visibility:hidden}
+@media(max-width:760px){.nb-cover{inset:5px 5px 10px;padding-inline:20px}.nb-cover h2{font-size:48px}.nb-cover-subtitle{font-size:22px}.nb-cover-edition{font-size:7px;letter-spacing:1px}.nb-cover-edition span{margin:0 6px}.nb-cover-art{height:36%;max-width:90%}.nb-show-cover{font-size:10px;padding:8px 5px}}
+@media print{.nb-cover,.nb-show-cover{display:none!important}}
+
 .nb-entry :global(.idea-gallery){display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0 16px}
 .nb-entry :global(.idea-gallery figure){position:relative;margin:0;padding:6px 6px 8px;background:#fffdf7;box-shadow:1px 4px 7px #49381e22;transform:rotate(-2deg)}
 .nb-entry :global(.idea-gallery figure:nth-child(even)){transform:rotate(2deg)}

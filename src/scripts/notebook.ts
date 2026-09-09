@@ -11,6 +11,31 @@ if (book) {
   const mobile = matchMedia('(max-width:760px)');
   const reduced = matchMedia('(prefers-reduced-motion:reduce)');
   const contents = book.querySelector<HTMLDetailsElement>('.nb-contents')!;
+  const cover=book.querySelector<HTMLElement>('[data-nb-cover]')!;
+  const coverVideo=book.querySelector<HTMLVideoElement>('[data-nb-cover-video]')!;
+  const coverPause=book.querySelector<HTMLButtonElement>('[data-nb-cover-pause]')!;
+  const coverToggle=book.querySelector<HTMLButtonElement>('[data-nb-show-cover]')!;
+  const spreadsWrap=book.querySelector<HTMLElement>('.nb-spreads')!;
+  let coverInView=false,coverPaused=false;
+  function syncCoverPlayback(){
+    coverPause.hidden=reduced.matches;
+    if(!cover.hidden&&coverInView&&!coverPaused&&!reduced.matches&&!document.hidden)void coverVideo.play().catch(()=>{});
+    else coverVideo.pause();
+    coverPause.textContent=coverPaused?'Play animation':'Pause animation';
+    coverPause.setAttribute('aria-label',coverPaused?'Play cover animation':'Pause cover animation');
+  }
+  function setCover(open:boolean){
+    cover.hidden=!open;book!.toggleAttribute('data-cover',open);spreadsWrap.inert=open;
+    coverToggle.textContent=open?'Skip to pages':'View cover';
+    syncCoverPlayback();
+  }
+  coverToggle.hidden=false;
+  coverToggle.addEventListener('click',()=>setCover(Boolean(cover.hidden)));
+  book.querySelector('[data-nb-open-cover]')!.addEventListener('click',()=>{setCover(false);binding.focus({preventScroll:true});});
+  coverPause.addEventListener('click',()=>{coverPaused=!coverPaused;syncCoverPlayback();});
+  new IntersectionObserver(entries=>{coverInView=entries[0].isIntersecting;syncCoverPlayback();},{threshold:.05}).observe(cover);
+  document.addEventListener('visibilitychange',syncCoverPlayback);
+  reduced.addEventListener('change',()=>{if(reduced.matches)coverVideo.load();syncCoverPlayback();});
   const journeyIndex=spreads.findIndex(el=>el.id==='notebook-journey');
   const journeyTabs=[...book.querySelectorAll<HTMLAnchorElement>('[data-journey-tab]')];
   const journeyPanels=[...book.querySelectorAll<HTMLElement>('[data-journey-panel]')];
@@ -35,6 +60,7 @@ if (book) {
     status.textContent=`${spreads[spread].getAttribute('aria-label')} · ${mobile.matches?`Page ${current+1}`:`Pages ${current+1}–${current+2}`} / ${pages.length}`;
   }
   function turn(to:number, animate=true, updateUrl=true) {
+    setCover(false);
     to=Math.max(0,Math.min(pages.length-1,to));
     if(!mobile.matches)to=Math.floor(to/2)*2;
     const old=current;
@@ -73,7 +99,7 @@ if (book) {
   }
   book.dataset.enhanced='true';
   book.querySelectorAll<HTMLElement>('[data-nb-controls],[data-nb-hint],[data-nb-prev],[data-nb-next]').forEach(el=>el.hidden=false);
-  render();fromHash();
+  render();fromHash();setCover(!location.hash);
   const advance=(direction:number)=>turn(current+direction*(mobile.matches?1:2));
   previous.forEach(button=>button.addEventListener('click',()=>advance(-1)));
   next.forEach(button=>button.addEventListener('click',()=>advance(1)));
@@ -83,6 +109,7 @@ if (book) {
   window.addEventListener('hashchange',fromHash);
   window.addEventListener('popstate',fromHash);
   book.addEventListener('keydown',event=>{
+    if(!cover.hidden)return;
     if((event.target as HTMLElement).closest('dialog,summary')||event.altKey||event.ctrlKey||event.metaKey)return;
     if(event.key==='ArrowRight'||event.key==='ArrowLeft'){event.preventDefault();advance(event.key==='ArrowRight'?1:-1);}
   });

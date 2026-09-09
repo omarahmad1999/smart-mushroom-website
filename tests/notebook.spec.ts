@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 
 test('notebook turns pages, jumps sections, restores history and enlarges photographs',async({page},info)=>{
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
-  await page.goto('/documentation/');
+  await page.goto('/documentation/#notebook-idea');
   const book=page.locator('[data-notebook]');
   await expect(book).toHaveAttribute('data-enhanced','true');
   const status=book.locator('[data-nb-status]');
@@ -62,7 +62,7 @@ test('all entries and image links remain readable without JavaScript',async({bro
 });
 
 test('horizontal gestures turn the paper without requiring a page corner',async({page})=>{
-  await page.goto('/documentation/');
+  await page.goto('/documentation/#notebook-idea');
   const binding=page.locator('[data-nb-binding]');
   await page.getByRole('button',{name:'Turn to next page',exact:true}).click();
   await expect(page.locator('[data-nb-status]')).not.toContainText('Pages 1–2');
@@ -74,7 +74,7 @@ test('horizontal gestures turn the paper without requiring a page corner',async(
 });
 
 test('page folds keep separate faces through both directions and land on the incoming page',async({page},info)=>{
-  await page.goto('/documentation/');
+  await page.goto('/documentation/#notebook-idea');
   const book=page.locator('[data-notebook]');
   for(const direction of ['next','prev']){
     const state=await book.evaluate((root,direction)=>{
