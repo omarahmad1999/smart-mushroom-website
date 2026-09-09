@@ -1,11 +1,17 @@
 import {test,expect} from '@playwright/test';
 
-test('illustrated cover plays, pauses, opens and preserves notebook geometry',async({page})=>{
+test('illustrated cover plays, pauses, opens and preserves notebook geometry',async({page},info)=>{
   await page.goto('/documentation/');
   const book=page.locator('[data-notebook]'),cover=book.locator('[data-nb-cover]'),video=cover.locator('video');
   await expect(cover).toBeVisible();await cover.scrollIntoViewIfNeeded();
   await expect.poll(()=>video.evaluate(v=>(v as HTMLVideoElement).currentTime)).toBeGreaterThan(.1);
   const geometry=await book.locator('[data-nb-binding]').boundingBox();
+  const closed=await cover.boundingBox();
+  if(info.project.name==='desktop'){
+    expect(closed!.width).toBeCloseTo(geometry!.width/2,1);
+    expect(closed!.x+closed!.width/2).toBeCloseTo(geometry!.x+geometry!.width/2,1);
+  }
+  await expect(book.locator('.nb-tabs')).toBeHidden();
   await cover.getByRole('button',{name:'Pause cover animation'}).click();
   await expect(video).toHaveJSProperty('paused',true);
   await cover.getByRole('button',{name:'Play cover animation'}).click();
@@ -16,6 +22,7 @@ test('illustrated cover plays, pauses, opens and preserves notebook geometry',as
   for(const key of ['x','width','height'] as const)expect(opened![key]).toBeCloseTo(geometry![key],1);
   await expect(book.locator('[data-nb-page="0"] .nb-photo img')).toHaveAttribute('src','/media/photo-incubation-2026-08-19.webp');
   await book.getByRole('button',{name:'View cover'}).click();await expect(cover).toBeVisible();
+  await book.getByRole('button',{name:'Skip to pages'}).click();
   await book.locator('.nb-tabs').getByRole('link',{name:'02 The Build'}).click();await expect(cover).toBeHidden();
 });
 
