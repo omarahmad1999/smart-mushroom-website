@@ -25,8 +25,7 @@ I have always been fond of mushrooms since the day I learnt about them. I was fa
 <figure><a href="/media/notebook/idea/manual_mushroom_dry.webp" data-nb-image data-caption="At-home growing experiment · 19 Apr 2025" aria-label="Enlarge at-home photograph: 19 Apr 2025"><img src="/media/notebook/idea/manual_mushroom_dry.webp" alt="Oyster mushrooms growing from a bag of straw substrate." loading="lazy" width="300" height="400" /></a><figcaption><time datetime="2025-04-19">19 Apr 2025</time></figcaption></figure>
 </div>
 
-### Three questions to carry forward
+### Two questions to carry forward
 
 1. How do conditions inside the tent compare with the surrounding room?
 2. How do controlled conditions increase the yield of the mushrooms?
-3. How do controlled conditions grow healthier mushrooms?
