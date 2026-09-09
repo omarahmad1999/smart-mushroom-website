@@ -38,7 +38,7 @@ const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../cont
         <div class="nb-page nb-writing-page" data-nb-page={i*2+1}>
           <div class="nb-running"><span>0{i+1} / {e.tab.toUpperCase()}</span><span>RESEARCH IN PROGRESS</span></div>
           <p class="nb-kicker">{e.kicker}</p><h2>{e.title}</h2>
-          {e.slug==='journey' ? <JourneyNotes /> : <><div class="nb-entry"><Content /></div>{e.slug!=='idea' && <a class="nb-reference" href={`#${e.reference}`}>Open the reference notes <span aria-hidden="true">↗</span></a>}</>}
+          {e.slug==='journey' ? <JourneyNotes /> : <><div class="nb-entry"><Content /></div>{!['idea','build'].includes(e.slug) && <a class="nb-reference" href={`#${e.reference}`}>Open the reference notes <span aria-hidden="true">↗</span></a>}</>}
           <div class="nb-folio"><span>SMART MUSHROOM HUB / FIELD NOTES</span><span>{String(i*2+2).padStart(2,'0')}</span></div>
         </div>
       </article>)}
@@ -52,6 +52,15 @@ const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../cont
 </section>
 <script>import '../scripts/notebook';</script>
 <style>
+.nb-entry :global(.hardware-notebook){width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1.5px solid #6c7156;border-radius:5px 3px 7px 2px;font-family:var(--hand);font-size:19px;line-height:1.08;background:#fcf8ed90;box-shadow:1px 1px 0 #8d92774d,-1px 0 0 #8d927730;transform:rotate(-.25deg)}
+.nb-entry :global(.hardware-notebook th),.nb-entry :global(.hardware-notebook td){text-align:left;vertical-align:top;padding:7px 8px;border-bottom:1px solid #8d92778c;overflow-wrap:break-word}
+.nb-entry :global(.hardware-notebook th){width:24%;font-weight:400;color:#9a5134;border-right:1.5px solid #8d92779c;background:#e8e6ce35}
+.nb-entry :global(.hardware-notebook tr:nth-child(even) th),.nb-entry :global(.hardware-notebook tr:nth-child(even) td){border-bottom-style:dashed}
+.nb-entry :global(.hardware-notebook tr:last-child th),.nb-entry :global(.hardware-notebook tr:last-child td){border-bottom:0}
+.nb-entry :global(.hardware-notebook strong){font-weight:400;text-decoration:underline;text-decoration-color:#b881566e;text-underline-offset:3px}
+@media(min-width:761px) and (max-width:1100px){.nb-entry :global(.hardware-notebook){font-size:17px;line-height:1.08}.nb-entry :global(.hardware-notebook th),.nb-entry :global(.hardware-notebook td){padding:6px}.nb-entry :global(.hardware-notebook th){width:26%}}
+@media(max-width:760px){.nb-entry :global(.hardware-notebook col:first-child){width:34%!important}.nb-entry :global(.hardware-notebook col:last-child){width:66%!important}.nb-entry :global(.hardware-notebook th){font-size:16px}.nb-entry :global(.hardware-notebook){font-size:17px;line-height:1.08}.nb-entry :global(.hardware-notebook th),.nb-entry :global(.hardware-notebook td){padding:7px 6px}.nb-entry :global(.hardware-notebook th){width:26%}}
+
 /* Keep the accepted open-spread geometry underneath the closed cover. */
 .notebook[data-cover] .nb-binding{background:transparent;box-shadow:none}
 .notebook[data-cover] .nb-spreads,.notebook[data-cover] .nb-tabs{visibility:hidden;pointer-events:none}

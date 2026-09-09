@@ -3,7 +3,7 @@ order: 2
 slug: build
 tab: The Build
 kicker: Behind the growing space
-title: Every connection has a job.
+title: The hardware, at a glance.
 image: /media/hardware-setup.webp
 alt: Supplied workbench photograph showing the UPS, wiring, breadboard and computing hardware.
 caption: The workbench, before the tidy illustration
@@ -15,15 +15,15 @@ x: 61
 y: 64
 reference: physical-setup
 ---
-The Raspberry Pi sits at the centre of the setup: sensing, scheduled photography, storage, and the services that connect them.
 
-### Small parts, shared responsibilities
-
-- **SHT31 & SCD41:** observe temperature, humidity, and CO₂.
-- **Fan, humidifier & LED:** shape the growing environment.
-- **Cameras & SSD:** keep a visual record for later inspection.
-- **UPS:** supplies backup power to the connected equipment.
-
-The black and white boxes house the MOSFET modules. In the interactive model, those boards are exposed to make their connections easier to understand.
-
-[Turn the tent and explore the hardware →](/#material-study)
+<table class="hardware-notebook"><caption class="sr-only">Hardware and materials in the mushroom habitat</caption><colgroup><col style="width:24%" /><col style="width:76%" /></colgroup><tbody>
+<tr><th scope="row">Frame</th><td>The documented frame is approximately <strong>185 cm high × 82 cm wide × 55 cm deep</strong>, built from 1.5-inch PVC pipe with diagonal reinforcement. Plastic covering, zippered access and acrylic camera windows enclose the growing space.</td></tr>
+<tr><th scope="row">Computing</th><td>Raspberry Pi 5, 16 GB RAM; Raspberry Pi AI HAT 2 with a Hailo-10H accelerator.</td></tr>
+<tr><th scope="row">Storage</th><td>SSD storage in a UGREEN enclosure.</td></tr>
+<tr><th scope="row">Environment</th><td>Two SHT31 temperature/humidity sensors and two SCD41 CO₂ sensors: one of each for the tent and the ambient room.</td></tr>
+<tr><th scope="row">Imaging</th><td>Two Raspberry Pi Camera Module 3 Wide cameras.</td></tr>
+<tr><th scope="row">Ventilation</th><td>Thermalright TL-C12C-S V3 120 mm PWM fan.</td></tr>
+<tr><th scope="row">Moisture</th><td>Xiaomi Humidifier 2, connected by a flexible duct.</td></tr>
+<tr><th scope="row">Light</th><td>1 metre of IP67 LED lighting.</td></tr>
+<tr><th scope="row">Power</th><td>Schneider BVS 800 VA UPS.</td></tr>
+</tbody></table>
