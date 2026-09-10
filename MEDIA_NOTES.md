@@ -105,3 +105,7 @@ The cover is absolutely positioned within the existing notebook binding; it adds
 `entire_setup.jpg` in `media_for_astro_website/mushroom_pics_for_notebook/` records EXIF DateTimeOriginal `2026:08:22 17:33:32`. Both page-03 captions display 22 August 2026 as requested by the user; the workbench photograph's displayed date is user-assigned from that reference, not independently verified EXIF.
 
 `public/media/notebook/build/entire-setup.webp` is a 1050 × 1400 derivative of the supplied entire-setup photograph. `workbench-cropped.webp` crops the existing 1200 × 1600 workbench image to x=230, y=0, width=970, height=1320, excluding the person's visible clothing/body at the left and bottom. Page 03 and its enlargement use this cropped derivative. The originals and images used elsewhere remain unchanged.
+
+## The Journey — PVC frame photographs
+
+The first Journey note uses four supplied construction photographs from `media_for_astro_website/mushroom_pics_for_notebook/`, kept in the order specified by the user: cut and washed pipes, incomplete assembly without diagonal support, complete frame before the X brace, and completed reinforced structure. Public WebP derivatives are stored in `public/media/notebook/journey/pvc/`, reduced to 1200 or 1400 pixels wide for the notebook and its image viewer. The originals remain unchanged.
