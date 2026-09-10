@@ -36,10 +36,11 @@ const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../cont
           <p class="nb-margin-note"><span aria-hidden="true">↳</span> {e.note}</p>
           <div class="nb-folio"><span>CLICK THE PHOTO TO LOOK CLOSER</span><span>{String(i*2+1).padStart(2,'0')}</span></div>
         </div>
-        <div class:list={["nb-page", "nb-writing-page", {"nb-without-kicker": ["idea", "build"].includes(e.slug)}]} data-nb-page={i*2+1}>
+        <div class:list={["nb-page", "nb-writing-page", {"nb-without-kicker": ["idea", "build"].includes(e.slug),"nb-journey-page":e.slug==='journey'}]} data-nb-page={i*2+1}>
           <div class="nb-running"><span>0{i+1} / {e.tab.toUpperCase()}</span><span>RESEARCH IN PROGRESS</span></div>
-          {!["idea", "build"].includes(e.slug) && <p class="nb-kicker">{e.kicker}</p>}<h2>{e.title}</h2>
-          {e.slug==='journey' ? <JourneyNotes /> : <><div class="nb-entry"><Content /></div>{!['idea','build'].includes(e.slug) && <a class="nb-reference" href={`#${e.reference}`}>Open the reference notes <span aria-hidden="true">↗</span></a>}</>}
+          {e.slug!=='journey' && <>{!["idea", "build"].includes(e.slug) && <p class="nb-kicker">{e.kicker}</p>}<h2>{e.title}</h2></>}
+          {e.slug==='journey' ? <JourneyNotes /> : <div class="nb-entry"><Content /></div>}
+          {!['idea','build','journey'].includes(e.slug) && <div class="nb-reference nb-reference-placeholder" aria-hidden="true"><span>&#160;</span><span>↗</span></div>}
           {["idea", "build"].includes(e.slug) && <div class="nb-kicker nb-kicker-spacer" aria-hidden="true">&#160;</div>}
           <div class="nb-folio"><span>SMART MUSHROOM HUB / FIELD NOTES</span><span>{String(i*2+2).padStart(2,'0')}</span></div>
         </div>
@@ -54,7 +55,7 @@ const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../cont
 </section>
 <script>import '../scripts/notebook';</script>
 <style>
-.nb-without-kicker h2{margin-top:12px}.nb-without-kicker .nb-kicker-spacer{margin-top:20px}
+.nb-without-kicker h2{margin-top:12px}.nb-without-kicker .nb-kicker-spacer{margin-top:20px}.nb-reference-placeholder{visibility:hidden}
 
 .nb-entry :global(.hardware-notebook){width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1.5px solid #6c7156;border-radius:5px 3px 7px 2px;font-family:var(--hand);font-size:19px;line-height:1.08;background:#fcf8ed90;box-shadow:1px 1px 0 #8d92774d,-1px 0 0 #8d927730;transform:rotate(-.25deg)}
 .nb-entry :global(.hardware-notebook th),.nb-entry :global(.hardware-notebook td){text-align:left;vertical-align:top;padding:7px 8px;border-bottom:1px solid #8d92778c;overflow-wrap:break-word}

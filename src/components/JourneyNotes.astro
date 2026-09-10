@@ -11,7 +11,6 @@ const colours=['#dce2c2','#eed4b7','#d4dfdd','#dfd3e2','#cee0d8','#f0dfac','#e7e
     <h3 id={`journey-title-${n.slug}`}>{n.title}</h3>
     <p class="journey-heading">{n.heading}</p>
     <div class="journey-body"><Content /></div>
-    <a class="journey-reference" href={`#${n.reference}`}>Open the reference notes ↗</a>
   </section>)}
 </div>
 <style>
@@ -20,7 +19,8 @@ const colours=['#dce2c2','#eed4b7','#d4dfdd','#dfd3e2','#cee0d8','#f0dfac','#e7e
 :global(.notebook[data-enhanced]) .journey-note:not([data-active]){display:none}
 /* Outward tabs are absolutely positioned; they reserve no paper or margin space. */
 .journey-note-pvc{padding:14px 22px;min-height:445px}
-:global(.notebook[data-enhanced]) .journey-note-pvc{position:absolute;top:200px;left:10px;right:-85px;bottom:28px;margin:0;min-height:0}
+:global(.notebook[data-enhanced]) .journey-note{position:absolute;top:76px;left:28px;right:28px;bottom:46px;margin:0;min-height:0}
+.journey-note-pvc .journey-number{position:absolute;top:12px;right:18px}
 .journey-note-pvc h3{margin:6px 0 2px}
 .journey-note-pvc .journey-heading{margin-bottom:6px}
 .journey-note-pvc .journey-body :global(p){margin-bottom:9px}
@@ -40,8 +40,9 @@ const colours=['#dce2c2','#eed4b7','#d4dfdd','#dfd3e2','#cee0d8','#f0dfac','#e7e
   .journey-tab-label{opacity:1;min-width:0;overflow-wrap:normal}
 }
 @media(min-width:1400px) and (max-width:1539px){.journey-tabs a{font-size:17px;gap:4px;padding:7px 5px}.journey-tabs a>span:first-child{font-size:7px}}
-@media(min-width:761px) and (max-width:1100px){:global(.notebook[data-enhanced]) .journey-note-pvc{top:190px;left:-150px;right:-55px;bottom:32px}}
-@media(max-width:760px){.journey-tabs{width:28px;gap:4px}.journey-tabs a{width:28px;padding:6px;font-size:19px;height:42px}.journey-body{font-size:17px}.journey-note{padding:20px}.journey-note h3{font-size:33px}.journey-note-pvc{padding:14px 16px}:global(.notebook[data-enhanced]) .journey-note-pvc{top:187px;left:-14px;right:-14px;bottom:35px}.journey-body :global(.pvc-journey-gallery){gap:7px;padding:0}.journey-body :global(.pvc-journey-gallery figure){padding:4px 4px 6px}.journey-body :global(.pvc-journey-gallery img){height:76px}.journey-body :global(.pvc-journey-gallery figcaption){font-size:13px}}
+@media(min-width:761px) and (max-width:1100px){:global(.notebook[data-enhanced]) .journey-note{top:62px;left:14px;right:14px;bottom:36px}}
+@media(min-width:761px) and (max-width:900px){:global(.notebook[data-enhanced]) .journey-note{top:55px;bottom:29px}.journey-note-pvc{padding-top:8px;padding-bottom:8px}.journey-note-pvc .journey-number{top:8px}.journey-note-pvc h3{margin:0}.journey-note-pvc .journey-heading{margin-bottom:2px}.journey-note-pvc .journey-body :global(p){margin-bottom:4px}.journey-body :global(.pvc-journey-gallery){margin-top:4px}}
+@media(max-width:760px){.journey-tabs{width:28px;gap:4px}.journey-tabs a{width:28px;padding:6px;font-size:19px;height:42px}.journey-body{font-size:17px}.journey-note{padding:20px}.journey-note h3{font-size:33px}.journey-note-pvc{padding:14px 16px}:global(.notebook[data-enhanced]) .journey-note{top:62px;left:10px;right:10px;bottom:32px}.journey-body :global(.pvc-journey-gallery){gap:7px;padding:0}.journey-body :global(.pvc-journey-gallery figure){padding:4px 4px 6px}.journey-body :global(.pvc-journey-gallery img){height:76px}.journey-body :global(.pvc-journey-gallery figcaption){font-size:13px}}
 :global(.notebook:not([data-enhanced])) .journey-tabs a{width:auto;height:auto}:global(.notebook:not([data-enhanced])) .journey-tab-label{opacity:1;min-width:0}
 @media(prefers-reduced-motion:reduce){.journey-tabs a{transition:none}}
 @media print{.journey-tabs{display:none}:global(.notebook[data-enhanced]) .journey-note:not([data-active]){display:block}.journey-note{break-inside:avoid}}
