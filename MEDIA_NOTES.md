@@ -109,3 +109,7 @@ The cover is absolutely positioned within the existing notebook binding; it adds
 ## The Journey — PVC frame photographs
 
 The first Journey note uses four supplied construction photographs from `media_for_astro_website/mushroom_pics_for_notebook/`, kept in the order specified by the user: cut and washed pipes, incomplete assembly without diagonal support, complete frame before the X brace, and completed reinforced structure. Public WebP derivatives are stored in `public/media/notebook/journey/pvc/`, reduced to 1200 or 1400 pixels wide for the notebook and its image viewer. The originals remain unchanged.
+
+## The Journey — transparent enclosure photographs
+
+The second Journey note uses `incomplete_transparent_plastic.jpg` followed by `complete_transparent_plastic.jpg`. The first public derivative was made with the built-in image editing tool and then reduced to a 1200 × 1022 WebP. The edit target was the supplied incomplete-enclosure photograph; the final prompt requested a crop around the transparent-plastic tent that excluded the visible legs, bed and broom while preserving the tent, PVC frame, black taped seam, perspective, lighting, colours and construction details. The completed-enclosure photograph is an orientation-corrected 1200 × 1600 WebP derivative. Both originals remain unchanged.
