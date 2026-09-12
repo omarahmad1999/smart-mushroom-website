@@ -121,14 +121,15 @@ test('Raspberry Pi note keeps its dated photographs accessible without resizing 
     await book.getByRole('button',{name:'Photos & dates'}).click();
     const dialog=book.getByRole('dialog',{name:'Photos & dates'});
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator('.pi-photo-card')).toHaveCount(3);
-    await expect(dialog.locator('time')).toHaveText(['17 May 2026','22 June 2026','28 June 2026']);
+    const collection=dialog.locator('[data-journey-photos-panel="raspberry-pi"]');
+    await expect(collection.locator('.journey-photo-card')).toHaveCount(3);
+    await expect(collection.locator('time')).toHaveText(['17 May 2026','22 June 2026','28 June 2026']);
     await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
   }else{
     const board=book.getByLabel('Raspberry Pi build photographs');
     await expect(board).toBeVisible();
-    await expect(board.locator('.pi-photo-card')).toHaveCount(3);
+    await expect(board.locator('.journey-photo-card')).toHaveCount(3);
     await expect(board.locator('time')).toHaveText(['17 May 2026','22 June 2026','28 June 2026']);
     await board.getByRole('link',{name:/initial hardware setup/i}).click();
     await expect(book.locator('.nb-lightbox')).toBeVisible();

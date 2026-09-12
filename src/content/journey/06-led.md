@@ -5,8 +5,6 @@ title: LED
 heading: Light inside the growing space.
 reference: software
 ---
-The LED illuminates the tent from above. A dedicated MOSFET module connects it to the 24 V supply in the illustrated wiring.
+Mushrooms do not use light for photosynthesis, but light still acts as an important environmental cue during fruiting. I added a one-metre, IP67-rated LED strip to provide consistent illumination while better tolerating the tent’s humid conditions.
 
-### In the margin
-
-Lighting schedules can change with cultivation-phase settings. The model’s switch changes only the illustration.
+The LED can remain off during colonization and switch on when the mushrooms enter the fruiting stage. It is mounted near the top of the tent and connected to its own MOSFET-controlled 24 V circuit.

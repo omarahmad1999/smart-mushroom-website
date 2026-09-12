@@ -5,8 +5,6 @@ title: White Car Vinyl
 heading: A place for the finishing details.
 reference: physical-setup
 ---
-This note is reserved for the white car vinyl used in the build. Its exact placement, application steps, and photographs have not yet been documented in these field notes.
+The room containing the tent is quite dark, so the LED strip alone did not distribute light evenly throughout the growing space. I applied white automotive vinyl to selected parts of the tent covering to create a brighter interior surface and reflect more of the available light back toward the mushrooms.
 
-### In the margin
-
-To add here: where it was applied, why it was chosen, and what the installation taught us.
+This also gives me clearer separation between cultivation phases: the LED can remain off during colonization, then provide a brighter and more evenly lit environment during fruiting.

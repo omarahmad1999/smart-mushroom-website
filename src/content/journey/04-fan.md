@@ -5,8 +5,6 @@ title: Fan
 heading: Make room for fresh air.
 reference: physical-setup
 ---
-The illustrated fan sits low on the right side of the tent, opposite the passive vent. Its cable runs to a dedicated MOSFET module supplied by the 12 V adapter.
+I chose a 12 V Thermalright fan to manage ventilation inside the tent. It replaces stale air with fresh air and helps prevent CO₂ from accumulating around the mushrooms. My intended range is approximately **400–600 ppm**, although the final control thresholds may need adjustment during cultivation.
 
-### In the margin
-
-The website’s airflow animation explains the arrangement. Actual controller decisions belong to the experiment system.
+The fan is installed at the **bottom-right side of the tent**, while an air vent is positioned on the **upper-left side**. Placing them on opposite sides encourages air to move diagonally through the growing space instead of circulating around a single area.

@@ -5,8 +5,4 @@ title: Humidifier
 heading: Bring moisture into the habitat.
 reference: physical-setup
 ---
-The Xiaomi humidifier stands beside the tent. A flexible duct carries mist toward an inlet near the top of the growing space.
-
-### In the margin
-
-The mist effect in the interactive model is an illustration, not a humidity reading.
+I chose a Xiaomi Smart Humidifier 2 to maintain the high humidity required during fruiting. Its smart-home support also makes it easier to integrate the humidifier into the automated control system. The humidifier stands beside the tent, where a flexible duct carries its mist into the growing space.

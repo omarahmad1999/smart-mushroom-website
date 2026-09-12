@@ -1,0 +1,57 @@
+---
+interface Photo {src:string;width:number;height:number;title:string;date:string;iso:string;alt:string}
+interface Props { section:string; interactive?:boolean }
+const {section,interactive=false}=Astro.props;
+const collections:Record<string,Photo[]>={
+  'pvc-pipes':[
+    {src:'/media/notebook/journey/pvc/01-cut-and-washed.webp',width:1400,height:788,title:'Cut & washed',date:'14 May 2026',iso:'2026-05-14',alt:'Cut PVC pipe sections laid out after being washed'},
+    {src:'/media/notebook/journey/pvc/02-first-assembly.webp',width:1200,height:2074,title:'First assembly',date:'17 May 2026',iso:'2026-05-17',alt:'Partially assembled PVC frame without diagonal support'},
+    {src:'/media/notebook/journey/pvc/03-frame-before-brace.webp',width:1400,height:1050,title:'Before the brace',date:'21 May 2026',iso:'2026-05-21',alt:'Complete PVC frame standing without its X-shaped support'},
+    {src:'/media/notebook/journey/pvc/04-complete-frame.webp',width:1400,height:1050,title:'X support added',date:'25 May 2026',iso:'2026-05-25',alt:'Completed PVC structure reinforced with an X-shaped diagonal support'},
+  ],
+  'transparent-plastic':[
+    {src:'/media/notebook/journey/plastic/01-incomplete-enclosure-cropped.webp',width:1200,height:1022,title:'Fitting the covering',date:'7 June 2026',iso:'2026-06-07',alt:'Partially enclosed PVC tent covered with loose transparent plastic'},
+    {src:'/media/notebook/journey/plastic/02-complete-enclosure.webp',width:1200,height:1600,title:'Enclosure complete',date:'8 June 2026',iso:'2026-06-08',alt:'Completed transparent-plastic enclosure around the PVC tent structure'},
+  ],
+  'raspberry-pi':[
+    {src:'/media/notebook/journey/raspberry-pi/01-initial-hardware-setup.webp',width:1400,height:1050,title:'Initial hardware setup',date:'17 May 2026',iso:'2026-05-17',alt:'Initial Raspberry Pi setup connected to a display, keyboard, mouse, and SSD'},
+    {src:'/media/notebook/journey/raspberry-pi/02-pi-case-cropped.webp',width:849,height:1508,title:'KSSB-style case',date:'22 June 2026',iso:'2026-06-22',alt:'Black KSSB-style Raspberry Pi case held in one hand'},
+    {src:'/media/notebook/journey/raspberry-pi/03-pi-breadboard-and-camera.webp',width:1050,height:1400,title:'Pi, breadboard & camera',date:'28 June 2026',iso:'2026-06-28',alt:'Raspberry Pi case wired to a breadboard and camera hardware'},
+  ],
+  fan:[{src:'/media/notebook/journey/fan/01-fan-testing.webp',width:1200,height:2134,title:'Testing the fan',date:'19 July 2026',iso:'2026-07-19',alt:'The 12-volt ventilation fan during testing'}],
+  humidifier:[{src:'/media/notebook/journey/humidifier/01-xiaomi-humidifier.webp',width:1200,height:1600,title:'Xiaomi humidifier',date:'9 July 2026',iso:'2026-07-09',alt:'Xiaomi Smart Humidifier 2 prepared for the growing tent'}],
+  led:[
+    {src:'/media/notebook/journey/led/01-led-testing.webp',width:1080,height:1440,title:'Testing the LED',date:'6 August 2026',iso:'2026-08-06',alt:'The LED strip illuminated during testing'},
+    {src:'/media/notebook/journey/led/02-led-inside-tent.webp',width:1200,height:1600,title:'Light inside the tent',date:'28 August 2026',iso:'2026-08-28',alt:'The LED strip illuminating the interior of the growing tent'},
+  ],
+  'white-car-vinyl':[
+    {src:'/media/notebook/journey/white-car-vinyl/01-white-car-vinyl.webp',width:1200,height:1600,title:'Applying the vinyl',date:'15 July 2026',iso:'2026-07-15',alt:'White automotive vinyl being applied to the tent covering'},
+    {src:'/media/notebook/journey/white-car-vinyl/02-white-car-vinyl-fitted.webp',width:1200,height:1600,title:'Vinyl in place',date:'15 July 2026',iso:'2026-07-15',alt:'White automotive vinyl fitted to the growing tent'},
+  ],
+  sensors:[
+    {src:'/media/notebook/journey/sensors/01-testing-sht31.webp',width:1200,height:2134,title:'First SHT31 test',date:'1 June 2026',iso:'2026-06-01',alt:'SHT31 temperature and humidity sensor during an early test'},
+    {src:'/media/notebook/journey/sensors/02-scd41.webp',width:1200,height:1600,title:'SCD41 sensor',date:'25 June 2026',iso:'2026-06-25',alt:'SCD41 carbon-dioxide sensor hardware'},
+    {src:'/media/notebook/journey/sensors/03-sensors-testing.webp',width:1200,height:1600,title:'Testing together',date:'5 July 2026',iso:'2026-07-05',alt:'Environmental sensors connected together during testing'},
+    {src:'/media/notebook/journey/sensors/04-testing-scd41.webp',width:1200,height:1600,title:'SCD41 test',date:'19 July 2026',iso:'2026-07-19',alt:'SCD41 sensor connected during a later hardware test'},
+    {src:'/media/notebook/journey/sensors/05-sensors-inside-tent.webp',width:1200,height:1600,title:'Inside the tent',date:'19 July 2026',iso:'2026-07-19',alt:'Environmental sensors mounted inside the growing tent'},
+  ],
+  ups:[{src:'/media/notebook/journey/ups/01-ups.webp',width:899,height:1600,title:'Backup power',date:'8 June 2026',iso:'2026-06-08',alt:'UPS used to provide backup power for the experiment'}],
+};
+const photos=collections[section]??[];
+---
+<div class:list={['journey-photo-collection',`photo-count-${photos.length}`]}>
+  {photos.map(photo=><div class="journey-photo-card">
+    <figure>
+      {interactive ? <a href={photo.src} data-nb-image data-caption={`${photo.title} · ${photo.date}`} aria-label={`Enlarge photograph: ${photo.title}`}><img src={photo.src} alt={photo.alt} loading="lazy" width={photo.width} height={photo.height} /></a> : <img src={photo.src} alt={photo.alt} loading="lazy" width={photo.width} height={photo.height} />}
+      <figcaption>{photo.title}</figcaption>
+    </figure>
+    <p class="journey-photo-date"><time datetime={photo.iso}>{photo.date}</time></p>
+  </div>)}
+</div>
+<style>
+.journey-photo-collection{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 17px;align-items:start}.journey-photo-card{min-width:0;transform:rotate(-1.7deg);transform-origin:center top}.journey-photo-card:nth-child(even){transform:rotate(1.5deg)}.journey-photo-card:nth-child(3n){transform:rotate(-.8deg)}figure{position:relative;margin:0;padding:6px 6px 7px;background:#fffdf7;box-shadow:2px 6px 12px #49381e2b}figure:before{content:'';position:absolute;z-index:1;top:-7px;left:30%;width:40%;height:14px;background:#d3be8b73;transform:rotate(3deg);pointer-events:none}a{display:block;cursor:zoom-in}img{display:block;width:100%;height:145px;object-fit:cover}figcaption{font-family:var(--hand);font-size:18px;line-height:1.05;text-align:center;margin-top:6px}.journey-photo-date{position:relative;width:max-content;max-width:94%;margin:4px auto 0;padding:3px 9px;background:#fff0ba;box-shadow:1px 2px 3px #49381e20;font-family:var(--font-body);font-size:7px;line-height:1.2;letter-spacing:.5px;text-transform:uppercase;color:#765640;transform:rotate(.8deg)}.journey-photo-card:nth-child(even) .journey-photo-date{background:#e9d6cb;transform:rotate(-1deg)}.journey-photo-card:nth-child(3n) .journey-photo-date{background:#d8e3d4;transform:rotate(.7deg)}
+.photo-count-1{grid-template-columns:1fr;max-width:310px;margin:18px auto 0}.photo-count-1 img{height:390px}.photo-count-2{gap:22px;margin-top:28px}.photo-count-2 img{height:325px}.photo-count-3 .journey-photo-card:first-child{grid-column:1/-1;width:78%;justify-self:center}.photo-count-3 .journey-photo-card:first-child img{height:160px}.photo-count-4 img{height:155px}.photo-count-5{gap:10px 13px}.photo-count-5 .journey-photo-card:first-child{grid-column:1/-1;width:62%;justify-self:center}.photo-count-5 img{height:100px}.photo-count-5 .journey-photo-card:first-child img{height:105px}.photo-count-5 figcaption{font-size:15px}.photo-count-5 .journey-photo-date{font-size:6px}
+:global(.nb-journey-photos-dialog) .journey-photo-collection{max-width:660px;margin:0 auto}:global(.nb-journey-photos-dialog) .photo-count-1{max-width:300px}:global(.nb-journey-photos-dialog) img{height:min(23dvh,190px)}:global(.nb-journey-photos-dialog) .photo-count-1 img{height:min(48dvh,430px)}:global(.nb-journey-photos-dialog) .photo-count-5 img{height:min(18dvh,135px)}
+@media(min-width:761px) and (max-width:1000px){.journey-photo-collection{gap:11px}.photo-count-1{max-width:260px}.photo-count-1 img{height:350px}.photo-count-2 img{height:280px}.photo-count-3 .journey-photo-card:first-child{width:86%}.photo-count-3 img{height:125px}.photo-count-3 .journey-photo-card:first-child img{height:140px}.photo-count-4 img{height:135px}figcaption{font-size:16px}.journey-photo-date{font-size:6px}.photo-count-5{gap:8px}.photo-count-5 img,.photo-count-5 .journey-photo-card:first-child img{height:90px}}
+@media(max-width:760px){.journey-photo-collection{gap:14px 10px}.photo-count-1{max-width:260px}.photo-count-1 img{height:min(48dvh,380px)}.photo-count-2 img{height:min(29dvh,220px)}.photo-count-3 .journey-photo-card:first-child{width:90%}.photo-count-3 img{height:min(20dvh,145px)}.photo-count-3 .journey-photo-card:first-child img{height:min(22dvh,160px)}.photo-count-4 img,.photo-count-5 img,.photo-count-5 .journey-photo-card:first-child img{height:min(17dvh,125px)}figure{padding:5px}figcaption{font-size:16px}.journey-photo-date{font-size:6px}}
+</style>
