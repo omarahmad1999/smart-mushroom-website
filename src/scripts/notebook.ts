@@ -141,4 +141,15 @@ if (book) {
   dialog.querySelector('button')!.addEventListener('click',()=>dialog.close());
   dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}});
   dialog.addEventListener('close',()=>opener?.focus({preventScroll:true}));
+
+  const designDialog=book.querySelector<HTMLDialogElement>('[data-initial-design-dialog]')!;
+  let designOpener:HTMLButtonElement|undefined;
+  book.querySelectorAll<HTMLButtonElement>('[data-initial-design-open]').forEach(button=>button.addEventListener('click',()=>{
+    designOpener=button;designDialog.showModal();
+  }));
+  designDialog.querySelector<HTMLButtonElement>('[data-initial-design-close]')!.addEventListener('click',()=>designDialog.close());
+  designDialog.addEventListener('click',event=>{
+    if(event.target===designDialog){const rect=designDialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)designDialog.close();}
+  });
+  designDialog.addEventListener('close',()=>designOpener?.focus({preventScroll:true}));
 }

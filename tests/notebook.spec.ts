@@ -10,7 +10,7 @@ test('notebook turns pages, jumps sections, restores history and enlarges photog
   await expect(status).toContainText(mobile?'Page 1 / 12':'Pages 1–2 / 12');
   await expect(book.getByRole('button',{name:'Previous notebook page',exact:true})).toBeDisabled();
   await book.getByRole('link',{name:/Enlarge photograph/}).first().click();
-  const dialog=book.locator('dialog');await expect(dialog).toBeVisible();
+  const dialog=book.locator('.nb-lightbox');await expect(dialog).toBeVisible();
   await expect(dialog.locator('img')).toHaveJSProperty('naturalWidth',1600);
   await expect(dialog).toContainText('19 August 2026');
   await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();
@@ -89,6 +89,27 @@ test('page folds keep separate faces through both directions and land on the inc
     await book.locator('.nb-leaf').evaluate(el=>el.getAnimations()[0].finish());
     await expect(book.locator('.nb-leaf')).toHaveCount(0);
   }
+});
+
+test('Initial design sticker opens the PVC drawing and cut list without resizing the notebook',async({page})=>{
+  await page.goto('/documentation/#journey-pvc-pipes');
+  const book=page.locator('[data-notebook]');
+  const binding=book.locator('[data-nb-binding]');
+  const before=await binding.boundingBox();
+  const sticker=book.getByRole('button',{name:/Initial design/});
+  await sticker.click();
+  const dialog=book.getByRole('dialog',{name:'Initial design'});
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('img')).toHaveJSProperty('naturalWidth',1200);
+  await expect(dialog.locator('tbody tr')).toHaveCount(6);
+  await expect(dialog.locator('tbody')).toContainText('42T joints');
+  await expect(dialog.locator('tbody')).toContainText('416.75-inch pieces');
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(sticker).toBeFocused();
+  const after=await binding.boundingBox();
+  expect(after!.width).toBeCloseTo(before!.width,1);
+  expect(after!.height).toBeCloseTo(before!.height,1);
 });
 
 
