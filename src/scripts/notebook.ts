@@ -39,11 +39,13 @@ if (book) {
   const journeyIndex=spreads.findIndex(el=>el.id==='notebook-journey');
   const journeyTabs=[...book.querySelectorAll<HTMLAnchorElement>('[data-journey-tab]')];
   const journeyPanels=[...book.querySelectorAll<HTMLElement>('[data-journey-panel]')];
+  const piPhotoBoard=book.querySelector<HTMLElement>('[data-pi-photo-board]');
   let journeySelection=journeyTabs[0]?.dataset.journeyTab;
   function selectJourney(slug:string) {
     journeySelection=slug;
     journeyTabs.forEach(link=>{if(link.dataset.journeyTab===slug)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
     journeyPanels.forEach(panel=>panel.toggleAttribute('data-active',panel.dataset.journeyPanel===slug));
+    if(piPhotoBoard)piPhotoBoard.hidden=slug!=='raspberry-pi';
   }
   if(journeySelection)selectJourney(journeySelection);
   let current = 0;
@@ -141,6 +143,13 @@ if (book) {
   dialog.querySelector('button')!.addEventListener('click',()=>dialog.close());
   dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}});
   dialog.addEventListener('close',()=>opener?.focus({preventScroll:true}));
+
+  const piPhotosDialog=book.querySelector<HTMLDialogElement>('[data-pi-photos-dialog]')!;
+  let piPhotosOpener:HTMLButtonElement|undefined;
+  book.querySelectorAll<HTMLButtonElement>('[data-pi-photos-open]').forEach(button=>button.addEventListener('click',()=>{piPhotosOpener=button;piPhotosDialog.showModal();}));
+  piPhotosDialog.querySelector<HTMLButtonElement>('[data-pi-photos-close]')!.addEventListener('click',()=>piPhotosDialog.close());
+  piPhotosDialog.addEventListener('click',event=>{if(event.target===piPhotosDialog){const rect=piPhotosDialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)piPhotosDialog.close();}});
+  piPhotosDialog.addEventListener('close',()=>piPhotosOpener?.focus({preventScroll:true}));
 
   const designDialog=book.querySelector<HTMLDialogElement>('[data-initial-design-dialog]')!;
   let designOpener:HTMLButtonElement|undefined;

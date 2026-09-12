@@ -112,6 +112,33 @@ test('Initial design sticker opens the PVC drawing and cut list without resizing
   expect(after!.height).toBeCloseTo(before!.height,1);
 });
 
+test('Raspberry Pi note keeps its dated photographs accessible without resizing the notebook',async({page},info)=>{
+  await page.goto('/documentation/#journey-raspberry-pi');
+  const book=page.locator('[data-notebook]');
+  const binding=book.locator('[data-nb-binding]');
+  const before=await binding.boundingBox();
+  if(info.project.name==='mobile'){
+    await book.getByRole('button',{name:'Photos & dates'}).click();
+    const dialog=book.getByRole('dialog',{name:'Photos & dates'});
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('.pi-photo-card')).toHaveCount(3);
+    await expect(dialog.locator('time')).toHaveText(['17 May 2026','22 June 2026','28 June 2026']);
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+  }else{
+    const board=book.getByLabel('Raspberry Pi build photographs');
+    await expect(board).toBeVisible();
+    await expect(board.locator('.pi-photo-card')).toHaveCount(3);
+    await expect(board.locator('time')).toHaveText(['17 May 2026','22 June 2026','28 June 2026']);
+    await board.getByRole('link',{name:/initial hardware setup/i}).click();
+    await expect(book.locator('.nb-lightbox')).toBeVisible();
+    await page.keyboard.press('Escape');
+  }
+  const after=await binding.boundingBox();
+  expect(after!.width).toBeCloseTo(before!.width,1);
+  expect(after!.height).toBeCloseTo(before!.height,1);
+});
+
 
 test('The Journey is fifth with twelve independent paper notes and persistent links',async({page},info)=>{
   await page.goto('/documentation/#notebook-journey');

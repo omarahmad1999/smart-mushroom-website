@@ -115,3 +115,9 @@ The first Journey note uses four supplied construction photographs from `media_f
 ## The Journey — transparent enclosure photographs
 
 The second Journey note uses `incomplete_transparent_plastic.jpg` followed by `complete_transparent_plastic.jpg`. The first public derivative was made with the built-in image editing tool and then reduced to a 1200 × 1022 WebP. The edit target was the supplied incomplete-enclosure photograph; the final prompt requested a crop around the transparent-plastic tent that excluded the visible legs, bed and broom while preserving the tent, PVC frame, black taped seam, perspective, lighting, colours and construction details. The completed-enclosure photograph is an orientation-corrected 1200 × 1600 WebP derivative. Both originals remain unchanged.
+
+## The Journey — Raspberry Pi photographs
+
+The third Journey note uses `initial_hardware_setup.jpg`, `pi_case.jpeg`, and `pi_breadboard_and_camera.jpg` in that order. Their paper date slips show the embedded EXIF `DateTime` values: 17 May 2026, 22 June 2026, and 28 June 2026. The photographs occupy the notebook’s facing page on wider screens; a Photos & Dates paper sticker opens them within the fixed notebook presentation on mobile.
+
+`public/media/notebook/journey/raspberry-pi/02-pi-case-cropped.webp` was made with the built-in image editing tool. The final prompt requested a tight portrait crop that removed the laptop and unrelated objects from the upper part of the photograph while retaining the complete KSSB-style case, hand, orange ribbon cable, hardware geometry, lighting, colours, and photographic appearance, with no added text or graphics. The other two public files are orientation-corrected, resized derivatives. Public derivatives omit the original metadata; the supplied originals remain unchanged.
