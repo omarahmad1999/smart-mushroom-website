@@ -1,6 +1,10 @@
 import {test,expect} from '@playwright/test';
 
 test('illustrated cover plays, pauses, opens and preserves notebook geometry',async({page},info)=>{
+  await page.addInitScript(()=>{
+    const Original=window.Audio;const sounds:{audio:HTMLAudioElement;plays:number}[]=[];Object.assign(window,{notebookAudio:sounds});
+    window.Audio=function(src?:string){const audio=new Original(src);const record={audio,plays:0};sounds.push(record);audio.addEventListener('playing',()=>record.plays++);return audio;} as unknown as typeof Audio;
+  });
   await page.goto('/documentation/');
   const book=page.locator('[data-notebook]'),cover=book.locator('[data-nb-cover]'),video=cover.locator('video');
   await expect(cover).toBeVisible();await cover.scrollIntoViewIfNeeded();
@@ -17,6 +21,7 @@ test('illustrated cover plays, pauses, opens and preserves notebook geometry',as
   await cover.getByRole('button',{name:'Play cover animation'}).click();
   await expect(video).toHaveJSProperty('paused',false);
   await cover.getByRole('button',{name:'Open the notebook'}).click();
+  await expect.poll(()=>page.evaluate(()=>Reflect.get(window,'notebookAudio').find((item:any)=>item.audio.src.endsWith('paper-swipe.mp3'))?.plays??0)).toBeGreaterThan(0);
   await expect(cover).toBeHidden();await expect(video).toHaveJSProperty('paused',true);
   const opened=await book.locator('[data-nb-binding]').boundingBox();
   for(const key of ['x','width','height'] as const)expect(opened![key]).toBeCloseTo(geometry![key],1);

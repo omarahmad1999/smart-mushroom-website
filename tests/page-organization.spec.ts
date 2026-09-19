@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 test.setTimeout(90_000);
 test.use({reducedMotion:'reduce',launchOptions:{executablePath:'/usr/bin/chromium',args:['--no-sandbox','--enable-unsafe-swiftshader']}});
-test('opening habitat, collapsed catalogue, separate notes and photo footer work together',async({page})=>{
+test('opening habitat, collapsed catalogue, separate notes and photo footer work together',async({page},info)=>{
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await page.goto('/');
   await expect(page.locator('main > section').nth(0)).toHaveAttribute('id','material-study');
@@ -11,11 +11,23 @@ test('opening habitat, collapsed catalogue, separate notes and photo footer work
   await expect(page.locator('.ms-explore')).toHaveAttribute('href','#experiment');
   const alignment=await page.locator('#material-study').evaluate(section=>{
     const scene=section.querySelector('.ms-scene-shell')!.getBoundingClientRect();
+    const photo=section.querySelector('.ms-mushroom-photo')!.getBoundingClientRect();
     const button=section.querySelector('.ms-explore')!.getBoundingClientRect();
     const caption=section.querySelector('.ms-pairing-caption p')!.getBoundingClientRect();
-    return {right:Math.abs(scene.right-button.right),row:Math.abs(caption.top-button.top)};
+    return {
+      buttonToPhotoRight:Math.abs(photo.right-button.right),
+      buttonToSceneBottom:Math.abs(scene.bottom-button.bottom),
+      buttonToPhotoCenter:Math.abs((photo.left+photo.right)/2-(button.left+button.right)/2),
+      captionBelowPhoto:caption.top-photo.bottom,
+      buttonBelowCaption:button.top-caption.bottom,
+    };
   });
-  expect(alignment.right).toBeLessThanOrEqual(1);expect(alignment.row).toBeLessThanOrEqual(1);
+  if(info.project.name==='desktop'){
+    expect(alignment.buttonToPhotoRight).toBeLessThanOrEqual(1);
+    expect(alignment.buttonToSceneBottom).toBeLessThanOrEqual(1);
+  }else expect(alignment.buttonToPhotoCenter).toBeLessThanOrEqual(1);
+  expect(alignment.captionBelowPhoto).toBeGreaterThan(0);
+  expect(alignment.buttonBelowCaption).toBeGreaterThan(0);
   const catalogue=page.locator('.ms-exploration');
   await expect(catalogue).not.toHaveAttribute('open');
   await expect(catalogue.locator('.ms-component-groups')).toBeHidden();

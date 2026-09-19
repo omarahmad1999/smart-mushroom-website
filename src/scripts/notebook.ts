@@ -18,6 +18,7 @@ if (book) {
   const spreadsWrap=book.querySelector<HTMLElement>('.nb-spreads')!;
   const paperSwipe=new Audio('/media/study/paper-swipe.mp3');
   paperSwipe.preload='auto';paperSwipe.volume=.42;
+  const playPaperSwipe=()=>{paperSwipe.pause();paperSwipe.currentTime=0;void paperSwipe.play().catch(()=>{});};
   let coverInView=false,coverPaused=false;
   function syncCoverPlayback(){
     coverPause.hidden=reduced.matches;
@@ -33,7 +34,7 @@ if (book) {
   }
   coverToggle.hidden=false;
   coverToggle.addEventListener('click',()=>setCover(Boolean(cover.hidden)));
-  book.querySelector('[data-nb-open-cover]')!.addEventListener('click',()=>{setCover(false);binding.focus({preventScroll:true});});
+  book.querySelector('[data-nb-open-cover]')!.addEventListener('click',()=>{playPaperSwipe();setCover(false);binding.focus({preventScroll:true});});
   coverPause.addEventListener('click',()=>{coverPaused=!coverPaused;syncCoverPlayback();});
   new IntersectionObserver(entries=>{coverInView=entries[0].isIntersecting;syncCoverPlayback();},{threshold:.05}).observe(cover);
   document.addEventListener('visibilitychange',syncCoverPlayback);
@@ -70,7 +71,7 @@ if (book) {
     const old=current;
     animation?.cancel();fold.replaceChildren();
     if(to!==old&&animate&&!reduced.matches){
-      paperSwipe.pause();paperSwipe.currentTime=0;void paperSwipe.play().catch(()=>{});
+      playPaperSwipe();
       const backwards=to<old;
       const copyPage=(index:number)=>{
         const copy=pages[index].cloneNode(true) as HTMLElement;
