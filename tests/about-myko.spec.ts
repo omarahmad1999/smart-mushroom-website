@@ -1,11 +1,22 @@
 import {test,expect} from '@playwright/test';
-test('Myko stays at the screen edge while scrolling, with stronger tracking',async({page},info)=>{
+test('Myko stays planted at the screen edge and tracks every direction',async({page},info)=>{
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));
   await page.goto('/about/');await expect(page.getByRole('heading',{level:1})).toHaveText('Omar Ahmad');await expect(page.locator('.about-interests,.about-next')).toHaveCount(0);
   const myko=page.locator('[data-myko]');await expect(myko).toHaveCSS('position','fixed');
   const before=await myko.boundingBox();const width=await page.locator('.myko-stage').evaluate(el=>el.getBoundingClientRect().width);expect(width).toBeCloseTo(info.project.name==='mobile'?380:440,0);
   await page.evaluate(()=>window.scrollTo({top:500,behavior:'instant'}));const after=await myko.boundingBox();expect(after!.y).toBeCloseTo(before!.y,1);expect(after!.x).toBeCloseTo(before!.x,1);
-  await page.mouse.move(25,100);await page.mouse.move(90,110);await expect.poll(()=>myko.evaluate(el=>(el as HTMLElement).style.getPropertyValue('--wobble'))).not.toBe('0deg');
-  expect(Math.abs(await myko.evaluate(el=>parseFloat((el as HTMLElement).style.getPropertyValue('--eye-x'))))).toBeGreaterThan(9);
+  const stage=page.locator('.myko-stage');await expect(stage).toHaveCSS('transform','none');await expect(page.locator('.myko-floor')).toBeVisible();
+  const rect=await stage.boundingBox();const cx=rect!.x+rect!.width*478.5/1254,cy=rect!.y+rect!.width*467.5/1254;
+  for(let i=0;i<8;i++){
+    const angle=i*Math.PI/4;
+    await page.mouse.move(cx+Math.cos(angle)*70,cy+Math.sin(angle)*70);
+    const gaze=await myko.evaluate(el=>({x:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-x'))/18,y:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-y'))/12}));
+    const length=Math.hypot(gaze.x,gaze.y);expect(length).toBeGreaterThan(.3);
+    expect(gaze.x/length).toBeCloseTo(Math.cos(angle),1);expect(gaze.y/length).toBeCloseTo(Math.sin(angle),1);
+  }
+  await page.mouse.move(10,20);const first=await myko.getAttribute('style');
+  await page.mouse.move(10,200);expect(await myko.getAttribute('style')).not.toBe(first);
+  expect(await stage.evaluate(el=>el.getAnimations().length)).toBe(0);
 });
 test('Myko follows the idle and wake sequence without extending reactions',async({page})=>{
   await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));await page.goto('/about/');
