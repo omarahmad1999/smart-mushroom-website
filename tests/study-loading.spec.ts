@@ -1,0 +1,23 @@
+import {test,expect} from '@playwright/test';
+test.setTimeout(180_000);
+test.use({reducedMotion:'reduce',launchOptions:{executablePath:'/usr/bin/chromium',args:['--no-sandbox','--enable-unsafe-swiftshader']}});
+test('loading preview reserves the final layout and never flashes the inspector',async({page})=>{
+  let release!:()=>void;
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  await page.route(/(?:\/scene\.[^/]+\.js|\/scripts\/study\/scene\.ts)(?:\?.*)?$/,async route=>{await gate;await route.continue();});
+  await page.goto('/#material-study',{waitUntil:'domcontentloaded'});
+  const section=page.locator('#material-study'),shell=section.locator('.ms-scene-shell');
+  await page.evaluate(()=>document.fonts.ready);
+  await expect(section.locator('[data-study-detail]')).toBeHidden();
+  await expect(section.locator('[data-study-fallback]')).toBeVisible();
+  const before=(await shell.boundingBox())!;
+  release();
+  await expect(section).toHaveAttribute('data-study-state','ready',{timeout:90000});
+  await expect(section.locator('[data-study-fallback]')).toBeHidden();
+  await expect(section.locator('[data-study-detail]')).toBeHidden();
+  const after=(await shell.boundingBox())!;
+  expect(Math.abs(after.height-before.height)).toBeLessThanOrEqual(1);
+  expect(Math.abs(after.width-before.width)).toBeLessThanOrEqual(1);
+  await section.locator('[data-study-hotspot="cooler"]').click();
+  await expect(section.locator('[data-study-detail]')).toBeVisible();
+});

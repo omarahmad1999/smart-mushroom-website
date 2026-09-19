@@ -527,7 +527,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   reduceMotion.addEventListener('change', () => { controls.enableDamping = !reduceMotion.matches; if (reduceMotion.matches) { tween=null; finishAssembly(); stopRotation(); } wake(); },eventOptions);
   canvas.addEventListener('webglcontextlost', event => {
     event.preventDefault(); alive=false; stopRotation(); stopDemo(); finishAssembly(); cancelAnimationFrame(animationFrame);
-    fallback.hidden=false; section.dataset.studyState='unavailable'; canvas.hidden=true; detail.hidden=false;
+    fallback.hidden=false; section.dataset.studyState='unavailable'; canvas.hidden=true; detail.hidden=true;
     hotspots.forEach(({button}) => button.hidden=true); leaderLayer.style.display="none"; studyButtons.forEach(button => button.disabled=true);
     status.textContent='The browser paused 3D rendering. The still view is shown; reload to try again.';
   },eventOptions);
