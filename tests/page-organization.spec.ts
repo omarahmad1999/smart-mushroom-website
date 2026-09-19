@@ -45,9 +45,10 @@ test('opening habitat, collapsed catalogue, separate notes and photo footer work
   await expect.poll(()=>page.locator('.footer-photo').evaluate((image:HTMLImageElement)=>image.naturalWidth)).toBeGreaterThan(0);
   await page.locator('.photo-footer').getByRole('link',{name:'About me'}).click();
   await expect(page).toHaveURL(/\/about\/$/);
-  await expect(page.locator('.about-grid article')).toHaveCount(3);
-  await page.getByRole('link',{name:'Open the field notes'}).click();
-  await expect(page).toHaveURL(/\/documentation\/$/);
+  await expect(page.getByRole('heading',{level:1})).toHaveText('Omar Ahmad');
+  await expect(page.locator('.about-grid article')).toHaveCount(0);
+  await page.getByRole('link',{name:'Where the idea began'}).click();
+  await expect(page).toHaveURL(/\/documentation\/#notebook-idea$/);
   await page.getByRole('link',{name:'Explore the interactive tent'}).click();
   await expect(page).toHaveURL(/\/#material-study$/);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);

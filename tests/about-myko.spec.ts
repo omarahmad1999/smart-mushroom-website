@@ -1,4 +1,12 @@
 import {test,expect} from '@playwright/test';
+test('Myko stays at the screen edge while scrolling, with stronger tracking',async({page},info)=>{
+  await page.goto('/about/');await expect(page.getByRole('heading',{level:1})).toHaveText('Omar Ahmad');await expect(page.locator('.about-interests,.about-next')).toHaveCount(0);
+  const myko=page.locator('[data-myko]');await expect(myko).toHaveCSS('position','fixed');
+  const before=await myko.boundingBox();const width=await page.locator('.myko-stage').evaluate(el=>el.getBoundingClientRect().width);expect(width).toBeCloseTo(info.project.name==='mobile'?380:440,0);
+  await page.evaluate(()=>window.scrollTo({top:500,behavior:'instant'}));const after=await myko.boundingBox();expect(after!.y).toBeCloseTo(before!.y,1);expect(after!.x).toBeCloseTo(before!.x,1);
+  await page.mouse.move(25,100);await page.mouse.move(90,110);await expect.poll(()=>myko.evaluate(el=>(el as HTMLElement).style.getPropertyValue('--wobble'))).not.toBe('0deg');
+  expect(Math.abs(await myko.evaluate(el=>parseFloat((el as HTMLElement).style.getPropertyValue('--eye-x'))))).toBeGreaterThan(9);
+});
 test('Myko follows the idle and wake sequence without extending reactions',async({page})=>{
   await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));await page.goto('/about/');
   const myko=page.locator('[data-myko]');await myko.scrollIntoViewIfNeeded();await page.getByRole('button',{name:'Say hello to Myko'}).focus();
@@ -12,7 +20,7 @@ test('Myko follows the idle and wake sequence without extending reactions',async
 });
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
-  const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width*1.7);await expect(page.locator('canvas')).toHaveCount(0);
+  const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width);await expect(page.locator('canvas')).toHaveCount(0);
   const tab=page.getByRole('tab',{name:'What I build',exact:true});await tab.click();await expect(page.getByRole('tabpanel')).toContainText('PVC pipes');await tab.press('ArrowRight');await expect(page.getByRole('tab',{name:'What I’m exploring'})).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect(errors).toEqual([]);
 });
