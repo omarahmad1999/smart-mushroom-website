@@ -16,6 +16,8 @@ if (book) {
   const coverPause=book.querySelector<HTMLButtonElement>('[data-nb-cover-pause]')!;
   const coverToggle=book.querySelector<HTMLButtonElement>('[data-nb-show-cover]')!;
   const spreadsWrap=book.querySelector<HTMLElement>('.nb-spreads')!;
+  const paperSwipe=new Audio('/media/study/paper-swipe.mp3');
+  paperSwipe.preload='auto';paperSwipe.volume=.42;
   let coverInView=false,coverPaused=false;
   function syncCoverPlayback(){
     coverPause.hidden=reduced.matches;
@@ -68,6 +70,7 @@ if (book) {
     const old=current;
     animation?.cancel();fold.replaceChildren();
     if(to!==old&&animate&&!reduced.matches){
+      paperSwipe.pause();paperSwipe.currentTime=0;void paperSwipe.play().catch(()=>{});
       const backwards=to<old;
       const copyPage=(index:number)=>{
         const copy=pages[index].cloneNode(true) as HTMLElement;

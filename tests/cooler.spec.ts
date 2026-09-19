@@ -2,6 +2,10 @@ import {test,expect} from '@playwright/test';
 test.setTimeout(180_000);
 test.use({reducedMotion:'reduce',launchOptions:{executablePath:'/usr/bin/chromium',args:['--no-sandbox','--enable-unsafe-swiftshader']}});
 test('cooler stays off when selected and toggles independently of the fan',async({page})=>{
+  await page.addInitScript(()=>{
+    const Original=window.Audio;const sounds:{audio:HTMLAudioElement;plays:number}[]=[];Object.assign(window,{coolerAudio:sounds});
+    window.Audio=function(src?:string){const audio=new Original(src);const record={audio,plays:0};sounds.push(record);audio.addEventListener('playing',()=>record.plays++);return audio;} as unknown as typeof Audio;
+  });
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await page.goto('/#material-study');
   const section=page.locator('#material-study');
@@ -27,5 +31,6 @@ test('cooler stays off when selected and toggles independently of the fan',async
   await page.emulateMedia({reducedMotion:'no-preference'});
   await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
   await expect(section).toHaveAttribute('data-study-cooling-active','true');
+  await expect.poll(()=>page.evaluate(()=>Reflect.get(window,'coolerAudio').filter((item:any)=>item.audio.src.endsWith('fan-loop.ogg')&&item.plays>0).length)).toBeGreaterThanOrEqual(2);
   expect(errors).toEqual([]);
 });

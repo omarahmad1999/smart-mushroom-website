@@ -27,4 +27,4 @@ By **31 August 2026**, the investigation found that sensor records had stopped a
 
 These are historical notes, not current service status.
 
-[Read the full learning log →](/learning-log/)
+[Read the full limitations and open-work notes →](/documentation/#limitations)

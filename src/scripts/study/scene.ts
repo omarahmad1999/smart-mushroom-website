@@ -243,7 +243,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     const stop=(name:Demo)=>!action||action===name;
     if(action)demos.delete(action);else demos.clear();
     if(stop('fan')){sounds.stopLoop('fan');if(fanAirflow){fanAirflow.visible=false;fanAirflow.position.y=0;}}
-    if(stop('cooling'))cooler.airflow.visible=false;
+    if(stop('cooling')){sounds.stopLoop('cooling');cooler.airflow.visible=false;}
     if(stop('mist')){sounds.stopLoop('mist');devices.mist.visible=false;}
     if(stop('camera'))devices.cameraField.visible=devices.cameraField2.visible=false;
     if(stop('light')){
@@ -423,7 +423,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     if(action==='light')sounds.switch('light');
     if(demos.has(action)){stopDemo(action);draw();wake();status.textContent='Component switched off. Other active components remain on.';return;}
     if(!demos.size)demoStarted=performance.now();demos.add(action);
-    if(action==='fan'||action==='mist')sounds.loop(action);
+    if(action==='fan'||action==='cooling'||action==='mist')sounds.loop(action);
     if (action === 'cooling') {cooler.airflow.visible=true;focusComponent(selected);}
     if (action === 'fan') {
       if (fanAirflow) fanAirflow.visible = true;

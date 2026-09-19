@@ -27,8 +27,6 @@ const hardware = [
 
 <BaseLayout title="System notes — Smart Mushroom Hub" description="Documented hardware, service architecture, camera schedules, and research limitations for the Smart Mushroom Hub cultivation experiment.">
   <div class="documentation-page section-wrap">
-    <a href="/#experiment" class="return-link"><span aria-hidden="true">←</span> Back to the experiment</a>
-
     <FieldNotebook />
     <header id="reference-notes" class="reference-heading"><p class="eyebrow">THE REFERENCE SHELF</p><h2>The details behind the pages.</h2><p>Hardware, schedules, software, and the limits of what we know.</p></header>
 
@@ -142,10 +140,7 @@ const hardware = [
 
 <style>
   .reference-heading{border-top:1px solid var(--line);padding-top:45px;scroll-margin-top:120px}.reference-heading .eyebrow{color:var(--olive)}.reference-heading h2{font-size:clamp(32px,4vw,46px);margin:17px 0 12px}.reference-heading>p:last-child{font-size:13px;color:var(--muted)}
-  .documentation-page { padding-top: 35px; padding-bottom: 110px; }
-  .return-link { display: inline-flex; align-items: center; gap: 12px; color: var(--muted); text-decoration: none; font-size: 11px; padding-block: 7px; }
-  .return-link span { font-size: 18px; }
-  .return-link:hover { color: var(--orange); }
+  .documentation-page { padding-top: 0; padding-bottom: 110px; }
   .documentation-layout { display: grid; grid-template-columns: 245px minmax(0, 700px); justify-content: space-between; column-gap: 70px; padding-top: 55px; }
   .documentation-sidebar nav { position: sticky; top: 35px; }
   .documentation-sidebar .eyebrow { color: var(--olive); font-size: 8px; letter-spacing: 1.5px; }
@@ -199,7 +194,7 @@ const hardware = [
     .hardware-list > div { grid-template-columns: 110px 1fr; gap: 18px; }
   }
   @media (max-width: 760px) {
-    .documentation-page { padding-top: 23px; padding-bottom: 75px; }
+    .documentation-page { padding-top: 0; padding-bottom: 75px; }
     .documentation-layout { display: block; padding-top: 30px; }
     .documentation-sidebar { border-bottom: 1px solid var(--line); padding-bottom: 24px; margin-bottom: 33px; }
     .documentation-sidebar nav { position: static; }
@@ -217,7 +212,7 @@ const hardware = [
     th, td { padding: 12px; }
   }
   @media print {
-    .documentation-sidebar, .return-link, .documentation-closing { display: none; }
+    .documentation-sidebar, .documentation-closing { display: none; }
     .documentation-layout { display: block; }
     .documentation-content section { break-inside: avoid; }
     .documentation-page { padding: 20px; }

@@ -1,0 +1,69 @@
+---
+import '@fontsource/caveat/400.css';
+const chapters = [
+  { id: 'material-study', number: '01', label: 'Interactive Habitat' },
+  { id: 'architecture', number: '02', label: 'Connected System' },
+  { id: 'experiment', number: '03', label: 'Experiment & Purpose' },
+  { id: 'cultivation', number: '04', label: 'Cultivation Cycle' },
+  { id: 'observations', number: '05', label: 'Camera & Timelapse' },
+  { id: 'vision', number: '06', label: 'Computer Vision' },
+];
+---
+
+<aside class="home-paper-nav" data-home-paper-nav aria-label="Home page contents">
+  <button class="paper-index-tab" type="button" aria-expanded="false" aria-controls="home-paper-sheet">
+    <span>Contents</span><span aria-hidden="true">01—06</span>
+  </button>
+  <div class="paper-index-sheet" id="home-paper-sheet" hidden>
+    <span class="paper-tape" aria-hidden="true"></span>
+    <div class="paper-index-heading"><span>HOME</span><span>/ CONTENTS</span></div>
+    <p class="paper-index-note">Pick up where<br />your curiosity leads.</p>
+    <nav aria-label="Sections on the home page">
+      {chapters.map(chapter => (
+        <a href={`/#${chapter.id}`} data-home-section={chapter.id}>
+          <span>{chapter.number}</span><span>{chapter.label}</span><span aria-hidden="true">↗</span>
+        </a>
+      ))}
+    </nav>
+    <button class="paper-index-close" type="button">Close <span aria-hidden="true">×</span></button>
+  </div>
+</aside>
+
+<script>
+  import '../scripts/home-paper-nav';
+</script>
+
+<style>
+  .home-paper-nav{--paper-width:248px;position:fixed;z-index:24;left:clamp(8px,1.2vw,22px);top:122px;color:#39473c}
+  .paper-index-tab{position:relative;z-index:2;width:45px;min-height:142px;padding:13px 8px;border:1px solid #a99f87;border-left:3px solid #9c583e;border-radius:1px 5px 5px 1px;background:#f1ead8;background-image:radial-gradient(#756a5715 .6px,transparent .8px);background-size:5px 5px;box-shadow:3px 6px 13px #27352822;color:#6f5b43;transition:transform .28s ease,box-shadow .2s}
+  .paper-index-tab span:first-child{font-family:'Caveat',cursive;font-size:20px;line-height:1;writing-mode:vertical-rl;transform:rotate(180deg)}
+  .paper-index-tab span:last-child{display:block;margin-top:8px;font-size:7px;letter-spacing:.06em;writing-mode:vertical-rl;transform:rotate(180deg)}
+  .home-paper-nav[data-open] .paper-index-tab{transform:translateX(calc(var(--paper-width) + 7px));box-shadow:1px 3px 8px #2735281b}
+  .paper-index-sheet{position:absolute;left:0;top:-10px;width:var(--paper-width);padding:31px 21px 20px;background:#f7f0df;background-image:linear-gradient(90deg,transparent 29px,#b45f4f22 30px,transparent 31px),repeating-linear-gradient(0deg,transparent 0 25px,#7d9a8730 26px 27px),radial-gradient(#756a5712 .6px,transparent .8px);background-size:auto,auto,5px 5px;border:1px solid #aaa087;box-shadow:7px 13px 28px #26312730;transform:translateX(calc(-100% - 30px)) rotate(-1.3deg);transform-origin:left center;opacity:0;transition:transform .32s cubic-bezier(.22,.75,.26,1),opacity .2s}
+  .paper-index-sheet:not([hidden]){display:block}
+  .home-paper-nav[data-open] .paper-index-sheet{transform:translateX(0) rotate(-.4deg);opacity:1}
+  .paper-index-sheet:after{content:'';position:absolute;left:2px;right:2px;bottom:-5px;height:7px;background:linear-gradient(135deg,transparent 4px,#f7f0df 0) 0 0/9px 9px repeat-x;filter:drop-shadow(0 2px 1px #26312720)}
+  .paper-tape{position:absolute;top:-10px;left:72px;width:99px;height:24px;background:#d3c4998f;box-shadow:0 1px 2px #55483214;transform:rotate(1.8deg)}
+  .paper-index-heading{display:flex;justify-content:space-between;gap:10px;padding-bottom:12px;border-bottom:1px solid #86836f80;font-size:8px;font-weight:600;letter-spacing:.14em;color:#707963}
+  .paper-index-note{margin:17px 0 13px 13px;font-family:'Caveat',cursive;font-size:23px;line-height:1.05;color:#a34f34;transform:rotate(-2deg)}
+  .paper-index-sheet nav{margin-left:10px}
+  .paper-index-sheet a{position:relative;display:grid;grid-template-columns:24px 1fr 12px;align-items:center;gap:5px;min-height:40px;border-bottom:1px dashed #88836d73;color:#4f594b;text-decoration:none;font-size:10px;line-height:1.25}
+  .paper-index-sheet a>span:first-child{font-size:8px;color:#a34f34}
+  .paper-index-sheet a>span:last-child{color:#a34f34;font-size:14px;opacity:0;transition:opacity .16s,transform .16s}
+  .paper-index-sheet a:hover,.paper-index-sheet a[aria-current=true]{color:#172b29}
+  .paper-index-sheet a:hover>span:last-child,.paper-index-sheet a[aria-current=true]>span:last-child{opacity:1;transform:translate(2px,-1px)}
+  .paper-index-sheet a[aria-current=true]:before{content:'';position:absolute;left:21px;right:14px;bottom:7px;height:6px;background:#d66a3e38;transform:rotate(-1deg);z-index:-1;border-radius:50%}
+  .paper-index-close{display:flex;align-items:center;gap:8px;margin:15px 0 0 auto;padding:7px 2px;background:transparent;font-size:8px;letter-spacing:.1em;color:#757664;text-transform:uppercase}
+  .paper-index-close span{font-size:17px;line-height:.7}
+  @media(max-width:700px){
+    .home-paper-nav{top:auto;left:12px;bottom:14px;--paper-width:min(330px,calc(100vw - 24px))}
+    .paper-index-tab{width:auto;min-height:44px;padding:10px 13px;display:flex;align-items:center;gap:10px;border-left-width:2px;border-radius:3px}
+    .paper-index-tab span:first-child{font-size:20px;writing-mode:horizontal-tb;transform:none}
+    .paper-index-tab span:last-child{margin:0;font-size:7px;writing-mode:horizontal-tb;transform:none}
+    .home-paper-nav[data-open] .paper-index-tab{transform:translateY(-365px);opacity:0;pointer-events:none}
+    .paper-index-sheet{position:fixed;left:12px;top:auto;bottom:12px;width:var(--paper-width);max-height:min(72dvh,460px);overflow:auto;transform:translateY(calc(100% + 28px)) rotate(0);padding:30px 22px 19px}
+    .home-paper-nav[data-open] .paper-index-sheet{transform:translateY(0) rotate(-.25deg)}
+    .paper-index-note{font-size:22px}
+  }
+  @media(prefers-reduced-motion:reduce){.paper-index-tab,.paper-index-sheet{transition:none}}
+</style>

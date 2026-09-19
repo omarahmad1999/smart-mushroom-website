@@ -35,6 +35,7 @@ test.setTimeout(120_000);
 
 const expectedComponents = [
   ['bag', 'A place for life to take hold.', '#cultivation'],
+  ['cooler', 'A cooler path into the tent.', '#architecture'],
   ['frame', 'Simple materials. A useful space.', '/documentation/#physical-setup'],
   ['cover', 'A boundary around the growing space.', '/documentation/#physical-setup'],
   ['fan', 'Make room for fresh air.', '#architecture'],
@@ -46,7 +47,7 @@ const expectedComponents = [
   ['pi', 'The small computer behind it all.', '#architecture'],
   ['ai', 'A place for the next question.', '#vision'],
   ['mosfets', 'From a signal to a switched circuit.', '#architecture'],
-  ['ups', 'A little resilience behind the scenes.', '/learning-log/'],
+  ['ups', 'A little resilience behind the scenes.', '/documentation/#limitations'],
   ['ssd', 'Keep a place for the record.', '#observations'],
   ['bag2', 'A second bag. Its own support.', '#cultivation'],
   ['vent', 'An opening on the other side.', '#architecture'],
@@ -90,11 +91,11 @@ async function expectNoOverflow(page: Page) {
 test.describe('component explanations', () => {
   test.use({ reducedMotion: 'reduce' });
 
-  test('all 33 items have individual indicators and open their own explanation', async ({ page }) => {
+  test('all 34 items have individual indicators and open their own explanation', async ({ page }) => {
     test.setTimeout(300_000);
     const section = await openHabitat(page);
-    await expect(section.locator('[data-study-hotspot]')).toHaveCount(33);
-    await expect(section.locator('[data-study-hotspot]:visible')).toHaveCount(33);
+    await expect(section.locator('[data-study-hotspot]')).toHaveCount(34);
+    await expect(section.locator('[data-study-hotspot]:visible')).toHaveCount(34);
     await section.locator('[data-study-hotspot="bag"]').click();
     await expect(section.locator('[data-study-detail]')).toBeVisible();
     const selectors = section.locator('button[data-study-select]');

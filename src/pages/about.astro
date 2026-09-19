@@ -1,0 +1,59 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<BaseLayout title="About Me — Smart Mushroom Hub" description="About the maker behind Smart Mushroom Hub and the curiosity connecting cultivation, engineering, and computer vision.">
+  <article class="about-page">
+    <header class="about-hero">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> ABOUT ME</p>
+      <div class="about-heading">
+        <h1>Curiosity,<br /><em>built by hand.</em></h1>
+        <p>I’m the maker behind Smart Mushroom Hub. I built this project to bring together a long-standing interest in mushrooms with the challenge of designing a controlled habitat, documenting it carefully, and learning from what happens inside.</p>
+      </div>
+    </header>
+
+    <section class="about-story" aria-labelledby="about-story-heading">
+      <div><span>01</span><p>THE PROJECT</p></div>
+      <div class="about-copy">
+        <h2 id="about-story-heading">One experiment.<br /><em>Several ways of looking.</em></h2>
+        <p>The work crosses cultivation, electronics, software, environmental observation, and computer vision. I designed and assembled the PVC growing structure, connected the sensing and control hardware, and created the software pathways that record and respond to the habitat.</p>
+        <p>The project is still a process of testing, revising, and documenting. That is why the field notebook includes the practical decisions, unsuccessful attempts, and unanswered questions alongside the finished parts.</p>
+      </div>
+    </section>
+
+    <section class="about-practices" aria-labelledby="about-practices-heading">
+      <p class="eyebrow">WHAT I AM EXPLORING</p>
+      <h2 id="about-practices-heading">The work between<br /><em>living and technical systems.</em></h2>
+      <div class="about-grid">
+        <article><span>01</span><h3>Cultivation</h3><p>Learning how oyster mushrooms respond to a deliberately constructed environment over time.</p></article>
+        <article><span>02</span><h3>Engineering</h3><p>Building understandable hardware and software from practical materials, local constraints, and iterative decisions.</p></article>
+        <article><span>03</span><h3>Computer vision</h3><p>Exploring how scheduled images and YOLO models can support careful observation without replacing it.</p></article>
+      </div>
+    </section>
+
+    <footer class="about-next">
+      <p>The complete build story lives in the field notebook.</p>
+      <a href="/documentation/" class="button button-dark">Open the field notes <Icon name="arrow-right" /></a>
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .about-page{width:min(var(--page-width),calc(100% - 2 * var(--page-pad)));margin:auto;padding:85px 0 110px}
+  .about-hero{padding:30px 0 100px;border-bottom:1px solid var(--line)}
+  .about-heading{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.7fr);align-items:end;gap:clamp(45px,8vw,150px);margin-top:45px}
+  .about-heading h1{font-size:clamp(58px,7.5vw,112px);line-height:.94;letter-spacing:-.05em}
+  .about-heading h1 em,.about-story h2 em,.about-practices h2 em{color:var(--olive)}
+  .about-heading>p{font-size:15px;line-height:1.9;color:var(--muted);max-width:540px;padding-bottom:8px}
+  .about-story{display:grid;grid-template-columns:minmax(150px,.32fr) minmax(0,.68fr);gap:clamp(50px,9vw,170px);padding:105px 0;border-bottom:1px solid var(--line)}
+  .about-story>div:first-child{display:flex;align-items:baseline;gap:16px;color:var(--olive)}
+  .about-story>div:first-child span{font-family:var(--font-display);font-size:35px}
+  .about-story>div:first-child p{font-size:9px;letter-spacing:.14em}
+  .about-copy{max-width:850px}.about-copy h2,.about-practices h2{font-size:clamp(42px,5vw,72px);line-height:1.02;letter-spacing:-.04em;margin-bottom:35px}
+  .about-copy p{font-size:15px;line-height:1.9;color:var(--muted);max-width:720px}.about-copy p+p{margin-top:22px}
+  .about-practices{padding:105px 0}.about-practices>.eyebrow{color:var(--olive);margin-bottom:27px}.about-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(25px,4vw,70px);margin-top:65px}
+  .about-grid article{border-top:1px solid var(--line);padding-top:20px}.about-grid article>span{font-size:9px;color:var(--orange)}.about-grid h3{font-family:var(--font-display);font-size:31px;margin:25px 0 14px}.about-grid p{font-size:13px;line-height:1.8;color:var(--muted)}
+  .about-next{display:flex;align-items:center;justify-content:space-between;gap:30px;padding:48px 0 0;border-top:1px solid var(--line)}.about-next p{font-family:var(--font-display);font-style:italic;font-size:28px;color:var(--olive)}
+  @media(max-width:760px){.about-page{padding:48px 0 75px}.about-hero{padding:15px 0 65px}.about-heading{grid-template-columns:1fr;gap:30px;margin-top:32px}.about-heading h1{font-size:58px}.about-heading>p{font-size:14px}.about-story{grid-template-columns:1fr;gap:30px;padding:70px 0}.about-copy h2,.about-practices h2{font-size:45px}.about-practices{padding:70px 0}.about-grid{grid-template-columns:1fr;gap:38px;margin-top:45px}.about-next{align-items:flex-start;flex-direction:column}.about-next p{font-size:25px}}
+</style>

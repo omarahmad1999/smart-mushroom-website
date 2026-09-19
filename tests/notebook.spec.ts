@@ -1,6 +1,10 @@
 import {test,expect} from '@playwright/test';
 
 test('notebook turns pages, jumps sections, restores history and enlarges photographs',async({page},info)=>{
+  await page.addInitScript(()=>{
+    const Original=window.Audio;const sounds:{audio:HTMLAudioElement;plays:number}[]=[];Object.assign(window,{notebookAudio:sounds});
+    window.Audio=function(src?:string){const audio=new Original(src);const record={audio,plays:0};sounds.push(record);audio.addEventListener('playing',()=>record.plays++);return audio;} as unknown as typeof Audio;
+  });
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await page.goto('/documentation/#notebook-idea');
   const book=page.locator('[data-notebook]');
@@ -18,6 +22,7 @@ test('notebook turns pages, jumps sections, restores history and enlarges photog
   await book.getByLabel('Photo note: The Idea',{exact:true}).click();
   await expect(book.locator('#notebook-idea .nb-annotation')).toHaveAttribute('open','');
   await book.getByRole('button',{name:'Next notebook page',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>Reflect.get(window,'notebookAudio').find((item:any)=>item.audio.src.endsWith('paper-swipe.mp3'))?.plays??0)).toBeGreaterThan(0);
   await expect(status).toContainText(mobile?'Page 2 / 12':'Pages 3–4 / 12');
   await expect(book.locator('[data-nb-fold] .nb-leaf')).toHaveCount(1);
   await expect(book.locator('[data-nb-fold] .nb-leaf')).toHaveCount(0);

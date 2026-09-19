@@ -211,9 +211,7 @@ test('documentation loads with readable notes and a contained schedule table', a
   await expect(page.getByRole('table')).toContainText('Every 6 hours');
   await expect(page.locator('#publication')).toContainText('Grafana is responsible for displaying actual experiment measurements and history.');
   await expectNoHorizontalOverflow(page);
-  await page.getByRole('link', { name: 'Back to the experiment' }).click();
-  await expect(page).toHaveURL(/\/#experiment$/);
-  await expect(page).toHaveTitle('Smart Mushroom Hub');
+  await expect(page.getByRole('link', { name: 'Back to the experiment' })).toHaveCount(0);
 });
 
 test('mobile navigation closes through a link and Escape, restoring its accessible name', async ({ page }, testInfo) => {
@@ -258,8 +256,8 @@ test.describe('without JavaScript', () => {
     await expect(page.locator('video')).toHaveJSProperty('controls', true);
     await expect(page.locator('video')).toHaveJSProperty('autoplay', false);
     await expect(page.locator('#lessons')).toHaveCount(0);
-    await page.goto('/learning-log/');
-    await expect(page.locator('main')).toContainText('An incomplete record is still part of the story.');
+    await page.goto('/about/');
+    await expect(page.locator('main')).toContainText('One experiment.');
     await expectNoHorizontalOverflow(page);
     await page.goto('/documentation/');
     await expect(page.locator('#physical-setup')).toContainText('185 cm high');

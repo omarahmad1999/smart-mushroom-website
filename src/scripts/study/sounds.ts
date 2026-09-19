@@ -1,10 +1,11 @@
-type LoopSound = 'fan' | 'mist';
+type LoopSound = 'fan' | 'cooling' | 'mist';
 type SwitchSound = 'light' | 'screen';
 
 /** Local, pre-trimmed media. Sounds start only through a visitor's interaction. */
 export function createStudySounds() {
   const clips = {
     fan: '/media/study/fan-loop.ogg',
+    cooling: '/media/study/fan-loop.ogg',
     mist: '/media/study/humidifier-loop.ogg',
     light: '/media/study/light-switch.mp3',
     screen: '/media/study/screen-switch.ogg',
@@ -17,7 +18,7 @@ export function createStudySounds() {
     if (!players.has(name)) {
       const audio = new Audio(clips[name]);
       audio.preload = 'auto';
-      audio.loop = name === 'fan' || name === 'mist';
+      audio.loop = name === 'fan' || name === 'cooling' || name === 'mist';
       audio.volume = audio.loop ? .35 : .55;
       players.set(name, audio);
     }
