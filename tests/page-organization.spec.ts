@@ -9,6 +9,13 @@ test('opening habitat, collapsed catalogue, separate notes and photo footer work
   await expect(page.locator('#habitat,#resources')).toHaveCount(0);
   await expect(page.locator('#study-heading')).toHaveRole('heading');
   await expect(page.locator('.ms-explore')).toHaveAttribute('href','#experiment');
+  const alignment=await page.locator('#material-study').evaluate(section=>{
+    const scene=section.querySelector('.ms-scene-shell')!.getBoundingClientRect();
+    const button=section.querySelector('.ms-explore')!.getBoundingClientRect();
+    const caption=section.querySelector('.ms-pairing-caption p')!.getBoundingClientRect();
+    return {right:Math.abs(scene.right-button.right),row:Math.abs(caption.top-button.top)};
+  });
+  expect(alignment.right).toBeLessThanOrEqual(1);expect(alignment.row).toBeLessThanOrEqual(1);
   const catalogue=page.locator('.ms-exploration');
   await expect(catalogue).not.toHaveAttribute('open');
   await expect(catalogue.locator('.ms-component-groups')).toBeHidden();

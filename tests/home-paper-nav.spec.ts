@@ -12,6 +12,8 @@ test('paper contents panel opens, tracks chapters, and leaves the main layout un
   await expect(toggle).toHaveAttribute('aria-expanded','true');
   await expect(panel.locator('.paper-index-sheet')).toBeVisible();
   await expect(panel.locator('[data-home-section]')).toHaveCount(6);
+  await expect(panel.locator('.paper-mushroom-doodle')).toHaveCount(2);
+  expect(await panel.locator('[data-home-section]').evaluateAll(links=>links.every(link=>getComputedStyle(link).borderBottomStyle==='solid'))).toBe(true);
   await panel.getByRole('link',{name:/Connected System/}).click();
   await expect(page).toHaveURL(/#architecture$/);
   await expect(panel.locator('.paper-index-sheet')).toBeHidden();
