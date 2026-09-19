@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createStage } from './hardware';
 import { createTent } from './tent';
+import { createCooler } from './cooler';
 import { createDevices } from './devices';
 import { createWorkbench } from './workbench';
 import { createPeripherals } from './peripherals';
@@ -12,7 +13,7 @@ import { createStudySounds } from './sounds';
 import { components, componentById, type Component, type VisualAction } from './content';
 
 type Region = 'overview' | 'tent' | 'workbench';
-type Demo = 'fan' | 'mist' | 'light' | 'camera';
+type Demo = 'cooling' | 'fan' | 'mist' | 'light' | 'camera';
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
 export function mountMaterialStudy(section: HTMLElement) {
@@ -96,11 +97,12 @@ export function mountMaterialStudy(section: HTMLElement) {
   scene.add(world);
   const tent = createTent();
   const devices = createDevices();
+  const cooler = createCooler();
   const bench = createWorkbench();
   const peripherals = createPeripherals();
   const screenMaterial=peripherals.monitor.userData.screenMaterial as THREE.MeshBasicMaterial;
   const groups: Record<Component, THREE.Group> = {
-    ...peripherals,bag:tent.bags,bag2:tent.bag2,frame:tent.frame,cover:tent.cover,
+    cooler:cooler.group,...peripherals,bag:tent.bags,bag2:tent.bag2,frame:tent.frame,cover:tent.cover,
     fan:devices.fan,vent:devices.vent,humidity:devices.humidity,duct:devices.duct,light:devices.light,
     camera:devices.camera,camera2:devices.camera2,sensor:devices.sensor,sht:devices.sht,
     pi:bench.pi,ai:bench.ai,mosfets:bench.mosfets,'mosfet-led':bench.mosfetLed,ups:bench.ups,ssd:bench.ssd,table:bench.furniture,
@@ -227,7 +229,7 @@ export function mountMaterialStudy(section: HTMLElement) {
 
   function syncDemos() {
     section.dataset.studyDemo=[...demos].join(' ')||'none';
-    for(const [id,action] of [['fan','fan'],['humidity','mist'],['light','light']] as const){
+    for(const [id,action] of [['cooler','cooling'],['fan','fan'],['humidity','mist'],['light','light']] as const){
       section.dataset[`study${action[0].toUpperCase()+action.slice(1)}Active`]=String(demos.has(action));
       section.querySelectorAll<HTMLElement>(`[data-study-hotspot="${id}"],[data-study-select="${id}"]`).forEach(button=>{
         button.dataset.deviceActive=String(demos.has(action));
@@ -240,6 +242,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     const stop=(name:Demo)=>!action||action===name;
     if(action)demos.delete(action);else demos.clear();
     if(stop('fan')){sounds.stopLoop('fan');if(fanAirflow){fanAirflow.visible=false;fanAirflow.position.y=0;}}
+    if(stop('cooling'))cooler.airflow.visible=false;
     if(stop('mist')){sounds.stopLoop('mist');devices.mist.visible=false;}
     if(stop('camera'))devices.cameraField.visible=devices.cameraField2.visible=false;
     if(stop('light')){
@@ -256,6 +259,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     if (!demos.size) return;
     const elapsed = (now - demoStarted) / 1000;
     if (reduceMotion.matches) return;
+    if (demos.has('cooling')) cooler.animate(elapsed);
     if (demos.has('fan')) {
       devices.fanRotor.rotation.y += dt * 7.5;
       if (fanAirflow) fanAirflow.position.y = Math.sin(elapsed * 3) * 0.045;
@@ -300,7 +304,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     controls.update(dt);
     draw();
     renderingFrame = false;
-    const animatedDemo = !reduceMotion.matches && (demos.has('fan') || demos.has('mist'));
+    const animatedDemo = !reduceMotion.matches && (demos.has('fan') || demos.has('mist') || demos.has('cooling'));
     if (tween || assembly || animatedDemo || controls.autoRotate || now < keepMovingUntil) animationFrame = requestAnimationFrame(loop);
   }
   function wake(duration = 500) {
@@ -351,6 +355,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     const active = action === 'mushrooms' ? mushroomsVisible : action === 'cover' ? tent.cover.visible : action === 'wiring' ? wiring.visible : action === 'screen' ? screenOn : demos.has(action as Demo);
     const labels: Record<VisualAction, [string, string]> = {
       mushrooms: ['Show illustrated mushrooms', 'Hide illustrated mushrooms'], cover: ['Show the covering', 'Remove the covering'], wiring: ['Show the connections', 'Hide the connections'],
+      cooling: ['Turn cooler on', 'Turn cooler off'],
       screen: ['Turn screen on', 'Turn screen off'], fan: ['Turn fan on', 'Turn fan off'], mist: ['Turn humidifier on', 'Turn humidifier off'], light: ['Show the lighting', 'Return to natural light'], camera: ['Show the camera view', 'Hide the camera view'],
     };
     actionButton.dataset.studyAction = action;
@@ -366,7 +371,7 @@ export function mountMaterialStudy(section: HTMLElement) {
       focus.addScaledVector(right, 0.38);
     }
     const overhead=['mosfets','mosfet-led','breadboard','cobbler','keyboard','mouse','ssd','adapter12','adapter24','power-strip'].includes(id)||id.startsWith('wago-');
-    moveTo(focus,item.zoom*(viewport.clientWidth<700?1.20:1),id==='monitor'?focus.clone().add(V(.15,.65,5.5)):overhead?focus.clone().add(V(0,5.2,2.8)):undefined);
+    moveTo(focus,item.zoom*(viewport.clientWidth<700?1.20:1),id==='cooler'?focus.clone().add(V(-4,2.4,8)):id==='monitor'?focus.clone().add(V(.15,.65,5.5)):overhead?focus.clone().add(V(0,5.2,2.8)):undefined);
   }
   function select(id: Component, fromList = false) {
     if (!alive || !componentById[id]) return;
@@ -394,6 +399,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     }
     syncAction();
     status.textContent = `${item.label} selected. ${item.title}`;
+    if(id==='cooler'&&!demos.has('cooling'))runAction();
     if (fromList) viewport.scrollIntoView({ block: 'center', behavior: reduceMotion.matches ? 'instant' : 'smooth' });
   }
   function setLayer(layer: 'cover' | 'wiring' | 'mushrooms' | 'labels') {
@@ -418,6 +424,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     if(demos.has(action)){stopDemo(action);draw();wake();status.textContent='Component switched off. Other active components remain on.';return;}
     if(!demos.size)demoStarted=performance.now();demos.add(action);
     if(action==='fan'||action==='mist')sounds.loop(action);
+    if (action === 'cooling') {cooler.airflow.visible=true;focusComponent(selected);}
     if (action === 'fan') {
       if (fanAirflow) fanAirflow.visible = true;
       focusComponent(selected);
@@ -438,7 +445,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     syncDemos();
     syncAction(); draw(); wake();
     viewport.scrollIntoView({block:'center',behavior:reduceMotion.matches?'instant':'smooth'});
-    status.textContent = `${action === 'fan' ? 'Airflow' : action === 'mist' ? 'Mist path' : action === 'camera' ? 'Camera viewing area' : 'LED lighting'} demonstration shown. ${reduceMotion.matches ? 'Motion is reduced.' : 'Illustration only.'}`;
+    status.textContent = `${action === 'cooling' ? 'Cool airflow' : action === 'fan' ? 'Airflow' : action === 'mist' ? 'Mist path' : action === 'camera' ? 'Camera viewing area' : 'LED lighting'} demonstration shown. ${reduceMotion.matches ? 'Motion is reduced.' : 'Illustration only.'}`;
   }
   function zoom(direction: string) {
     tween = null;

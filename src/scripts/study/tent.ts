@@ -183,6 +183,7 @@ function coverPanels() {
         glass.rotation.y = Math.PI/2;glass.position.set(x-.002,y,.02);cover.add(glass);
       }
       hole(-.34,.38,.10,.82);
+      const coolerInlet = new THREE.Path();coolerInlet.absarc(-.05,3.77,.13,0,Math.PI*2,true);side.holes.push(coolerInlet);
     } else {
       hole(-.325,.35,.125,.81);
       const ductHole = new THREE.Path();ductHole.absarc(-.15,3.09,.125,0,Math.PI*2,true);side.holes.push(ductHole);

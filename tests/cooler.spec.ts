@@ -1,0 +1,23 @@
+import {test,expect} from '@playwright/test';
+test.setTimeout(180_000);
+test.use({reducedMotion:'reduce',launchOptions:{executablePath:'/usr/bin/chromium',args:['--no-sandbox','--enable-unsafe-swiftshader']}});
+test('cooler selection starts airflow and toggles independently of the fan',async({page})=>{
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('/#material-study');
+  const section=page.locator('#material-study');
+  await expect(section).toHaveAttribute('data-study-state','ready',{timeout:45000});
+  await section.locator('.ms-exploration summary').click();
+  const choose=async(id:string)=>section.locator(`[data-study-select="${id}"]`).click();
+  await choose('fan');await section.locator('[data-study-action]').click();
+  await choose('cooler');
+  await expect(section).toHaveAttribute('data-study-cooling-active','true');
+  await expect(section).toHaveAttribute('data-study-fan-active','true');
+  await expect(section.locator('[data-study-hotspot="cooler"]')).toHaveAttribute('data-device-active','true');
+  await expect(section.locator('[data-study-action]')).toHaveAccessibleName('Turn cooler off');
+  await section.locator('[data-study-action]').click();
+  await expect(section).toHaveAttribute('data-study-cooling-active','false');
+  await expect(section).toHaveAttribute('data-study-fan-active','true');
+  await section.locator('[data-study-hotspot="cooler"]').click();
+  await expect(section).toHaveAttribute('data-study-cooling-active','true');
+  expect(errors).toEqual([]);
+});
