@@ -4,7 +4,7 @@ export type Point = [number, number, number];
 export const positions = {
   bag: [.57, 2.60, -.12], bag2: [.57, 1.19, -.12],
   frame: [-.30, 3.24, .45], cover: [1.40, 2.65, .45],
-  cooler: [-1.03, 1.63, -.83],
+  cooler: [-1.03, 1.63, -1.58],
   fan: [1.44, .58, -.10], vent: [-.335, .60, -.12],
   humidity: [2.42, .14, -.12], duct: [1.86, 2.42, -.13],
   light: [.55, 4.10, -.12], camera: [-.39, 3.36, .02], camera2: [-.39, 1.95, .02],

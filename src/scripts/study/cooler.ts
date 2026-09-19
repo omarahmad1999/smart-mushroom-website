@@ -4,7 +4,7 @@ import { roundedBox } from './hardware';
 // Authored Fresh-style evaporative cooler. No connection to physical hardware.
 export function createCooler() {
   const group=new THREE.Group();group.userData.component='cooler';
-  const body=new THREE.Group();body.position.set(-1.03,.14,-1.12);group.add(body);
+  const body=new THREE.Group();body.position.set(-1.03,.14,-1.87);group.add(body);
   const charcoal=new THREE.MeshStandardMaterial({color:'#292c2b',roughness:.55});
   const dark=new THREE.MeshStandardMaterial({color:'#111817',roughness:.65});
   const gold=new THREE.MeshStandardMaterial({color:'#b5a17a',metalness:.35,roughness:.42});
@@ -38,8 +38,9 @@ export function createCooler() {
   // Adapter hood feeds a ribbed duct up the rear-left side, above the upper camera.
   box(.49,.31,.19,0,1.31,.40,charcoal,.04);
   const route=new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-1.03,1.45,-.64),new THREE.Vector3(-1.05,1.70,-.57),
-    new THREE.Vector3(-1.08,2.65,-.56),new THREE.Vector3(-1.02,3.63,-.48),
+    new THREE.Vector3(-1.03,1.45,-1.39),new THREE.Vector3(-1.45,1.80,-1.27),
+    new THREE.Vector3(-1.55,2.65,-1.20),new THREE.Vector3(-1.49,3.48,-1.04),
+    new THREE.Vector3(-1.27,3.77,-.60),
     new THREE.Vector3(-.69,3.77,-.13),new THREE.Vector3(-.18,3.77,-.03),
   ]);
   const duct=new THREE.Mesh(new THREE.TubeGeometry(route,80,.115,16,false),silver);group.add(duct);
