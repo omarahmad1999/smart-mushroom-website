@@ -4,12 +4,21 @@ import character from '../assets/about/myko-left-empty.png';
 ---
 <section class="myko" data-myko data-mood="neutral" data-tracking="true" aria-label="Myko, a little mushroom explorer">
   <svg class="myko-floor" viewBox="0 0 1254 1254" aria-hidden="true">
-    <path d="M250 1192L727 1144 1080 1193 1080 1210 604 1251 250 1210Z" fill="#c0b79e" stroke="#b0a88e" stroke-width="2"/>
-    <path d="M250 1192L727 1144 1080 1193 604 1235Z" fill="#dfd8c5" stroke="#c2baa4" stroke-width="2"/>
-    <path d="M410 1176L766 1220M576 1160L925 1207M419 1215L888 1167" fill="none" stroke="#c9c1ac" stroke-width="2"/>
-    <ellipse cx="696" cy="1200" rx="305" ry="25" fill="#756d51" opacity=".14"/>
-    <ellipse cx="471" cy="1175" rx="98" ry="13" fill="#756d51" opacity=".2"/>
-    <ellipse cx="805" cy="1214" rx="119" ry="14" fill="#756d51" opacity=".2"/>
+    <defs>
+      <radialGradient id="myko-moss"><stop stop-color="#b6bc78"/><stop offset=".65" stop-color="#8d9d60"/><stop offset="1" stop-color="#667d4b"/></radialGradient>
+    </defs>
+    <ellipse cx="668" cy="1218" rx="386" ry="29" fill="#635c3b" opacity=".13"/>
+    <path d="M279 1204Q265 1187 318 1182Q330 1166 396 1170Q470 1142 551 1152Q638 1135 706 1150Q783 1134 852 1156Q933 1149 973 1175Q1055 1177 1058 1199L1033 1216Q973 1231 925 1227Q850 1251 783 1238Q693 1255 623 1240Q536 1252 476 1234Q390 1240 350 1225Q292 1227 279 1204Z" fill="#766b46"/>
+    <path d="M279 1198Q265 1181 318 1176Q330 1160 396 1164Q470 1136 551 1146Q638 1129 706 1144Q783 1128 852 1150Q933 1143 973 1169Q1055 1171 1058 1193Q1044 1207 1010 1208Q971 1227 925 1221Q850 1245 783 1232Q693 1249 623 1234Q536 1246 476 1228Q390 1234 350 1219Q292 1221 279 1198Z" fill="url(#myko-moss)" stroke="#74844f" stroke-width="2"/>
+    <g fill="#c3c88a" opacity=".45"><ellipse cx="361" cy="1198" rx="46" ry="7"/><ellipse cx="586" cy="1216" rx="62" ry="9"/><ellipse cx="938" cy="1203" rx="59" ry="8"/></g>
+    <ellipse cx="471" cy="1175" rx="98" ry="13" fill="#36482b" opacity=".24"/>
+    <ellipse cx="805" cy="1214" rx="119" ry="14" fill="#36482b" opacity=".24"/>
+    {[[300,1195,1],[350,1181,.8],[376,1213,.8],[446,1220,.7],[524,1204,.8],[585,1230,.9],[654,1225,.7],[709,1240,.8],[927,1220,1],[985,1200,.9],[1030,1190,.8],[920,1165,.8],[625,1152,.7]].map(([x,y,scale]) => (
+      <g transform={`translate(${x} ${y}) scale(${scale})`}>
+        <path d="M0 0Q-15-10-18-26Q-5-18 1-6Q0-27 7-36Q11-19 6-5Q17-20 26-20Q17-7 8 1Z" fill="#526d3c"/>
+        <path d="M2 0Q-5-14-7-23M5 0Q9-15 16-20" fill="none" stroke="#b9c180" stroke-width="2" stroke-linecap="round"/>
+      </g>
+    ))}
   </svg>
   <button class="myko-stage" type="button" aria-label="Say hello to Myko" aria-describedby="myko-hint" data-myko-hello>
     <Image src={character} width={650} format="webp" quality={90} alt="Myko, a cream robot covered in mushrooms, facing left" loading="eager" />
