@@ -264,7 +264,7 @@ const phases = [
 <style>
   .research-chapters { --rc-ink: #172b29; --rc-muted: #60665b; --rc-paper: #f6f3eb; --rc-olive: #6f7957; --rc-orange: #d45b36; color: var(--rc-ink); background: var(--rc-paper); font-family: var(--font-body, sans-serif); }
   .rc-section { padding-block: clamp(76px, 8vw, 128px); scroll-margin-top: 86px; }
-  .rc-container { width: min(1600px, calc(100% - 2 * var(--page-pad, 5vw))); margin-inline: auto; }
+  .rc-container { width: min(var(--page-width), calc(100% - 2 * var(--page-pad, 5vw))); margin-inline: auto; }
   .rc-section-label { display: flex; align-items: center; gap: 12px; font-size: 10px; font-weight: 600; letter-spacing: .12em; line-height: 1.5; }
   .rc-marker { width: 6px; height: 6px; flex: 0 0 6px; background: var(--rc-orange); }
   .rc-label-rule { height: 1px; flex: 1; background: currentColor; opacity: .18; margin-inline: 12px; }

@@ -93,7 +93,7 @@ const routes = [
   .schematic-tools{display:flex;align-items:center;gap:20px}.flow-sound{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:8px 10px;background:transparent;border:1px solid transparent;border-radius:3px;color:#69735e;font-size:11px;white-space:nowrap}.flow-sound[aria-pressed="true"]{color:#a45020;background:#fff9f1;border-color:#e1cbb9}.flow-sound:disabled{opacity:.55}.flow-sound:hover{color:#a45020}@media(max-width:760px){.schematic-tools{width:100%;justify-content:space-between;gap:10px}.schematic-tools .schematic-label{border:0}}
 
   .system-architecture { background: #f6f3eb; color: #172b29; padding: clamp(32px,4vw,48px) 0; scroll-margin-top: 90px; }
-  .architecture-inner { width: min(1600px, calc(100% - 2 * var(--page-pad, 5vw))); margin-inline: auto; }
+  .architecture-inner { width: min(var(--page-width), calc(100% - 2 * var(--page-pad, 5vw))); margin-inline: auto; }
   .architecture-heading { display: grid; grid-template-columns: 1.3fr 0.8fr; gap: 70px; align-items: end; margin-bottom: 42px; }
   .architecture-eyebrow, .route-eyebrow, .schematic-label, .schematic-reference { font-family: var(--font-body, sans-serif); font-size: 10px; letter-spacing: .12em; font-weight: 500; }
   .architecture-eyebrow { display: flex; gap: 9px; align-items: center; margin: 0 0 23px; color: #616d57; font-size: 11px; }
