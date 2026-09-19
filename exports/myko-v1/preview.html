@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Myko — layered asset preview</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f6f3eb;color:#344b3e;font:16px system-ui;text-align:center}h1{font:italic 42px Georgia;margin:32px 0 10px}p{margin:10px 20px;line-height:1.6}button{font:inherit;padding:10px 20px;background:#e4e8d8;border:1px solid #a5b397;border-radius:8px;cursor:pointer;min-height:44px}.stage{width:min(660px,95vw);aspect-ratio:1;margin:auto;position:relative}.stage img{position:absolute;pointer-events:none}.body,.original{inset:0;width:100%}.head-group{position:absolute;inset:0;transform-origin:51% 44%;transform:rotate(var(--tilt,0deg));transition:transform .25s ease-out}.head{width:72%;left:13.55%;top:-.3%}.eye-position{position:absolute;inset:0;transform:translate(var(--eye-x,0px),var(--eye-y,0px));transition:transform .18s ease-out}.eyes{width:83.3%;left:8.15%;top:-.72%}[hidden]{display:none!important}.hint{font-size:13px;color:#697564}footer{padding:24px}a{color:inherit}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<h1>Hello, I’m Myko.</h1><p>Move your cursor or tap around me.</p>
+<div class="stage" role="img" aria-label="Myko robot with mushroom-covered cream armour and glowing amber eyes"><img class="body" src="myko-body.png" alt=""><div class="head-group"><img class="head" src="myko-head.png" alt=""><div class="eye-position"><img class="eyes" src="myko-eyes.png" alt=""></div></div><img class="original" src="myko-complete.png" alt="" hidden></div>
+<button type="button" aria-pressed="false" id="compare">Show original master</button><p class="hint">Layered draft · Head tilt and eye tracking · No Three.js</p>
+<footer>Generated layers have placement corrections; see README.md.</footer>
+<script>
+const stage=document.querySelector('.stage'),head=document.querySelector('.head-group'),original=document.querySelector('.original'),button=document.querySelector('#compare');
+const reduced=matchMedia('(prefers-reduced-motion:reduce)');
+document.addEventListener('pointermove',e=>{if(reduced.matches)return;const r=stage.getBoundingClientRect();const x=Math.max(-1,Math.min(1,(e.clientX-r.left-r.width*.52)/(r.width*.5))),y=Math.max(-1,Math.min(1,(e.clientY-r.top-r.height*.36)/(r.height*.5)));head.style.setProperty('--tilt',`${x*3}deg`);head.style.setProperty('--eye-x',`${x*r.width*.009}px`);head.style.setProperty('--eye-y',`${y*r.width*.006}px`);});
+document.documentElement.addEventListener('pointerleave',()=>{head.style.setProperty('--tilt','0deg');head.style.setProperty('--eye-x','0px');head.style.setProperty('--eye-y','0px');});
+button.addEventListener('click',()=>{original.hidden=!original.hidden;button.setAttribute('aria-pressed',String(!original.hidden));button.textContent=original.hidden?'Show original master':'Show interactive layers';});
+</script></html>
