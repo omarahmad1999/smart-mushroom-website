@@ -14,12 +14,13 @@ import character from '../assets/about/myko-left-empty.png';
   <button class="myko-stage" type="button" aria-label="Say hello to Myko" aria-describedby="myko-hint" data-myko-hello>
     <Image src={character} width={650} format="webp" quality={90} alt="Myko, a cream robot covered in mushrooms, facing left" loading="eager" />
     <svg class="myko-face" viewBox="0 0 1254 1254" aria-hidden="true">
-      <g class="gaze"><g class="eyes neutral"><ellipse cx="403" cy="480" rx="16" ry="40" transform="rotate(-12 403 480)"/><ellipse cx="554" cy="455" rx="28" ry="44" transform="rotate(-12 554 455)"/></g>
+      <defs><clipPath id="myko-visor"><path d="M478 307C415 304 374 365 370 425C363 482 389 536 431 553C497 570 591 538 623 493C650 446 616 357 568 328C537 309 506 305 478 307Z"/></clipPath></defs>
+      <g clip-path="url(#myko-visor)"><g class="gaze"><g transform="translate(96 -18) scale(.8 1)"><g class="eyes neutral"><ellipse cx="403" cy="480" rx="16" ry="40" transform="rotate(-12 403 480)"/><ellipse cx="554" cy="455" rx="28" ry="44" transform="rotate(-12 554 455)"/></g>
       <g class="eyes curious"><ellipse cx="403" cy="480" rx="17" ry="36" transform="rotate(-16 403 480)"/><ellipse cx="554" cy="455" rx="30" ry="48" transform="rotate(-12 554 455)"/></g>
       <g class="eyes happy" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round"><path d="M388 479Q400 449 418 474M528 456Q549 415 579 446"/></g>
       <g class="eyes melancholic"><path d="M387 474L419 468Q423 507 404 505Q391 503 387 474M525 452L581 440Q585 480 559 481Q536 487 525 452"/></g>
       <g class="eyes sleepy" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"><path d="M388 482Q405 501 420 475M531 461Q561 484 579 450"/></g>
-      <g class="eyes surprised"><ellipse cx="403" cy="480" rx="20" ry="45" transform="rotate(-12 403 480)"/><ellipse cx="554" cy="455" rx="33" ry="52" transform="rotate(-12 554 455)"/></g></g>
+      <g class="eyes surprised"><ellipse cx="403" cy="480" rx="20" ry="45" transform="rotate(-12 403 480)"/><ellipse cx="554" cy="455" rx="33" ry="52" transform="rotate(-12 554 455)"/></g></g></g></g>
     </svg>
     <span class="emotion-symbol" aria-hidden="true" data-emotion-symbol></span>
   </button>

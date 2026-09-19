@@ -6,18 +6,21 @@ test('Myko stays planted at the screen edge and tracks every direction',async({p
   const before=await myko.boundingBox();const width=await page.locator('.myko-stage').evaluate(el=>el.getBoundingClientRect().width);expect(width).toBeCloseTo(info.project.name==='mobile'?380:440,0);
   await page.evaluate(()=>window.scrollTo({top:500,behavior:'instant'}));const after=await myko.boundingBox();expect(after!.y).toBeCloseTo(before!.y,1);expect(after!.x).toBeCloseTo(before!.x,1);
   const stage=page.locator('.myko-stage');await expect(stage).toHaveCSS('transform','none');await expect(page.locator('.myko-floor')).toBeVisible();
-  const rect=await stage.boundingBox();const cx=rect!.x+rect!.width*478.5/1254,cy=rect!.y+rect!.width*467.5/1254;
+  const rect=await stage.boundingBox();const cx=rect!.x+rect!.width*478.8/1254,cy=rect!.y+rect!.width*449.5/1254;
   for(let i=0;i<8;i++){
     const angle=i*Math.PI/4;
     await page.mouse.move(cx+Math.cos(angle)*70,cy+Math.sin(angle)*70);
-    const gaze=await myko.evaluate(el=>({x:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-x'))/100,y:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-y'))/85}));
+    const gaze=await myko.evaluate(el=>({x:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-x'))/26,y:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-y'))/45}));
     const length=Math.hypot(gaze.x,gaze.y);expect(length).toBeGreaterThan(.3);
     expect(gaze.x/length).toBeCloseTo(Math.cos(angle),1);expect(gaze.y/length).toBeCloseTo(Math.sin(angle),1);
   }
   await page.mouse.move(10,20);await page.clock.runFor(250);
   const readOffset=()=>page.locator('.gaze').evaluate(el=>{const m=new DOMMatrix(getComputedStyle(el).transform);const scale=el.closest('svg')!.getBoundingClientRect().width/1254;return{x:m.e*scale,y:m.f*scale};});
-  await expect.poll(async()=>(await readOffset()).x).toBeLessThan(-5);await expect.poll(async()=>(await readOffset()).y).toBeLessThan(-8);
-  await expect(stage).toHaveCSS('clip-path','none');
+  await expect.poll(async()=>(await readOffset()).x).toBeLessThan(-1);await expect.poll(async()=>(await readOffset()).y).toBeLessThan(-4);
+  await expect(page.locator('.myko-face [clip-path]')).toHaveAttribute('clip-path','url(#myko-visor)');
+  await page.mouse.move(page.viewportSize()!.width-5,20);
+  await expect.poll(async()=>(await readOffset()).x).toBeGreaterThan(0);
+  await expect.poll(async()=>(await readOffset()).y).toBeLessThan(-4);
   const first=await myko.getAttribute('style');
   await page.mouse.move(10,200);expect(await myko.getAttribute('style')).not.toBe(first);
   expect(await stage.evaluate(el=>el.getAnimations().length)).toBe(0);

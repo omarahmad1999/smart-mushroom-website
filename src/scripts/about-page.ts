@@ -10,11 +10,11 @@ if(page){
   function gaze(){
     if(!motion||!pointer||locked||myko.dataset.mood!=='neutral')return;
     const rect=stage.getBoundingClientRect();
-    const dx=pointer.x-(rect.left+rect.width*478.5/1254),dy=pointer.y-(rect.top+rect.height*467.5/1254);
+    const dx=pointer.x-(rect.left+rect.width*478.8/1254),dy=pointer.y-(rect.top+rect.height*449.5/1254);
     const distance=Math.hypot(dx,dy),reach=Math.tanh(distance/(rect.width*.3));
     // Preserve the cursor's angle at every distance; independent clamping flattened far-away directions.
-    myko.style.setProperty('--eye-x',`${distance?dx/distance*reach*100:0}px`);
-    myko.style.setProperty('--eye-y',`${distance?dy/distance*reach*85:0}px`);
+    myko.style.setProperty('--eye-x',`${distance?dx/distance*reach*26:0}px`);
+    myko.style.setProperty('--eye-y',`${distance?dy/distance*reach*45:0}px`);
   }
   function mood(value:string){myko.dataset.mood=value;myko.dataset.tracking=String(value==='neutral'&&motion&&!locked);symbol.textContent=symbols[value];hint.textContent=labels[value];if(value==='neutral')gaze();}
   function clearIdle(){clearTimeout(idleTwo);clearTimeout(idleFour);}
