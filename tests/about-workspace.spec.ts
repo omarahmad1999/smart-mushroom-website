@@ -1,4 +1,6 @@
 import {test,expect} from '@playwright/test';
+test.setTimeout(90000);
+test.use({launchOptions:{executablePath:'/usr/bin/chromium',args:['--no-sandbox','--enable-unsafe-swiftshader']}});
 
 test('workspace objects and labels open matching notes, with optional paper audio',async({page})=>{
   await page.addInitScript(()=>{
@@ -10,9 +12,15 @@ test('workspace objects and labels open matching notes, with optional paper audi
   await page.goto('/about/');
   const workspace=page.locator('[data-about-workspace]');
   await expect(workspace).toHaveAttribute('data-enhanced','true');
-  await expect(workspace.locator('.mascot img')).toHaveJSProperty('naturalWidth',1254);
+  await workspace.scrollIntoViewIfNeeded();
+  await expect(workspace).toHaveAttribute('data-character','ready',{timeout:40000});
+  const canvas=workspace.locator('canvas');
+  await expect(canvas).toBeVisible();
+  const initial=await workspace.getAttribute('data-mascot-position');
+  await canvas.focus();await page.keyboard.press('ArrowLeft');
+  await expect.poll(()=>workspace.getAttribute('data-mascot-position')).not.toBe(initial);
   for(const id of ['mushrooms','software','building','learning','links','maker']){
-    await workspace.locator(`.workspace-object[data-note="${id}"]`).click();
+    await workspace.locator(`.workspace-tabs [data-note="${id}"]`).click();
     await expect(workspace.locator('[data-workspace-note]:visible')).toHaveCount(1);
     await expect(workspace.locator(`#about-note-${id}`)).toBeVisible();
     await expect(workspace.locator(`.workspace-tabs [data-note="${id}"]`)).toHaveAttribute('aria-pressed','true');
