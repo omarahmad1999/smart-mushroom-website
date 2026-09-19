@@ -10,11 +10,15 @@ test('Myko stays planted at the screen edge and tracks every direction',async({p
   for(let i=0;i<8;i++){
     const angle=i*Math.PI/4;
     await page.mouse.move(cx+Math.cos(angle)*70,cy+Math.sin(angle)*70);
-    const gaze=await myko.evaluate(el=>({x:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-x'))/18,y:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-y'))/12}));
+    const gaze=await myko.evaluate(el=>({x:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-x'))/100,y:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-y'))/85}));
     const length=Math.hypot(gaze.x,gaze.y);expect(length).toBeGreaterThan(.3);
     expect(gaze.x/length).toBeCloseTo(Math.cos(angle),1);expect(gaze.y/length).toBeCloseTo(Math.sin(angle),1);
   }
-  await page.mouse.move(10,20);const first=await myko.getAttribute('style');
+  await page.mouse.move(10,20);await page.clock.runFor(250);
+  const readOffset=()=>page.locator('.gaze').evaluate(el=>{const m=new DOMMatrix(getComputedStyle(el).transform);const scale=el.closest('svg')!.getBoundingClientRect().width/1254;return{x:m.e*scale,y:m.f*scale};});
+  await expect.poll(async()=>(await readOffset()).x).toBeLessThan(-5);await expect.poll(async()=>(await readOffset()).y).toBeLessThan(-8);
+  await expect(stage).toHaveCSS('clip-path','none');
+  const first=await myko.getAttribute('style');
   await page.mouse.move(10,200);expect(await myko.getAttribute('style')).not.toBe(first);
   expect(await stage.evaluate(el=>el.getAnimations().length)).toBe(0);
 });
