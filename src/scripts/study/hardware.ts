@@ -50,20 +50,20 @@ export function createStage() {
   const wood = new THREE.MeshStandardMaterial({ color: '#c9b98e', roughness: 0.88 });
   const edge = new THREE.MeshStandardMaterial({ color: '#e6d9b7', roughness: 0.76 });
   const surface = new THREE.MeshStandardMaterial({ color: '#dddfca', roughness: 0.93 });
-  const base = roundedBox(7.75, 0.12, 3.42, 0.055, wood);
-  base.position.set(-.55, 0.025, 0);
+  const base = roundedBox(8.55, 0.12, 4.72, 0.055, wood);
+  base.position.set(-.55, 0.025, -.55);
   group.add(base);
-  const rim = roundedBox(7.78, 0.035, 3.45, 0.045, edge);
-  rim.position.set(-.55, 0.084, 0);
+  const rim = roundedBox(8.58, 0.035, 4.75, 0.045, edge);
+  rim.position.set(-.55, 0.084, -.55);
   group.add(rim);
-  const top = roundedBox(7.69, 0.04, 3.36, 0.045, surface);
-  top.position.set(-.55, 0.12, 0);
+  const top = roundedBox(8.49, 0.04, 4.66, 0.045, surface);
+  top.position.set(-.55, 0.12, -.55);
   group.add(top);
   // A quiet inlay gives the small platform a finished edge without a busy grid.
   const inlayMaterial = new THREE.MeshStandardMaterial({ color: '#b8bea3', roughness: 0.95 });
-  for (const x of [-4.23, 3.13]) {
-    const strip = roundedBox(0.008, 0.001, 3.03, 0.0004, inlayMaterial);
-    strip.position.set(x, 0.141, 0);
+  for (const x of [-4.63, 3.53]) {
+    const strip = roundedBox(0.008, 0.001, 4.33, 0.0004, inlayMaterial);
+    strip.position.set(x, 0.141, -.55);
     group.add(strip);
   }
   const plate = roundedBox(1.18, 0.004, 0.20, 0.018, new THREE.MeshStandardMaterial({ color: '#eee9d9', roughness: 0.8 }));

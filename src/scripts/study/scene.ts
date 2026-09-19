@@ -141,9 +141,9 @@ export function mountMaterialStudy(section: HTMLElement) {
   gradient.addColorStop(1, 'rgba(82,75,54,0)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 128, 128);
-  const softShadow = new THREE.Mesh(new THREE.PlaneGeometry(9.0, 4.6), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shadowCanvas), transparent: true, depthWrite: false, toneMapped: false }));
+  const softShadow = new THREE.Mesh(new THREE.PlaneGeometry(9.8, 5.9), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shadowCanvas), transparent: true, depthWrite: false, toneMapped: false }));
   softShadow.rotation.x = -Math.PI / 2;
-  softShadow.position.set(-.55,-.042,0);
+  softShadow.position.set(-.55,-.042,-.55);
   scene.add(softShadow);
 
   let alive = true;
