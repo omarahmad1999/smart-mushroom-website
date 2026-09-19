@@ -182,6 +182,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     // PointsMaterial uses pixel units with an orthographic camera. Preserve a
     // soft plume of world-sized particles through zoom and responsive resizing.
     (devices.mist.material as THREE.PointsMaterial).size=.23*viewport.clientHeight*camera.zoom/(camera.top-camera.bottom);
+    cooler.plumeMaterial.size=.18*viewport.clientHeight*camera.zoom/(camera.top-camera.bottom);
     if(demos.has('light')) {
       // Separate render passes keep tent lights from illuminating the workbench.
       camera.layers.set(0);renderer.render(scene,camera);
@@ -399,7 +400,6 @@ export function mountMaterialStudy(section: HTMLElement) {
     }
     syncAction();
     status.textContent = `${item.label} selected. ${item.title}`;
-    if(id==='cooler'&&!demos.has('cooling'))runAction();
     if (fromList) viewport.scrollIntoView({ block: 'center', behavior: reduceMotion.matches ? 'instant' : 'smooth' });
   }
   function setLayer(layer: 'cover' | 'wiring' | 'mushrooms' | 'labels') {

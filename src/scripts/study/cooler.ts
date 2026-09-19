@@ -37,10 +37,12 @@ export function createCooler() {
 
   // Adapter hood feeds a ribbed duct up the rear-left side, above the upper camera.
   box(.49,.31,.19,0,1.31,.40,charcoal,.04);
+  // The first straight section seats squarely in the hood; the riser stays
+  // centered on the cooler before the upper elbow turns toward the tent.
   const route=new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-1.03,1.45,-1.39),new THREE.Vector3(-1.45,1.80,-1.27),
-    new THREE.Vector3(-1.55,2.65,-1.20),new THREE.Vector3(-1.49,3.48,-1.04),
-    new THREE.Vector3(-1.27,3.77,-.60),
+    new THREE.Vector3(-1.03,1.45,-1.39),new THREE.Vector3(-1.03,1.45,-1.25),
+    new THREE.Vector3(-1.03,1.72,-1.10),new THREE.Vector3(-1.03,2.65,-1.10),
+    new THREE.Vector3(-1.03,3.48,-1.04),new THREE.Vector3(-.95,3.73,-.72),
     new THREE.Vector3(-.69,3.77,-.13),new THREE.Vector3(-.18,3.77,-.03),
   ]);
   const duct=new THREE.Mesh(new THREE.TubeGeometry(route,80,.115,16,false),silver);group.add(duct);
@@ -57,30 +59,49 @@ export function createCooler() {
   for(let lane=0;lane<5;lane++){
     const z=-.03+(lane-2)*.047;
     const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(-.13,3.77,z),new THREE.Vector3(.30,3.73,z),new THREE.Vector3(.78,3.48,z+(lane-2)*.055),new THREE.Vector3(1.02,3.10,z+(lane-2)*.075)]);
-    for(let i=0;i<3;i++){
+    for(let i=0;i<2;i++){
       const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,10,.010,5,false),new THREE.MeshBasicMaterial({color:lane%2?'#83dfed':'#39b7d3',transparent:true,opacity:.7,depthWrite:false}));
-      mesh.layers.set(1);mesh.frustumCulled=false;airflow.add(mesh);streams.push({mesh,curve,index:i/3+lane*.06});
+      mesh.layers.set(1);mesh.frustumCulled=false;airflow.add(mesh);streams.push({mesh,curve,index:i/2+lane*.11});
     }
   }
+  // A soft, widening plume connects the moving wisps without looking like
+  // dashed diagram lines. Particle positions reuse their existing buffers.
+  const puffCanvas=document.createElement('canvas');puffCanvas.width=puffCanvas.height=64;
+  const puffContext=puffCanvas.getContext('2d')!;
+  const gradient=puffContext.createRadialGradient(32,32,0,32,32,32);
+  gradient.addColorStop(0,'rgba(190,241,255,.65)');gradient.addColorStop(.35,'rgba(150,224,248,.28)');gradient.addColorStop(1,'rgba(150,224,248,0)');
+  puffContext.fillStyle=gradient;puffContext.fillRect(0,0,64,64);
+  const plumeGeometry=new THREE.BufferGeometry();
+  plumeGeometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(72*3),3));
+  const plumeMaterial=new THREE.PointsMaterial({map:new THREE.CanvasTexture(puffCanvas),color:'#a4e4f5',size:18,sizeAttenuation:false,transparent:true,opacity:.34,depthWrite:false});
+  const plume=new THREE.Points(plumeGeometry,plumeMaterial);plume.layers.set(1);plume.frustumCulled=false;airflow.add(plume);
   const center=new THREE.Vector3(),tangent=new THREE.Vector3(),side=new THREE.Vector3(),normal=new THREE.Vector3();
   const up=new THREE.Vector3(0,0,1);
   function animate(seconds:number){
+    const particles=plumeGeometry.getAttribute('position');
+    for(let i=0;i<particles.count;i++){
+      const phase=(seconds*.23+i/particles.count)%1,angle=i*2.39996+seconds*.35;
+      const spread=Math.sin(phase*Math.PI)*.16;
+      particles.setXYZ(i,-.13+phase*1.16,3.77-phase*phase*.68+Math.sin(angle)*spread,-.03+Math.cos(angle)*spread);
+    }
+    particles.needsUpdate=true;
     for(const {mesh,curve,index} of streams){
-      const phase=(seconds*.40+index)%1;
+      const phase=(seconds*.23+index)%1;
       const vertices=mesh.geometry.getAttribute('position');
       for(let j=0;j<=10;j++){
-        const t=Math.min(1,phase+j*.014);
+        const t=Math.min(1,phase+j*.030);
         curve.getPoint(t,center);curve.getTangent(t,tangent);
         side.crossVectors(tangent,up).normalize();normal.crossVectors(tangent,side).normalize();
         for(let k=0;k<=5;k++){
-          const angle=k/5*Math.PI*2,c=Math.cos(angle)*.010,s=Math.sin(angle)*.010;
+          const radius=.014*Math.sin(j/10*Math.PI);
+          const angle=k/5*Math.PI*2,c=Math.cos(angle)*radius,s=Math.sin(angle)*radius;
           vertices.setXYZ(j*6+k,center.x+side.x*c+normal.x*s,center.y+side.y*c+normal.y*s,center.z+side.z*c+normal.z*s);
         }
       }
       vertices.needsUpdate=true;
-      (mesh.material as THREE.MeshBasicMaterial).opacity=Math.sin(phase*Math.PI)*.8;
+      (mesh.material as THREE.MeshBasicMaterial).opacity=Math.sin(phase*Math.PI)*.55;
     }
   }
   animate(.5);
-  return {group,airflow,animate};
+  return {group,airflow,animate,plumeMaterial};
 }
