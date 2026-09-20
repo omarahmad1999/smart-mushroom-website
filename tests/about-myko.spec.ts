@@ -50,7 +50,9 @@ test('social notes use the published profiles and Myko offers contact',async({pa
   await expect(socials.getByRole('link',{name:'X: @mycolabz'})).toHaveAttribute('href','https://x.com/mycolabz');
   await expect(socials.getByRole('link',{name:'LinkedIn: Omar Ahmad'})).toHaveAttribute('href','https://www.linkedin.com/in/omar-ahmad-916378186/');
   await expect(socials.getByRole('link',{name:'TikTok: @mycolabs'})).toHaveAttribute('href','https://www.tiktok.com/@mycolabs');
+  await expect(socials.locator('.social-logo')).toHaveCount(3);
   const contact=page.locator('[data-myko-contact]');await expect(contact).toBeVisible();await expect(contact).toHaveText('Contact me');
+  await expect(contact).toHaveCSS('background-color','rgb(33, 58, 53)');await expect(contact).toHaveCSS('color','rgb(255, 250, 240)');
   const href=await contact.getAttribute('href');if(href)expect(href).toMatch(/^mailto:.+\?subject=Hello%20from%20Smart%20Mushroom%20Hub$/);else await expect(contact).toHaveAttribute('data-contact-unconfigured','');
 });
 test('reduced motion keeps expressions but stops movement',async({page})=>{
