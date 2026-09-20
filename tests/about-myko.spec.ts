@@ -44,6 +44,15 @@ test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const tab=page.getByRole('tab',{name:'What I build',exact:true});await tab.click();await expect(page.getByRole('tabpanel')).toContainText('PVC pipes');await tab.press('ArrowRight');await expect(page.getByRole('tab',{name:'What I’m exploring'})).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect(errors).toEqual([]);
 });
+test('social notes use the published profiles and Myko offers contact',async({page})=>{
+  await page.goto('/about/');
+  const socials=page.getByRole('navigation',{name:'Omar’s social profiles'});
+  await expect(socials.getByRole('link',{name:'X: @mycolabz'})).toHaveAttribute('href','https://x.com/mycolabz');
+  await expect(socials.getByRole('link',{name:'LinkedIn: Omar Ahmad'})).toHaveAttribute('href','https://www.linkedin.com/in/omar-ahmad-916378186/');
+  await expect(socials.getByRole('link',{name:'TikTok: @mycolabs'})).toHaveAttribute('href','https://www.tiktok.com/@mycolabs');
+  const contact=page.locator('[data-myko-contact]');await expect(contact).toBeVisible();await expect(contact).toHaveText('Contact me');
+  const href=await contact.getAttribute('href');if(href)expect(href).toMatch(/^mailto:.+\?subject=Hello%20from%20Smart%20Mushroom%20Hub$/);else await expect(contact).toHaveAttribute('data-contact-unconfigured','');
+});
 test('reduced motion keeps expressions but stops movement',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/about/');await expect(page.locator('[data-myko-motion]')).toHaveCount(0);await page.getByRole('button',{name:'Say hello to Myko'}).click();await expect(page.locator('[data-myko]')).toHaveAttribute('data-mood','happy');await expect(page.locator('[data-myko]')).not.toHaveAttribute('data-animate');
 });
