@@ -45,6 +45,8 @@ test('photo leads the layout and story tabs remain accessible',async({page})=>{
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect(errors).toEqual([]);
 });
 test('social notes use the published profiles and Myko offers contact',async({page})=>{
+  let sent:Record<string,string>|undefined;
+  await page.route('**/api/contact',async route=>{sent=route.request().postDataJSON();await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true})});});
   await page.goto('/about/');
   const socials=page.getByRole('navigation',{name:'Omar’s social profiles'});
   await expect(socials.getByRole('link',{name:'X: @mycolabz'})).toHaveAttribute('href','https://x.com/mycolabz');
@@ -55,7 +57,10 @@ test('social notes use the published profiles and Myko offers contact',async({pa
   await expect(contact).toHaveCSS('background-color','rgb(33, 58, 53)');await expect(contact).toHaveCSS('color','rgb(255, 250, 240)');
   const bubble=await contact.boundingBox(),stage=await page.locator('.myko-stage').boundingBox();expect(bubble!.x+bubble!.width).toBeLessThan(stage!.x+stage!.width*.27);
   await contact.click();const dialog=page.getByRole('dialog',{name:'Say hello to Omar.'});await expect(dialog).toBeVisible();await expect(dialog.getByLabel('Your name')).toBeVisible();await expect(dialog.getByLabel('Your email')).toHaveAttribute('type','email');await expect(dialog.getByLabel('Subject')).toHaveValue('Hello from Smart Mushroom Hub');await expect(dialog.getByLabel('Your message')).toBeVisible();
-  const submit=dialog.getByRole('button',{name:'Continue to email'});if(await dialog.getAttribute('data-contact-email'))await expect(submit).toBeEnabled();else{await expect(submit).toBeDisabled();await expect(dialog).toContainText('A public recipient email still needs to be added.');}
+  await expect(dialog).not.toHaveAttribute('data-contact-email');await expect(dialog).toContainText('Your details are used only to deliver and reply to this message.');
+  await dialog.getByLabel('Your name').fill('Test Visitor');await dialog.getByLabel('Your email').fill('visitor@example.com');await dialog.getByLabel('Your message').fill('A test message from the contact form.');
+  const submit=dialog.locator('.contact-submit');await expect(submit).toHaveAccessibleName(/Send message/);await expect(submit).toBeEnabled();await submit.click();await expect(dialog.locator('[data-contact-status]')).toHaveText('Message sent. I’ll be in touch.');await expect(submit).toHaveAccessibleName(/Send another note/);await expect(submit).toBeEnabled();
+  expect(sent).toEqual({name:'Test Visitor',email:'visitor@example.com',subject:'Hello from Smart Mushroom Hub',message:'A test message from the contact form.',website:''});
   await dialog.getByRole('button',{name:'Close contact form'}).click();await expect(dialog).toBeHidden();
 });
 test('reduced motion keeps expressions but stops movement',async({page})=>{

@@ -1,6 +1,6 @@
 # Smart Mushroom Hub
 
-A static, interactive case study about an oyster mushroom cultivation experiment. The homepage opens with the interactive Three.js habitat and workbench, followed by the Connected System animation, experiment narrative, cultivation phases, photographs, timelapse, and computer-vision work. The Learning Log lives on its own page.
+A mostly static, interactive case study about an oyster mushroom cultivation experiment. The homepage opens with the interactive Three.js habitat and workbench, followed by the Connected System animation, experiment narrative, cultivation phases, photographs, timelapse, and computer-vision work. All pages are pre-rendered; one small server endpoint sends the About page contact form through Resend.
 
 ## Run locally
 
@@ -12,15 +12,15 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:4322. The project uses Astro's static output and GSAP for visual animation. No application backend is needed.
+Open http://localhost:4322. The project uses Astro's static output and GSAP for visual animation. The contact form is the only server-side route.
 
 ```sh
 npm run check
 npm run build
-npm run preview
+npm run serve
 ```
 
-The production site is the `dist/` directory. It can be served by any static web host. The preview server uses port 4322; stop the development server before previewing on the same port.
+The Node adapter writes the pre-rendered site and contact endpoint to `dist/`. Production hosting must run `dist/server/entry.mjs`; `npm run serve` does that locally and reads an ignored `.env` file when present. Set `HOST` and `PORT` in the hosting environment when needed.
 
 ## Project links
 
@@ -34,9 +34,21 @@ PUBLIC_DOCUMENTATION_URL=
 
 Rebuild after changing these values. The documentation link defaults to the working local `/documentation/` page. Until Grafana/GitHub URLs are supplied, the buttons explain that the public link is unavailable rather than sending visitors to a guessed destination. The site validates HTTP(S) URLs at build time; these settings are links, not data sources.
 
+## Contact email
+
+The About page posts its contact form to `/api/contact`, which validates and escapes the message before sending it through Resend. Copy the private settings from `.env.example` into an ignored `.env` file for local development, or add them to the hosting provider's server environment:
+
+```dotenv
+RESEND_API_KEY=your-new-sending-only-key
+CONTACT_TO_EMAIL=omarahmadmohamed@gmail.com
+CONTACT_FROM_EMAIL=Smart Mushroom Hub <onboarding@resend.dev>
+```
+
+Never prefix the API key with `PUBLIC_`, place it in browser code, paste it into chat, or commit `.env`. `onboarding@resend.dev` is useful for an initial test to the Resend account owner. Replace it with an address on a verified sending domain for production. The form sets the visitor's address as `Reply-To` and includes a same-origin check, field limits, a honeypot, and an in-memory rate limit.
+
 ## Architecture boundary
 
-**Grafana is the only place that displays actual sensor data.** The website has no database driver, TimescaleDB connection, experiment-data API, readings, chart library, aggregation, data cache, polling, WebSocket client, public-data manifest, metric selector, or time-range selector. The development server's own HMR tooling is absent from production output.
+**Grafana is the only place that displays actual sensor data.** The website has no database driver, TimescaleDB connection, experiment-data API, readings, chart library, aggregation, data cache, polling, WebSocket client, public-data manifest, metric selector, or time-range selector. The contact endpoint handles authored visitor messages only. The development server's own HMR tooling is absent from production output.
 
 The system diagram explains the existing experiment infrastructure. It does not connect to that infrastructure. All controls on the website change illustrations or reveal authored text; none control physical devices.
 
