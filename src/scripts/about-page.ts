@@ -1,7 +1,7 @@
 const page=document.querySelector<HTMLElement>('[data-about-page]');
 if(page){
   const myko=page.querySelector<HTMLElement>('[data-myko]')!,stage=myko.querySelector<HTMLElement>('.myko-stage')!;
-  const motionButton=myko.querySelector<HTMLButtonElement>('[data-myko-motion]')!,symbol=myko.querySelector<HTMLElement>('[data-emotion-symbol]')!,hint=myko.querySelector<HTMLElement>('[data-myko-hint]')!;
+  const symbol=myko.querySelector<HTMLElement>('[data-emotion-symbol]')!,hint=myko.querySelector<HTMLElement>('[data-myko-hint]')!;
   const reduced=matchMedia('(prefers-reduced-motion:reduce)');let motion=!reduced.matches,visible=true,locked=false;
   let idleTwo:number|undefined,idleFour:number|undefined,reaction:number|undefined,blink:number|undefined,blinkEnd:number|undefined;
   let pointer:{x:number;y:number}|undefined;
@@ -24,9 +24,9 @@ if(page){
   function active(event?:PointerEvent){if(event)pointer={x:event.clientX,y:event.clientY};if(!visible||document.hidden)return;if(locked)return;const current=myko.dataset.mood;if(current==='sleepy')react('surprised');else if(current==='melancholic')react('curious');else{gaze();idle();}}
   document.addEventListener('pointermove',active);document.addEventListener('pointerdown',active);document.addEventListener('keydown',()=>active());
   stage.addEventListener('click',()=>react('happy'));
-  function sync(){clearTimeout(blink);clearTimeout(blinkEnd);clearIdle();clearTimeout(reaction);locked=false;myko.removeAttribute('data-blinking');myko.toggleAttribute('data-animate',motion&&visible&&!document.hidden);motionButton.setAttribute('aria-pressed',String(motion));motionButton.textContent=motion?'Motion on':'Motion off';myko.style.setProperty('--eye-x','0px');myko.style.setProperty('--eye-y','0px');mood('neutral');if(visible&&!document.hidden){idle();scheduleBlink();}}
+  function sync(){clearTimeout(blink);clearTimeout(blinkEnd);clearIdle();clearTimeout(reaction);locked=false;myko.removeAttribute('data-blinking');myko.toggleAttribute('data-animate',motion&&visible&&!document.hidden);myko.style.setProperty('--eye-x','0px');myko.style.setProperty('--eye-y','0px');mood('neutral');if(visible&&!document.hidden){idle();scheduleBlink();}}
   function scheduleBlink(){if(!motion||!visible||document.hidden)return;blink=window.setTimeout(()=>{if(myko.dataset.mood==='neutral'){myko.setAttribute('data-blinking','');blinkEnd=window.setTimeout(()=>myko.removeAttribute('data-blinking'),120);}scheduleBlink();},3300);}
-  motionButton.hidden=false;motionButton.addEventListener('click',()=>{motion=!motion;sync();});reduced.addEventListener('change',()=>{motion=!reduced.matches;sync();});document.addEventListener('visibilitychange',()=>{sync();});
+  reduced.addEventListener('change',()=>{motion=!reduced.matches;sync();});document.addEventListener('visibilitychange',()=>{sync();});
   new IntersectionObserver(entries=>{const next=entries[0].isIntersecting;if(next!==visible){visible=next;if(visible&&locked){myko.toggleAttribute('data-animate',motion);scheduleBlink();}else sync();}},{threshold:.1}).observe(myko);
   const tabs=[...page.querySelectorAll<HTMLButtonElement>('[data-story]')],panels=[...page.querySelectorAll<HTMLElement>('[data-story-page]')];let animation:Animation|undefined;
   function select(index:number,interact=true){tabs.forEach((tab,i)=>{tab.setAttribute('aria-selected',String(i===index));tab.tabIndex=i===index?0:-1;});panels.forEach((panel,i)=>panel.hidden=i!==index);animation?.cancel();if(interact&&motion)animation=panels[index].animate([{opacity:.3},{opacity:1}],{duration:200});}

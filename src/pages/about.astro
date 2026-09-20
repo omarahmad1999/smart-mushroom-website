@@ -13,12 +13,10 @@ const chapters=[
 ---
 <BaseLayout title="About Me — Smart Mushroom Hub" description="Meet the maker behind Smart Mushroom Hub, and Myko, a little companion for a growing experiment.">
   <article class="about-page" data-about-page>
-    <header class="about-header"><p class="eyebrow"><span class="eyebrow-dot"></span> THE PERSON BEHIND THE HABITAT</p><h1>Omar Ahmad</h1><p class="header-note">A little about me.<br />And a little friend to keep us company.</p></header>
+    <header class="about-header"><p class="eyebrow"><span class="eyebrow-dot"></span> THE PERSON BEHIND THE HABITAT</p><h1>Omar Ahmad</h1></header>
     <div class="about-introduction">
       <figure class="profile profile-main"><Image src={portrait} alt="The maker of Smart Mushroom Hub beside a peacock" widths={[640,1000,1400]} sizes="(max-width:650px) 92vw, 48vw" width={1400} format="webp" quality={85} loading="eager" /><figcaption>the person behind the experiment</figcaption></figure>
       <section class="maker-story" aria-label="About the maker">
-        <div class="maker-intro"><div><p class="eyebrow">HELLO THERE</p><h2>I’m the maker behind<br /><em>Smart Mushroom Hub.</em></h2></div></div>
-        <p class="introduction-copy">This is where my interest in living things meets the pleasure of making things work. A mushroom habitat, built piece by piece—and a notebook of everything it teaches me.</p>
         <div class="story-tabs" role="tablist" aria-label="Read about the maker" hidden>{chapters.map((chapter,i)=><button type="button" role="tab" id={`tab-${chapter.id}`} aria-controls={`story-${chapter.id}`} aria-selected={i===0?'true':'false'} tabindex={i===0?0:-1} data-story={chapter.id} data-expression={chapter.expression}>{chapter.label}</button>)}</div>
         <div class="story-pages">{chapters.map(chapter=><section class="story-page" id={`story-${chapter.id}`} data-story-page={chapter.id} aria-labelledby={`heading-${chapter.id}`}><h3 id={`heading-${chapter.id}`}>{chapter.title}</h3><p>{chapter.text}</p><p class="pencil-note">{chapter.note}</p><a href={chapter.href}>{chapter.link}<Icon name="arrow-right" size={15}/></a></section>)}</div>
       </section>

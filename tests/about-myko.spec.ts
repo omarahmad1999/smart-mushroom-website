@@ -1,11 +1,13 @@
 import {test,expect} from '@playwright/test';
 test('Myko stays planted at the screen edge and tracks every direction',async({page},info)=>{
   await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));
-  await page.goto('/about/');await expect(page.getByRole('heading',{level:1})).toHaveText('Omar Ahmad');await expect(page.locator('.about-interests,.about-next')).toHaveCount(0);
+  await page.goto('/about/');await expect(page.getByRole('heading',{level:1})).toHaveText('Omar Ahmad');await expect(page.locator('.about-interests,.about-next')).toHaveCount(0);await expect(page.getByText('HELLO THERE')).toHaveCount(0);await expect(page.getByText('A little about me.')).toHaveCount(0);
   const myko=page.locator('[data-myko]');await expect(myko).toHaveCSS('position','fixed');
-  const before=await myko.boundingBox();const width=await page.locator('.myko-stage').evaluate(el=>el.getBoundingClientRect().width);expect(width).toBeCloseTo(info.project.name==='mobile'?380:440,0);
+  const before=await myko.boundingBox();const width=await page.locator('.myko-stage').evaluate(el=>el.getBoundingClientRect().width);expect(width).toBeCloseTo(info.project.name==='mobile'?285:330,0);
   await page.evaluate(()=>window.scrollTo({top:500,behavior:'instant'}));const after=await myko.boundingBox();expect(after!.y).toBeCloseTo(before!.y,1);expect(after!.x).toBeCloseTo(before!.x,1);
-  const stage=page.locator('.myko-stage');await expect(stage).toHaveCSS('transform','none');await expect(page.locator('.myko-floor')).toBeVisible();
+  const stage=page.locator('.myko-stage');await expect(stage).toHaveCSS('transform','none');const floor=page.locator('.myko-floor');await expect(floor).toBeVisible();
+  const floorBox=await floor.boundingBox();expect(Math.abs(page.viewportSize()!.height-(floorBox!.y+floorBox!.height))).toBeLessThanOrEqual(1);
+  const hint=page.locator('[data-myko-hint]');const hintBox=await hint.boundingBox(),mykoBox=await myko.boundingBox();expect(hintBox!.y).toBeLessThan((await stage.boundingBox())!.y);expect(hintBox!.x+hintBox!.width).toBeGreaterThan(mykoBox!.x+mykoBox!.width-15);
   const rect=await stage.boundingBox();const cx=rect!.x+rect!.width*478.8/1254,cy=rect!.y+rect!.width*449.5/1254;
   for(let i=0;i<8;i++){
     const angle=i*Math.PI/4;
@@ -43,5 +45,5 @@ test('photo leads the layout and story tabs remain accessible',async({page})=>{
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect(errors).toEqual([]);
 });
 test('reduced motion keeps expressions but stops movement',async({page})=>{
-  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/about/');await expect(page.getByRole('button',{name:'Motion off',exact:true})).toHaveAttribute('aria-pressed','false');await page.getByRole('button',{name:'Say hello to Myko'}).click();await expect(page.locator('[data-myko]')).toHaveAttribute('data-mood','happy');await expect(page.locator('[data-myko]')).not.toHaveAttribute('data-animate');
+  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/about/');await expect(page.locator('[data-myko-motion]')).toHaveCount(0);await page.getByRole('button',{name:'Say hello to Myko'}).click();await expect(page.locator('[data-myko]')).toHaveAttribute('data-mood','happy');await expect(page.locator('[data-myko]')).not.toHaveAttribute('data-animate');
 });
