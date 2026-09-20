@@ -49,6 +49,7 @@ test('social notes use the published profiles and Myko offers contact',async({pa
   let sent:Record<string,string>|undefined;
   await page.route('**/api/contact',async route=>{sent=route.request().postDataJSON();await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true})});});
   await page.goto('/about/');
+  await expect(page.getByRole('heading',{name:'Find me elsewhere.'})).toBeVisible();await expect(page.getByText('A few more places')).toHaveCount(0);
   const socials=page.getByRole('navigation',{name:'Omar’s social profiles'});
   await expect(socials.getByRole('link',{name:'X: @mycolabz'})).toHaveAttribute('href','https://x.com/mycolabz');
   await expect(socials.getByRole('link',{name:'LinkedIn: Omar Ahmad'})).toHaveAttribute('href','https://www.linkedin.com/in/omar-ahmad-916378186/');
