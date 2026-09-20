@@ -2,11 +2,10 @@
 import { Image } from 'astro:assets';
 import character from '../assets/about/myko-left-empty.png';
 import { site } from '../config/site';
-const contactHref=site.contactEmail?`mailto:${site.contactEmail}?subject=${encodeURIComponent('Hello from Smart Mushroom Hub')}`:undefined;
 ---
 <section class="myko" data-myko data-mood="neutral" data-tracking="true" aria-label="Myko, a little mushroom explorer">
   <p id="myko-hint" data-myko-hint>Myko · say hello</p>
-  {contactHref?<a class="myko-contact" data-myko-contact href={contactHref}>Contact me</a>:<span class="myko-contact myko-contact-pending" data-myko-contact data-contact-unconfigured title="Add PUBLIC_CONTACT_EMAIL to activate this link">Contact me</span>}
+  <button class="myko-contact" type="button" data-myko-contact aria-haspopup="dialog" aria-controls="myko-contact-dialog">Contact me</button>
   <svg class="myko-floor" viewBox="0 0 1254 1254" aria-hidden="true">
     <defs>
       <radialGradient id="myko-moss"><stop stop-color="#b6bc78"/><stop offset=".65" stop-color="#8d9d60"/><stop offset="1" stop-color="#667d4b"/></radialGradient>
@@ -38,6 +37,18 @@ const contactHref=site.contactEmail?`mailto:${site.contactEmail}?subject=${encod
     <span class="emotion-symbol" aria-hidden="true" data-emotion-symbol></span>
   </button>
 </section>
+<dialog class="contact-dialog" id="myko-contact-dialog" data-contact-dialog data-contact-email={site.contactEmail} aria-labelledby="contact-dialog-title">
+  <button class="contact-close" type="button" data-contact-close aria-label="Close contact form">×</button>
+  <div class="contact-heading"><span aria-hidden="true">✦</span><div><p>WRITE A LITTLE NOTE</p><h2 id="contact-dialog-title">Say hello to Omar.</h2></div></div>
+  <form class="contact-form" data-contact-form>
+    <div class="contact-field-row"><label>Your name<input name="name" autocomplete="name" required /></label><label>Your email<input name="email" type="email" autocomplete="email" required /></label></div>
+    <label>Subject<input name="subject" required value="Hello from Smart Mushroom Hub" /></label>
+    <label>Your message<textarea name="message" rows="5" required></textarea></label>
+    <p class="contact-privacy">Your message stays in your browser. Continue to open it in your email app.</p>
+    <p class="contact-status" data-contact-status aria-live="polite">{site.contactEmail?'Ready when you are.':'A public recipient email still needs to be added.'}</p>
+    <button class="contact-submit" type="submit" disabled={!site.contactEmail}>Continue to email <span aria-hidden="true">↗</span></button>
+  </form>
+</dialog>
 <style>
 .myko{text-align:center;min-width:0}.myko-stage{display:block;position:relative;width:100%;aspect-ratio:1;padding:0;border:0;background:none;cursor:pointer;transform-origin:50% 90%;transition:transform .3s;border-radius:20px}.myko-stage img{width:100%;height:auto;pointer-events:none}.myko-face{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;color:#ffdb92}.gaze{transform:translate(var(--eye-x,0px),var(--eye-y,0px));transition:transform .18s ease-out}.eyes{display:none;fill:currentColor;filter:drop-shadow(0 0 11px #ffb54b);transform-origin:480px 468px}.eyes.happy,.eyes.sleepy{fill:none}.myko[data-mood=neutral] .neutral,.myko[data-mood=happy] .happy,.myko[data-mood=curious] .curious,.myko[data-mood=melancholic] .melancholic,.myko[data-mood=sleepy] .sleepy,.myko[data-mood=surprised] .surprised{display:block}.surprised{color:#b4f7ff;filter:drop-shadow(0 0 15px #59ddeb)}.myko[data-blinking] .neutral{transform:scaleY(.1)}.emotion-symbol{position:absolute;left:14%;top:8%;font:37px/1 'Caveat',cursive;transform:rotate(-14deg);color:#8e8368;text-shadow:0 1px 2px var(--paper);pointer-events:none}.myko[data-mood=surprised] .emotion-symbol{color:#429ca8}.myko[data-mood=sleepy] .emotion-symbol{font-size:25px;letter-spacing:3px}.myko[data-mood=happy] .emotion-symbol{left:18%;top:15%;font-size:35px}.myko p{font:16px/1.05 'Caveat',cursive;color:#7f8971;margin:0}@media(prefers-reduced-motion:reduce){.myko-stage{animation:none!important;transition:none}.gaze{transition:none}}
 </style>
@@ -45,5 +56,29 @@ const contactHref=site.contactEmail?`mailto:${site.contactEmail}?subject=${encod
 .myko-floor{position:absolute;top:35px;left:-44px;width:330px;height:330px;max-width:none;pointer-events:none;z-index:0}.myko-stage{z-index:1}.myko p{z-index:2}@media(max-width:650px){.myko-floor{top:35px;left:-37.5px;width:285px;height:285px}}@media(max-height:580px){.myko-floor{top:30px;left:-28.5px;width:217.5px;height:217.5px}}
 </style>
 <style>
-.myko{position:fixed;right:0;bottom:max(0px,env(safe-area-inset-bottom));z-index:25;width:240px;height:365px;pointer-events:none;overflow:clip}.myko-stage{position:absolute;top:35px;left:-44px;width:330px;pointer-events:auto;transform:none}.myko p{position:absolute;top:7px;right:9px;width:108px;text-align:right;transform:rotate(-3deg);min-height:24px}.myko-contact{position:absolute;z-index:4;left:5px;top:82px;display:grid;place-items:center;width:82px;min-height:45px;padding:8px 9px;background:#213a35;border:2px solid #f5d6ad;border-radius:50%;box-shadow:0 6px 16px #172b2940;color:#fffaf0;font:17px/1 'Caveat',cursive;text-decoration:none;text-shadow:0 1px #0005;transform:rotate(-5deg);pointer-events:auto;transition:transform .2s,background .2s,border-color .2s}.myko-contact:after{content:'';position:absolute;right:-9px;bottom:2px;width:18px;height:15px;background:#213a35;border-right:2px solid #f5d6ad;transform:skew(-30deg) rotate(17deg);z-index:-1}.myko-contact:hover{background:#b95532;border-color:#fff0d9;transform:translateY(-2px) rotate(-2deg)}.myko-contact:hover:after{background:#b95532;border-color:#fff0d9}.myko-contact-pending{opacity:1;pointer-events:none}.emotion-symbol{left:30%;top:10%}@media(max-width:650px){.myko{width:207px;height:320px}.myko-stage{top:35px;left:-37.5px;width:285px}.myko p{top:8px;right:7px;width:100px;font-size:15px}.myko-contact{left:3px;top:75px;width:73px;min-height:41px;font-size:15px}}@media(max-height:580px){.myko{width:157.5px;height:247.5px}.myko-stage{top:30px;left:-28.5px;width:217.5px}.myko p{top:4px;right:4px;width:82px;font-size:13px}.myko-contact{left:1px;top:57px;width:58px;min-height:35px;padding:6px;font-size:12px}}@media(prefers-reduced-motion:reduce){.myko-stage{transform:none!important}.myko-contact{transition:none}}
+.myko{position:fixed;right:0;bottom:max(0px,env(safe-area-inset-bottom));z-index:25;width:240px;height:365px;pointer-events:none;overflow:visible}.myko-stage{position:absolute;top:35px;left:-44px;width:330px;pointer-events:auto;transform:none}.myko p{position:absolute;top:7px;right:9px;width:108px;text-align:right;transform:rotate(-3deg);min-height:24px}.myko-contact{position:absolute;z-index:4;left:-84px;top:132px;display:grid;place-items:center;width:82px;min-height:45px;padding:8px 9px;background:#213a35;border:2px solid #f5d6ad;border-radius:50%;box-shadow:0 6px 16px #172b2940;color:#fffaf0;font:17px/1 'Caveat',cursive;text-shadow:0 1px #0005;transform:rotate(-5deg);pointer-events:auto;transition:transform .2s,background .2s,border-color .2s}.myko-contact:after{content:'';position:absolute;right:-9px;bottom:2px;width:18px;height:15px;background:#213a35;border-right:2px solid #f5d6ad;transform:skew(-30deg) rotate(17deg);z-index:-1}.myko-contact:hover{background:#b95532;border-color:#fff0d9;transform:translateY(-2px) rotate(-2deg)}.myko-contact:hover:after{background:#b95532;border-color:#fff0d9}.emotion-symbol{left:30%;top:10%}@media(max-width:650px){.myko{width:207px;height:320px}.myko-stage{top:35px;left:-37.5px;width:285px}.myko p{top:8px;right:7px;width:100px;font-size:15px}.myko-contact{left:-73px;top:112px;width:70px;min-height:41px;font-size:15px}}@media(max-height:580px){.myko{width:157.5px;height:247.5px}.myko-stage{top:30px;left:-28.5px;width:217.5px}.myko p{top:4px;right:4px;width:82px;font-size:13px}.myko-contact{left:-60px;top:86px;width:57px;min-height:35px;padding:6px;font-size:12px}}@media(prefers-reduced-motion:reduce){.myko-stage{transform:none!important}.myko-contact{transition:none}}
 </style>
+<style>
+.contact-dialog{width:min(570px,calc(100% - 30px));max-height:calc(100dvh - 30px);padding:37px;border:1px solid #bcc5ad;border-radius:10px;background:#f8f5eb;color:#172b29;box-shadow:0 24px 90px #10231f59;overflow:auto}.contact-dialog::backdrop{background:#10231fa8;backdrop-filter:blur(5px)}.contact-close{position:absolute;right:14px;top:12px;display:grid;place-items:center;width:38px;height:38px;border:1px solid #cad0c0;border-radius:50%;background:transparent;color:#52624b;font-size:23px}.contact-heading{display:flex;align-items:start;gap:15px;padding-right:35px;margin-bottom:28px}.contact-heading>span{color:#bd5837;font-size:24px}.contact-heading p{font-size:8px;letter-spacing:.15em;color:#738060;margin:0 0 8px}.contact-heading h2{font:36px/1.05 var(--font-display);letter-spacing:-.025em}.contact-form{display:grid;gap:16px}.contact-field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.contact-form label{display:grid;gap:7px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#66705f}.contact-form input,.contact-form textarea{width:100%;border:1px solid #ccd2c3;border-radius:4px;background:#fffdf7;color:#172b29;padding:12px 13px;font:13px/1.55 var(--font-body);text-transform:none;letter-spacing:0;outline:0}.contact-form textarea{resize:vertical;min-height:120px}.contact-form input:focus,.contact-form textarea:focus{border-color:#9caa87;box-shadow:0 0 0 3px #cdd6bf66}.contact-privacy{font-size:10px;line-height:1.6;color:#747b70}.contact-status{font:17px/1.2 'Caveat',cursive;color:#a05437}.contact-submit{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:49px;padding:12px 16px;border-radius:4px;background:#213a35;color:#fffaf0;font-size:11px}.contact-submit:disabled{cursor:not-allowed;opacity:.45}.contact-submit:not(:disabled):hover{background:#b95532}@media(max-width:520px){.contact-dialog{padding:31px 21px 24px}.contact-field-row{grid-template-columns:1fr}.contact-heading h2{font-size:31px}}
+</style>
+<script>
+  const initializeContactDialog=()=>{
+    const dialog=document.querySelector<HTMLDialogElement>('[data-contact-dialog]');
+    if(!dialog||dialog.dataset.initialized==='true')return;
+    dialog.dataset.initialized='true';
+    const opener=document.querySelector<HTMLButtonElement>('[data-myko-contact]');
+    const close=dialog.querySelector<HTMLButtonElement>('[data-contact-close]');
+    const form=dialog.querySelector<HTMLFormElement>('[data-contact-form]');
+    opener?.addEventListener('click',()=>dialog.showModal());
+    close?.addEventListener('click',()=>dialog.close());
+    dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});
+    form?.addEventListener('submit',event=>{
+      event.preventDefault();
+      const recipient=dialog.dataset.contactEmail;if(!recipient)return;
+      const data=new FormData(form),name=String(data.get('name')||''),reply=String(data.get('email')||''),subject=String(data.get('subject')||'Hello from Smart Mushroom Hub'),message=String(data.get('message')||'');
+      const body=`${message}\n\nFrom: ${name}\nReply to: ${reply}`;
+      dialog.close();window.location.href=`mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    });
+  };
+  initializeContactDialog();document.addEventListener('astro:page-load',initializeContactDialog);
+</script>

@@ -53,7 +53,10 @@ test('social notes use the published profiles and Myko offers contact',async({pa
   await expect(socials.locator('.social-logo')).toHaveCount(3);
   const contact=page.locator('[data-myko-contact]');await expect(contact).toBeVisible();await expect(contact).toHaveText('Contact me');
   await expect(contact).toHaveCSS('background-color','rgb(33, 58, 53)');await expect(contact).toHaveCSS('color','rgb(255, 250, 240)');
-  const href=await contact.getAttribute('href');if(href)expect(href).toMatch(/^mailto:.+\?subject=Hello%20from%20Smart%20Mushroom%20Hub$/);else await expect(contact).toHaveAttribute('data-contact-unconfigured','');
+  const bubble=await contact.boundingBox(),stage=await page.locator('.myko-stage').boundingBox();expect(bubble!.x+bubble!.width).toBeLessThan(stage!.x+stage!.width*.27);
+  await contact.click();const dialog=page.getByRole('dialog',{name:'Say hello to Omar.'});await expect(dialog).toBeVisible();await expect(dialog.getByLabel('Your name')).toBeVisible();await expect(dialog.getByLabel('Your email')).toHaveAttribute('type','email');await expect(dialog.getByLabel('Subject')).toHaveValue('Hello from Smart Mushroom Hub');await expect(dialog.getByLabel('Your message')).toBeVisible();
+  const submit=dialog.getByRole('button',{name:'Continue to email'});if(await dialog.getAttribute('data-contact-email'))await expect(submit).toBeEnabled();else{await expect(submit).toBeDisabled();await expect(dialog).toContainText('A public recipient email still needs to be added.');}
+  await dialog.getByRole('button',{name:'Close contact form'}).click();await expect(dialog).toBeHidden();
 });
 test('reduced motion keeps expressions but stops movement',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/about/');await expect(page.locator('[data-myko-motion]')).toHaveCount(0);await page.getByRole('button',{name:'Say hello to Myko'}).click();await expect(page.locator('[data-myko]')).toHaveAttribute('data-mood','happy');await expect(page.locator('[data-myko]')).not.toHaveAttribute('data-animate');
