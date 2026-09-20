@@ -51,6 +51,17 @@ test('research page and all illustration assets load without a data dashboard', 
   for (const id of ['experiment', 'cultivation', 'observations', 'vision', 'architecture']) {
     await expect(page.locator(`#${id}`).getByRole('heading', { level: 2 }).first()).toBeVisible();
   }
+  await expect(page.locator('#observations')).toHaveCSS('background-color', 'rgb(23, 43, 41)');
+  await expect(page.locator('#vision')).toHaveCSS('background-color', 'rgb(246, 243, 235)');
+  const architectureAlignment = await page.locator('#architecture').evaluate(section => {
+    const inner = section.querySelector('.architecture-inner')!.getBoundingClientRect();
+    const introduction = section.querySelector('.architecture-introduction')!.getBoundingClientRect();
+    return { right: Math.abs(inner.right - introduction.right), paddingBottom: getComputedStyle(section.querySelector('.architecture-introduction')!).paddingBottom };
+  });
+  if ((page.viewportSize()?.width ?? 0) > 760) {
+    expect(architectureAlignment.right).toBeLessThanOrEqual(1);
+    expect(architectureAlignment.paddingBottom).toBe('14px');
+  }
   // Decode HTML images and SVG image layers, including initially hidden states.
   const failedImages = await page.evaluate(async () => {
     const urls = new Set([

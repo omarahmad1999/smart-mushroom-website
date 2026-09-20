@@ -442,4 +442,26 @@ const phases = [
   }
   @media (prefers-reduced-motion: reduce) { .rc-phase-tab, .rc-tab-arrow, .rc-photo-thumb img, .rc-image-expand { transition: none; } }
   .rc-experiment { padding-top: clamp(32px,4vw,48px); }
+  .rc-observations { background: #172b29; color: #f6f3eb; }
+  .rc-observations .rc-section-label { color: #b7c0ac; }
+  .rc-observations h2 em, .rc-observations .rc-kicker, .rc-observations .rc-small-number { color: #b7c398; }
+  .rc-observations p, .rc-observations figcaption, .rc-observations .rc-photo-thumb { color: #b3beb1; }
+  .rc-observations .rc-lead, .rc-observations h3, .rc-observations .rc-photo-thumb[aria-pressed="true"], .rc-observations .rc-timelapse-copy > a { color: #f6f3eb; }
+  .rc-observations .rc-photo-thumb, .rc-observations .rc-media-types > div, .rc-observations .rc-camera-note, .rc-observations .rc-timelapse { border-color: #f6f3eb26; }
+  .rc-observations .rc-photo-thumb[aria-pressed="true"] { border-color: var(--rc-orange); }
+  .rc-observations .rc-publication-note { border-color: #a9b58a; }
+  .rc-observations .rc-image-expand { background: #f6f3eb; color: #172b29; }
+  .rc-observations .rc-capture a:hover .rc-image-expand { background: #dce4ce; }
+  .rc-observations .rc-timelapse-copy > a { border-color: #f6f3eb50; }
+  .rc-vision { background: var(--rc-paper); color: var(--rc-ink); }
+  .rc-vision .rc-section-label { color: var(--rc-ink); }
+  .rc-vision h2 em { color: var(--rc-olive); }
+  .rc-vision p { color: var(--rc-muted); }
+  .rc-vision .rc-lead { color: var(--rc-ink); }
+  .rc-vision-principle { color: var(--rc-olive) !important; border-color: #a0a887; }
+  .rc-vision-step, .rc-vision-footnote { border-color: #172b2920; }
+  .rc-vision-index, .rc-vision .rc-vision-status, .rc-vision-footnote > span { color: var(--rc-olive); }
+  .rc-vision .rc-status-planned, .rc-vision-step .rc-vision-caveat { color: var(--rc-muted); }
+  .rc-vision-step h3 { color: var(--rc-ink); }
+  .rc-vision-step p strong { color: var(--rc-ink); }
 </style>

@@ -40,6 +40,7 @@ test('opening habitat, collapsed catalogue, separate notes and photo footer work
   await expect(page.locator('.header-github')).toContainText('GitHub');
   await expect(page.locator('.desktop-nav')).toContainText('Home');
   await expect(page.locator('.desktop-nav')).not.toContainText('The experiment');
+  if(info.project.name==='desktop')expect(await page.locator('.desktop-nav').evaluate(nav=>parseFloat(getComputedStyle(nav).columnGap))).toBeGreaterThanOrEqual(60);
   await expect(page.locator('.footer-socials .footer-social')).toHaveCount(2);
   await page.locator('.photo-footer').scrollIntoViewIfNeeded();
   await expect.poll(()=>page.locator('.footer-photo').evaluate((image:HTMLImageElement)=>image.naturalWidth)).toBeGreaterThan(0);

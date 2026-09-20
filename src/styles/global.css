@@ -3,3 +3,6 @@
 .header-resources{display:flex;gap:10px;align-items:center;flex-shrink:0}.header-github{font-size:10px;min-height:41px;padding:10px 13px;gap:9px}.header-github>svg:last-child{display:none}@media(min-width:851px) and (max-width:1200px){.header-inner{padding-inline:24px;gap:16px}.desktop-nav{gap:15px}.header-resources{gap:7px}.header-grafana{padding-inline:10px}.header-github{padding-inline:10px}}@media(max-width:1000px){.desktop-nav,.header-resources{display:none}.menu-toggle{display:inline-flex}}
 
 .header-inner{width:min(var(--page-width),calc(100% - 2 * var(--page-pad)));max-width:none;padding-inline:0}
+
+.desktop-nav{gap:60px}
+@media(min-width:1001px) and (max-width:1200px){.desktop-nav{gap:34px}}
