@@ -41,6 +41,7 @@ test('Myko follows the idle and wake sequence without extending reactions',async
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
   const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width);await expect(page.locator('canvas')).toHaveCount(0);
+  const story=page.getByRole('tabpanel');await expect(story).toContainText('I’m a data analyst with a passion for farming.');await expect(story).toContainText('Riyadh, Saudi Arabia');await expect(story).toContainText('Cairo, Egypt');await expect(story).toContainText('Kuala Lumpur, Malaysia');await expect(story).not.toContainText('It started with mushrooms.');
   const tab=page.getByRole('tab',{name:'What I build',exact:true});await tab.click();await expect(page.getByRole('tabpanel')).toContainText('PVC pipes');await tab.press('ArrowRight');await expect(page.getByRole('tab',{name:'What I’m exploring'})).toBeFocused();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect(errors).toEqual([]);
 });
