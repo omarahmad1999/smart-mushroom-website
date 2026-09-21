@@ -117,7 +117,11 @@ test('zoom, reset, component selection, and the mushroom layer change only the i
   await expect(sensor).toHaveAttribute('aria-pressed', 'true');
   await expect(section.locator('[data-study-select="bag"]')).toHaveAttribute('aria-pressed', 'false');
   await expect(section.locator('[data-study-detail-title]')).toContainText('A window into the air.');
-  await expect(section.locator('[data-study-detail-note]')).toContainText('Grafana');
+  await expect(section.locator('[data-study-detail-note]')).toContainText('Each conductor joins its matching colour');
+  await section.locator('[data-study-select="pi"]').click();
+  await expect(section.locator('[data-study-detail-title]')).toContainText('The small computer behind it all.');
+  await expect(section.locator('[data-study-detail-note]')).toBeHidden();
+  await expect(section.locator('[data-study-detail]')).not.toContainText('This website does not connect');
   await expect.poll(async () => (await readView(section)).zoom).toBeGreaterThan(initialView.zoom);
 
   const mushrooms = section.locator('[data-study-mushrooms]');

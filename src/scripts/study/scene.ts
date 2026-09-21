@@ -383,7 +383,8 @@ export function mountMaterialStudy(section: HTMLElement) {
     section.querySelector<HTMLElement>('[data-study-detail-category]')!.textContent = `${item.category.toUpperCase()} / ${item.number}`;
     section.querySelector<HTMLElement>('[data-study-detail-title]')!.textContent = item.title;
     section.querySelector<HTMLElement>('[data-study-detail-copy]')!.textContent = item.copy;
-    section.querySelector<HTMLElement>('[data-study-detail-note]')!.textContent = item.note;
+    const detailNote=section.querySelector<HTMLElement>('[data-study-detail-note]')!;
+    detailNote.textContent = item.note; detailNote.hidden = !item.note;
     const link = section.querySelector<HTMLAnchorElement>('[data-study-detail-link]')!;
     link.href = item.link; link.textContent = `${item.linkLabel} ↗`;
     detail.hidden = false;
@@ -414,12 +415,12 @@ export function mountMaterialStudy(section: HTMLElement) {
     section.querySelector(`button[data-study-${layer}]`)?.setAttribute('aria-pressed', String(visible));
     renderer.shadowMap.needsUpdate = true;
     syncAction(); draw();
-    status.textContent = layer === 'mushrooms' ? (visible ? 'Illustrated oyster mushrooms shown.' : 'Illustrated oyster mushrooms hidden. The substrate bag remains.') : `${layer[0].toUpperCase()}${layer.slice(1)} ${visible ? 'shown' : 'hidden'}. Illustration only.`;
+    status.textContent = layer === 'mushrooms' ? (visible ? 'Illustrated oyster mushrooms shown.' : 'Illustrated oyster mushrooms hidden. The substrate bag remains.') : `${layer[0].toUpperCase()}${layer.slice(1)} ${visible ? 'shown' : 'hidden'}.`;
   }
   function runAction() {
     const action = componentById[selected].action;
     if (action === 'mushrooms' || action === 'cover' || action === 'wiring') { setLayer(action); viewport.scrollIntoView({block:'center',behavior:reduceMotion.matches?'instant':'smooth'}); return; }
-    if(action==='screen'){setScreen(!screenOn);status.textContent=screenOn?'Screen on. Static Grafana mock-up shown.':'Screen off.';return;}
+    if(action==='screen'){setScreen(!screenOn);status.textContent=screenOn?'Screen on.':'Screen off.';return;}
     if(action==='light')sounds.switch('light');
     if(demos.has(action)){stopDemo(action);draw();wake();status.textContent='Component switched off. Other active components remain on.';return;}
     if(!demos.size)demoStarted=performance.now();demos.add(action);
@@ -445,7 +446,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     syncDemos();
     syncAction(); draw(); wake();
     viewport.scrollIntoView({block:'center',behavior:reduceMotion.matches?'instant':'smooth'});
-    status.textContent = `${action === 'cooling' ? 'Cool airflow' : action === 'fan' ? 'Airflow' : action === 'mist' ? 'Mist path' : action === 'camera' ? 'Camera viewing area' : 'LED lighting'} demonstration shown. ${reduceMotion.matches ? 'Motion is reduced.' : 'Illustration only.'}`;
+    status.textContent = `${action === 'cooling' ? 'Cool airflow' : action === 'fan' ? 'Airflow' : action === 'mist' ? 'Mist path' : action === 'camera' ? 'Camera viewing area' : 'LED lighting'} demonstration shown.${reduceMotion.matches ? ' Motion is reduced.' : ''}`;
   }
   function zoom(direction: string) {
     tween = null;
