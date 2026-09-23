@@ -1,0 +1,3 @@
+/* 13 — Becoming Myko. No camera change at the handoff: fixed G2 hero geometry.
+ * Moss first, shoulder/limb pins next, largest crown cap last. */
+(function(){'use strict';FILM.scene({id:'bloom',draw(c,t0,info){const L=info.lib,M=FILM.myko,P=L.pal,t=L.clamp(t0,0,3),tw=L.onTwos(t),g=.04+.96*L.clamp(tw/2.5);M.forestBackdrop(c,info.T,{quiet:1});M.log(c,1390,889,.94);M.mushroom(c,1350,851,.98,{id:'original'});M.draw(c,880,835,1,{T:info.T,expression:'happy',threads:1,growth:g});const events=[[.65,1032,489],[1.25,961,762],[2,901,117]];events.forEach(([start,x,y],i)=>{const p=L.clamp((t-start)/.45);if(t>=start&&p<1){c.save();c.globalAlpha=(1-p)*.72;L.inkCircle(c,x,y,9+p*42,{color:P.annYellow,width:2,seed:L.hash('growring',i)});c.restore();}});}});})();

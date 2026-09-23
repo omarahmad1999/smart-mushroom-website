@@ -1,0 +1,3 @@
+/* 03 — Cyan seams travel from fingertip through arm into the chest and head.
+ * The stepped reach pose is inherited from discovery; thread growth is causal. */
+(function(){'use strict';FILM.scene({id:'inhabit',draw(c,t0,info){const L=info.lib,M=FILM.myko,P=L.pal,t=L.clamp(t0,0,2),tw=L.onTwos(t);M.forestBackdrop(c,info.T,{quiet:1});const z=L.lerp(1.12,1.34,L.ease.inOutSine(t/2));c.save();c.translate(930,635);c.scale(z,z);c.translate(-930,-635);M.log(c,1260,864,1.23);M.mushroom(c,1210,858,1.27,{id:'original'});M.draw(c,887,847,1,{mirror:true,T:info.T,reach:1,threads:L.clamp((tw+.15)/1.65),expression:'wonder',gaze:[-6,-4]});c.restore();if(t>.9&&t<1.6){c.save();c.globalAlpha=Math.sin((t-.9)/.7*Math.PI);M.attention(c,1059,416,1,P.annYellow);c.restore();}}});})();

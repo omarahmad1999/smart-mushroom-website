@@ -1,0 +1,3 @@
+/* 12 — Reverse the eye passage to the shared full-body hero pose.
+ * Circular filament reflection at (960,540), radius240; amber warmth returns. */
+(function(){'use strict';FILM.scene({id:'return',draw(c,t0,info){const L=info.lib,M=FILM.myko,P=L.pal,t=L.clamp(t0,0,2),p=L.ease.outCubic(L.clamp(t/1.65));M.forestBackdrop(c,info.T,{quiet:1});M.log(c,1390,889,.94);M.mushroom(c,1350,851,.98,{id:'original'});const s=L.lerp(12,1,p),ex=L.lerp(960,895,p),ey=L.lerp(540,384,p);M.draw(c,ex-15*s,ey+451*s,s,{T:info.T,expression:t<1.4?'wonder':'happy',threads:1,growth:.04});const veil=1-L.smoothstep(.05,.7,t);c.save();c.globalAlpha=veil;c.fillStyle=P.navy;c.fillRect(0,0,1920,1080);c.restore();M.worldCircle(c,info.T,1-L.smoothstep(.3,.9,t));}});})();

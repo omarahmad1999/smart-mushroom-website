@@ -1,0 +1,6 @@
+/* 02 — Contact occurs on the cap, explicitly before hyphae reach Myko.
+ * Paper forest; enlarged bark; gilled mushroom; mechanical hand; pulse. */
+(function(){'use strict';FILM.scene({id:'touch',draw(c,t0,info){const L=info.lib,M=FILM.myko,P=L.pal,t=L.clamp(t0,0,2),tw=L.onTwos(t);M.forestBackdrop(c,info.T,{quiet:1});c.save();c.globalAlpha=.9;M.log(c,1275,887,2.05);c.restore();const capX=1190,capY=506,flex=t>=1?Math.sin(Math.min(1,(tw-1)*3)*Math.PI)*7:0;M.mushroom(c,1190,856,2.5,{id:'original'}); // top at 506
+ const reach=L.ease.outCubic(L.clamp(tw/.95)),fx=L.lerp(700,capX,reach),fy=L.lerp(278,capY+flex,reach);c.save();c.translate(fx,fy);c.scale(-2.35,2.35);M.shape(c,'M 57 -26 Q 104 -34 153 -15 L 750 -6 L 750 64 Q 305 44 53 15 Z',P.shell,[51,-29,750,96],'contactarm');M.hand(c,72,-1,0,true);c.restore();
+ if(t>=1){const p=L.clamp((t-1)/.8);M.trace(c,[[1190,506],[1191,574],[1186,679],[1197,790],[1204,851],[1100,877],[1058,916]],p,3.1);M.trace(c,[[1204,851],[1280,880],[1404,862],[1487,900]],p*1.3,2.5);const ring=L.clamp((t-1)/.5);c.save();c.globalAlpha=(1-ring)*.9;L.inkCircle(c,1190,506,14+ring*75,{color:P.annYellow,width:2.3,seed:L.hash('contactring')});c.restore();if(t>1.65)M.trace(c,[[1190,506],[1130,503],[1072,483],[1004,479]],(t-1.65)*3,3.2);}
+ M.fern(c,1680,1080,2.5,-.48);}});})();

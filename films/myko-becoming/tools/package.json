@@ -1,0 +1,14 @@
+{
+  "name": "myko-becoming-film-tools",
+  "private": true,
+  "scripts": {
+    "build": "node build.cjs",
+    "check": "node check.cjs",
+    "render": "node render.cjs",
+    "snap": "node snap.cjs",
+    "audio": "node audio/render-audio.cjs"
+  },
+  "dependencies": {
+    "playwright": "^1.63.0"
+  }
+}
