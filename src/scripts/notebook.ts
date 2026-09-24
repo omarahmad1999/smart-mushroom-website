@@ -81,6 +81,9 @@ if (book) {
     journeyTabs.forEach(link=>{if(link.dataset.journeyTab===slug)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
     journeyPanels.forEach(panel=>panel.toggleAttribute('data-active',panel.dataset.journeyPanel===slug));
     journeyPhotoBoards.forEach(board=>board.hidden=board.dataset.journeyPhotoBoard!==slug);
+    const position=journeyTabs.findIndex(link=>link.dataset.journeyTab===slug);
+    book!.querySelectorAll<HTMLAnchorElement>('[data-journey-choose]').forEach(link=>{if(link.dataset.journeyChoose===slug)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
+    const step=book!.querySelector('[data-journey-chooser-step]');if(step)step.textContent=`${String(position+1).padStart(2,'0')} / ${journeyTabs.length}`;
   }
   if(journeySelection)selectJourney(journeySelection);
   let current = 0;
@@ -174,7 +177,18 @@ if (book) {
   previous.forEach(button=>button.addEventListener('click',()=>advance(-1)));
   next.forEach(button=>button.addEventListener('click',()=>advance(1)));
   jumps.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();const wasContents=contents.contains(link);contents.open=false;turn(Number(link.dataset.nbJump)*2);if(wasContents)book.querySelector<HTMLElement>(`.nb-tabs [data-nb-jump="${link.dataset.nbJump}"]`)?.focus({preventScroll:true});}));
-  journeyTabs.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();selectJourney(link.dataset.journeyTab!);turn(journeyIndex*2+(mobile.matches?1:0),false,false);ink();history.pushState(null,'',link.hash);status.textContent=`The Journey · ${link.textContent?.trim()}`;}));
+  const chooseJourney=(slug:string,hash:string)=>{selectJourney(slug);turn(journeyIndex*2+(mobile.matches?1:0),false,false);ink();history.pushState(null,'',hash);status.textContent=`The Journey · ${journeyTabs.find(tab=>tab.dataset.journeyTab===slug)?.querySelector('.journey-tab-label')?.textContent?.trim()??''}`;};
+  journeyTabs.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();chooseJourney(link.dataset.journeyTab!,link.hash);}));
+  // Build steps sheet: names every step where the tab rail stays collapsed, and closes once one is chosen.
+  const chooserDialog=book.querySelector<HTMLDialogElement>('[data-journey-chooser-dialog]');
+  const chooser=book.querySelector<HTMLButtonElement>('[data-journey-chooser]');
+  if(chooserDialog&&chooser){
+    chooser.addEventListener('click',()=>{chooserDialog.showModal();chooserDialog.querySelector<HTMLElement>('[aria-current=page]')?.focus();});
+    chooserDialog.querySelector('[data-journey-chooser-close]')!.addEventListener('click',()=>chooserDialog.close());
+    chooserDialog.addEventListener('click',event=>{if(event.target===chooserDialog)chooserDialog.close();});
+    chooserDialog.addEventListener('close',()=>chooser.focus({preventScroll:true}));
+    chooserDialog.querySelectorAll<HTMLAnchorElement>('[data-journey-choose]').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();chooserDialog.close();chooseJourney(link.dataset.journeyChoose!,link.hash);}));
+  }
   mobile.addEventListener('change',()=>turn(current,false,false));
   window.addEventListener('hashchange',fromHash);
   window.addEventListener('popstate',fromHash);

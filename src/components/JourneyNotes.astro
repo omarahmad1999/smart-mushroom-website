@@ -6,6 +6,11 @@ const colours=['#dce2c2','#eed4b7','#d4dfdd','#dfd3e2','#cee0d8','#f0dfac','#e7e
 const photoSections=new Set(['pvc-pipes','transparent-plastic','raspberry-pi','fan','humidifier','led','white-car-vinyl','sensors','ups']);
 ---
 <div class="journey-notes">
+  <button type="button" class="journey-chooser" data-journey-chooser aria-haspopup="dialog" aria-controls="journey-chooser-dialog">Build steps <span data-journey-chooser-step>01 / {notes.length}</span></button>
+  <dialog id="journey-chooser-dialog" class="journey-chooser-dialog" data-journey-chooser-dialog aria-labelledby="journey-chooser-title">
+    <header><p>THE JOURNEY</p><h2 id="journey-chooser-title">Choose a build step</h2><button type="button" class="journey-chooser-close" data-journey-chooser-close aria-label="Close build steps">Close <span aria-hidden="true">×</span></button></header>
+    <ol>{notes.map(({frontmatter:n},i)=><li><a href={`#journey-${n.slug}`} data-journey-choose={n.slug} style={`--tab-paper:${colours[i]}`}><span>{String(n.order).padStart(2,'0')}</span>{n.title}</a></li>)}</ol>
+  </dialog>
   <nav class="journey-tabs" aria-label="The Journey mini sections">{notes.map(({frontmatter:n},i)=><a href={`#journey-${n.slug}`} data-journey-tab={n.slug} style={`--tab-paper:${colours[i]}`}><span>{String(n.order).padStart(2,'0')}</span><span class="journey-tab-label">{n.title}</span></a>)}</nav>
   {notes.map(({frontmatter:n,Content},i)=><section id={`journey-${n.slug}`} data-journey-panel={n.slug} class:list={["journey-note",{"journey-note-pvc":n.slug==='pvc-pipes',"journey-note-plastic":n.slug==='transparent-plastic',"journey-note-pi":n.slug==='raspberry-pi'}]} aria-labelledby={`journey-title-${n.slug}`} style={`--tab-paper:${colours[i]}`}>
     <p class="journey-number">THE JOURNEY <span>/</span> {String(n.order).padStart(2,'0')} OF 12</p>
@@ -54,6 +59,27 @@ const photoSections=new Set(['pvc-pipes','transparent-plastic','raspberry-pi','f
 @media(max-width:760px){.journey-tabs{width:28px;gap:4px}.journey-tabs a{width:28px;padding:6px;font-size:19px;height:42px}.journey-body{font-size:17px}.journey-note{padding:20px}.journey-note h3{font-size:33px}.journey-note-pvc,.journey-note-plastic,.journey-note-pi{padding:14px 16px}:global(.notebook[data-enhanced]) .journey-note{top:62px;left:10px;right:10px;bottom:32px}.journey-body :global(.pvc-journey-gallery){gap:7px;padding:0}.journey-body :global(.pvc-journey-gallery figure){padding:4px 4px 6px}.journey-body :global(.pvc-journey-gallery img){height:76px}.journey-body :global(.pvc-journey-gallery figcaption){font-size:13px}.journey-body :global(.plastic-journey-gallery img){height:170px}.journey-photo-sticker{display:block}}
 @media(max-width:360px){.journey-note-pi{padding:8px}.journey-note-pi .journey-number{top:7px;right:8px}.journey-note-pi .journey-heading{margin-bottom:2px}.journey-note-pi .journey-body :global(p){margin-bottom:5px}.journey-photo-sticker{margin-top:4px}}
 :global(.notebook:not([data-enhanced])) .journey-tabs a{width:auto;height:auto}:global(.notebook:not([data-enhanced])) .journey-tab-label{opacity:1;min-width:0}
+/* Where the tab rail stays collapsed (phones, and touch screens below the wide layout), the
+   numbered strips stay put and a Build steps sheet names every step instead of expanding
+   labels over the writing. */
+.journey-chooser{display:none}
+@media(max-width:760px),(hover:none) and (max-width:1399px){
+  .journey-tabs:hover,.journey-tabs:focus-within{width:34px}.journey-tabs:hover a,.journey-tabs:focus-within a{width:34px}
+  .journey-tabs:hover .journey-tab-label,.journey-tabs:focus-within .journey-tab-label{opacity:0}
+  :global(.notebook[data-enhanced]) .journey-chooser{display:flex;position:absolute;z-index:7;top:9px;right:40px;align-items:center;gap:9px;min-height:36px;padding:4px 12px 5px;background:#fff2c9;color:#8d492f;border:1px dashed #a4734e8c;border-radius:1px;box-shadow:1px 2px 4px #49381e24;font-family:var(--hand);font-size:19px;line-height:1;transform:rotate(-1deg)}
+  .journey-chooser span{font-family:var(--font-body);font-size:9px;letter-spacing:.6px;color:#765640}
+  :global(.nb-journey-page .nb-running span:last-child){visibility:hidden}
+}
+@media(max-width:760px){.journey-tabs:hover,.journey-tabs:focus-within,.journey-tabs:hover a,.journey-tabs:focus-within a{width:28px}.journey-chooser{right:34px}}
+.journey-chooser-dialog{width:min(560px,100%);max-width:100%;max-height:86dvh;margin:auto auto 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));border:0;border-radius:14px 14px 0 0;background-color:#fbf7ec;background-image:radial-gradient(#9a886b1b .6px,transparent .8px);background-size:5px 5px;color:#39473c;box-shadow:0 -12px 40px #1c241d40;overflow:auto}
+.journey-chooser-dialog::backdrop{background:#18211bb8}
+.journey-chooser-dialog header{display:grid;grid-template-columns:1fr auto;align-items:start;margin-bottom:14px}.journey-chooser-dialog header p{font-size:8px;letter-spacing:1.2px;color:#6c705d}.journey-chooser-dialog h2{grid-column:1;font-family:var(--hand);font-size:32px;line-height:1.05;color:#a64e30;margin-top:6px}
+.journey-chooser-close{grid-column:2;grid-row:1/3;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 4px;background:transparent;font-size:11px;color:#4a5748}.journey-chooser-close span{font-size:24px;line-height:1}
+.journey-chooser-dialog ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 10px}
+.journey-chooser-dialog a{display:flex;align-items:center;gap:10px;min-height:50px;padding:8px 10px;background:linear-gradient(110deg,#fff5,transparent),var(--tab-paper);box-shadow:1px 3px 5px #49381e1f;color:#39473c;text-decoration:none;font-family:var(--hand);font-size:20px;line-height:1.05;transform:rotate(-.6deg)}
+.journey-chooser-dialog li:nth-child(even) a{transform:rotate(.6deg)}
+.journey-chooser-dialog a span{font-family:var(--font-body);font-size:9px;opacity:.7;flex:none}
+.journey-chooser-dialog a[aria-current=page]{box-shadow:inset 3px 0 0 #9d573a,1px 3px 5px #49381e1f;color:#853c27}
 @media(prefers-reduced-motion:reduce){.journey-tabs a{transition:none}}
 @media print{.journey-tabs{display:none}:global(.notebook[data-enhanced]) .journey-note:not([data-active]){display:block}.journey-note{break-inside:avoid}}
 </style>

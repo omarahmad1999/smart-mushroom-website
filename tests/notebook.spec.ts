@@ -307,3 +307,25 @@ test('photo notes are pencilled on, then open from a sticky note',async({page})=
   await expect(photo.locator('.nb-annotation')).toHaveAttribute('open','');
   await expect(photo.locator('.nb-annotation p')).toContainText('The hanging bags contain the growing substrate.');
 });
+
+test('on phones a Build steps sheet names every Journey step and closes after a choice',async({page},info)=>{
+  test.skip(info.project.name!=='mobile','The tab rail shows its labels on the wide desktop layout.');
+  await page.goto('/documentation/#journey-pvc-pipes');
+  const book=page.locator('[data-notebook]'),chooser=book.getByRole('button',{name:/Build steps/});
+  await expect(chooser).toBeVisible();await expect(chooser).toContainText('01 / 12');
+  const before=await book.locator('[data-nb-binding]').boundingBox();
+  // The collapsed tab rail no longer spreads its labels over the writing.
+  await book.locator('[data-journey-tab="fan"]').click();
+  await expect(book.locator('.journey-tabs')).toHaveCSS('width','28px');
+  await chooser.click();
+  const sheet=page.getByRole('dialog',{name:'Choose a build step'});
+  await expect(sheet.getByRole('link')).toHaveCount(12);
+  await expect(sheet.getByRole('link',{name:/Fan/})).toHaveAttribute('aria-current','page');
+  await sheet.getByRole('link',{name:/Sensors/}).click();
+  await expect(sheet).toBeHidden();
+  await expect(book.locator('[data-journey-panel="sensors"]')).toBeVisible();
+  await expect(page).toHaveURL(/#journey-sensors$/);
+  await expect(chooser).toContainText('08 / 12');await expect(chooser).toBeFocused();
+  const after=await book.locator('[data-nb-binding]').boundingBox();
+  expect(after!.width).toBeCloseTo(before!.width,1);expect(after!.height).toBeCloseTo(before!.height,1);
+});
