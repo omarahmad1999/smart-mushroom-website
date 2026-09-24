@@ -294,3 +294,16 @@ test('a lens magnifies photographs on hover or press-and-hold without turning th
   await expect(book.locator('.nb-lightbox')).toBeHidden();
   await expect(status).toContainText('Page 1 / 12');
 });
+
+test('photo notes are pencilled on, then open from a sticky note',async({page})=>{
+  await page.goto('/documentation/#notebook-idea');
+  const photo=page.locator('#notebook-idea .nb-photo');
+  const marks=photo.locator('.nb-marks');
+  await expect(marks.locator('.nb-mark')).toHaveCount(2);
+  await expect(marks).toHaveAttribute('data-ink','written');
+  await expect.poll(()=>marks.locator('.nb-mark').first().evaluate(el=>getComputedStyle(el).strokeDashoffset),{timeout:10_000}).toMatch(/^0(px)?$/);
+  const note=photo.getByLabel('Photo note: The Idea',{exact:true});
+  await note.click();
+  await expect(photo.locator('.nb-annotation')).toHaveAttribute('open','');
+  await expect(photo.locator('.nb-annotation p')).toContainText('The hanging bags contain the growing substrate.');
+});

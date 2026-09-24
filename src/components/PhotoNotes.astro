@@ -1,0 +1,63 @@
+---
+// Pencil marks and sticky notes for a notebook photograph. Each note circles its spot,
+// with an arrow to a numbered sticky note that opens the note text. Positions are
+// percentages of the photograph's frame, as in the notebook entries' frontmatter.
+interface Note { x:number; y:number; text:string }
+interface Props { notes:Note[]; tab:string; portrait?:boolean }
+const { notes, tab, portrait = false } = Astro.props;
+// Roughly round in pixels: the frame is wider than tall, or taller than wide when portrait.
+const [rx, ry] = portrait ? [14, 11] : [8.5, 10.5];
+const f = (value:number) => value.toFixed(2);
+const random = (seed:number) => () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+/** A loop that overshoots its start, like a quick pencil circle. */
+const loop = (cx:number, cy:number, seed:number) => {
+  const next = random(seed), points:[number,number][] = [];
+  for (let i = 0; i <= 16; i++) {
+    const angle = -.7 + (i / 16) * Math.PI * 2 * 1.1, wobble = 1 + (next() - .5) * .14;
+    points.push([cx + Math.cos(angle) * rx * wobble, cy + Math.sin(angle) * ry * wobble]);
+  }
+  let d = `M${f(points[0][0])} ${f(points[0][1])}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const [x, y] = points[i], [nx, ny] = points[i + 1];
+    d += ` Q${f(x)} ${f(y)} ${f((x + nx) / 2)} ${f((y + ny) / 2)}`;
+  }
+  return d;
+};
+const placed = notes.map((note, index) => {
+  // The sticky note sits above the circle, on whichever side has more room.
+  const side = note.x > 62 ? -1 : 1;
+  const noteX = note.x + side * (rx + 5), noteY = Math.max(6, note.y - ry - 9);
+  const from = [noteX - side * 1.5, noteY + 5], to = [note.x + side * rx * .72, note.y - ry * .72];
+  const bend = [(from[0] + to[0]) / 2 + side * 3, (from[1] + to[1]) / 2 - 2];
+  const heading = Math.atan2(to[1] - bend[1], to[0] - bend[0]);
+  const head = [-.5, .5].map(turn => [to[0] - Math.cos(heading + turn) * 2.4, to[1] - Math.sin(heading + turn) * 2.4]);
+  return {
+    ...note, index, side, noteX, noteY,
+    circle: loop(note.x, note.y, Math.round(note.x * 31 + note.y * 17 + index)),
+    arrow: `M${f(from[0])} ${f(from[1])} Q${f(bend[0])} ${f(bend[1])} ${f(to[0])} ${f(to[1])} M${f(head[0][0])} ${f(head[0][1])} L${f(to[0])} ${f(to[1])} L${f(head[1][0])} ${f(head[1][1])}`,
+  };
+});
+---
+<svg class="nb-marks" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+  {placed.map(note => <g><path class="nb-mark" d={note.circle} pathLength="1" /><path class="nb-mark nb-mark-arrow" d={note.arrow} pathLength="1" /></g>)}
+</svg>
+{placed.map(note => <details class="nb-annotation" data-side={note.side < 0 ? 'left' : 'right'} data-open={note.noteY < 45 ? 'down' : 'up'} style={`--pin-x:${note.noteX}%;--pin-y:${note.noteY}%`}>
+  <summary aria-label={note.index === 0 ? `Photo note: ${tab}` : `Photo note ${note.index + 1}: ${tab}`}>{note.index + 1}</summary>
+  <p>{note.text}</p>
+</details>)}
+<style>
+.nb-marks{position:absolute;inset:0;width:100%;height:100%;z-index:2;overflow:visible;pointer-events:none}
+.nb-mark{fill:none;stroke:#a64e30;stroke-width:.55;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1 1;opacity:.9}
+.nb-mark-arrow{stroke-width:.42}
+.nb-annotation{position:absolute;left:var(--pin-x);top:var(--pin-y);z-index:3;translate:-50% -50%}
+.nb-annotation summary{display:grid;place-items:center;width:34px;height:32px;padding-top:2px;background:linear-gradient(135deg,#fff5cf,#fbe7a8);color:#a64e30;list-style:none;cursor:pointer;font-family:var(--hand);font-size:22px;line-height:1;box-shadow:1px 3px 5px #42351f33;clip-path:polygon(0 0,100% 0,100% 74%,78% 100%,0 100%);transform:rotate(-6deg);transition:transform .25s cubic-bezier(.2,.8,.25,1),box-shadow .25s}
+.nb-annotation[data-side=left] summary{transform:rotate(5deg)}
+.nb-annotation summary::-webkit-details-marker{display:none}
+.nb-annotation summary:hover,.nb-annotation[open] summary{transform:rotate(-2deg) translateY(-2px) scale(1.06);box-shadow:2px 6px 9px #42351f3d}
+.nb-annotation summary:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+/* Notes high on the photograph open downwards, over the photo rather than the heading above it. */
+.nb-annotation[data-open=down] p{bottom:auto;top:43px}
+.nb-annotation p{position:absolute;bottom:43px;left:50%;transform:translateX(-50%);width:210px;max-width:60vw;background:#fff2cb;padding:15px;box-shadow:0 5px 18px #42351f35;font-size:12px;line-height:1.6;border:1px solid #d8c797}
+@media(prefers-reduced-motion:reduce){.nb-annotation summary{transition:none}}
+@media print{.nb-marks,.nb-annotation{display:none!important}}
+</style>

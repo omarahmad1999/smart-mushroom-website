@@ -37,6 +37,7 @@ function words(element: HTMLElement) {
  */
 export function prepareInk(root: HTMLElement) {
   root.querySelectorAll<HTMLElement>(ALL).forEach(line => words(line));
+  root.querySelectorAll<SVGElement>('.nb-marks').forEach(marks => { marks.dataset.ink = 'ready'; });
 }
 
 /** Writes the handwriting inside `pages`, each page in reading order and the pages side by side. */
@@ -53,6 +54,15 @@ export function writeIn(pages: HTMLElement[]) {
       }
       line.dataset.ink = 'written';
       delay += 140;
+    }
+    // Pencil marks on photographs are drawn after the page's handwriting.
+    for (const marks of page.querySelectorAll<SVGElement>('.nb-marks[data-ink="ready"]')) {
+      for (const mark of marks.querySelectorAll('.nb-mark')) {
+        const duration = mark.classList.contains('nb-mark-arrow') ? 360 : 620;
+        mark.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration, delay, easing: 'cubic-bezier(.45,.05,.3,1)', fill: 'backwards' });
+        delay += duration * .9;
+      }
+      marks.dataset.ink = 'written';
     }
   });
 }
