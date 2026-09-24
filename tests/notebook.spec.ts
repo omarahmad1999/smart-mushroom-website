@@ -269,3 +269,28 @@ test('growing notes flip through the three dated stills without turning or resiz
   const after=await book.locator('[data-nb-binding]').boundingBox();
   expect(after!.width).toBeCloseTo(before!.width,1);expect(after!.height).toBeCloseTo(before!.height,1);
 });
+
+test('a lens magnifies photographs on hover or press-and-hold without turning the page',async({page},info)=>{
+  await page.goto('/documentation/#notebook-idea');
+  const book=page.locator('[data-notebook]'),lens=book.locator('.nb-loupe'),status=book.locator('[data-nb-status]');
+  await expect(book).toHaveAttribute('data-enhanced','true');await page.waitForTimeout(1200);
+  const photo=book.locator('[data-nb-page="0"] .nb-photo img');
+  // The lens hides while the page scrolls, so settle the scroll before pointing at the photo.
+  await photo.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));await page.waitForTimeout(300);
+  const box=(await photo.boundingBox())!;const x=box.x+box.width*.4,y=box.y+box.height*.45;
+  if(info.project.name==='desktop'){
+    await page.mouse.move(x,y);await page.mouse.move(x+4,y+3);
+    await expect(lens).toHaveAttribute('data-on','');
+    expect(await lens.evaluate(el=>getComputedStyle(el).backgroundImage)).toContain('photo-incubation-2026-08-19.webp');
+    await page.mouse.move(4,4);await expect(lens).not.toHaveAttribute('data-on');
+    return;
+  }
+  const touch=await page.context().newCDPSession(page);
+  await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+  await expect(lens).toHaveAttribute('data-on','');
+  for(let step=1;step<=5;step++)await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+step*16,y}]});
+  await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await expect(lens).not.toHaveAttribute('data-on');
+  await expect(book.locator('.nb-lightbox')).toBeHidden();
+  await expect(status).toContainText('Page 1 / 12');
+});

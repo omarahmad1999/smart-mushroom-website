@@ -1,6 +1,7 @@
 import { createLeaf, type Leaf, type LeafOptions, type LeafState, type Row } from './notebook-turn';
 import { writeIn } from './notebook-ink';
 import { mountFlipbook } from './notebook-flipbook';
+import { mountLoupe } from './notebook-loupe';
 
 const book = document.querySelector<HTMLElement>('[data-notebook]');
 if (book) {
@@ -165,6 +166,7 @@ if (book) {
   book.dataset.enhanced='true';
   book.querySelectorAll<HTMLElement>('[data-nb-controls],[data-nb-hint],[data-nb-prev],[data-nb-next]').forEach(el=>el.hidden=false);
   book.querySelectorAll<HTMLElement>('[data-nb-flipbook]').forEach(figure=>mountFlipbook(figure,reduced));
+  mountLoupe(book,binding);
   render();fromHash();setCover(!location.hash);
   new IntersectionObserver(entries=>{inkVisible=entries.some(entry=>entry.isIntersecting);ink();},{threshold:.3}).observe(binding);
   const advance=(direction:number)=>turn(current+direction*(mobile.matches?1:2));
