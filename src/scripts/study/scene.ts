@@ -403,6 +403,8 @@ export function mountMaterialStudy(section: HTMLElement) {
     status.textContent = `${item.label} selected. ${item.title}`;
     if (fromList) viewport.scrollIntoView({ block: 'center', behavior: reduceMotion.matches ? 'instant' : 'smooth' });
   }
+  const layerCount=section.querySelector<HTMLElement>('[data-study-layer-count]');
+  function syncLayerCount(){if(layerCount)layerCount.textContent=`${section.querySelectorAll('#ms-layers-panel [aria-pressed="true"]').length} on`;}
   function setLayer(layer: 'cover' | 'wiring' | 'mushrooms' | 'labels') {
     finishAssembly();
     const current = layer === 'cover' ? tent.cover.visible : layer === 'wiring' ? wiring.visible : layer === 'mushrooms' ? mushroomsVisible : labelsVisible;
@@ -413,6 +415,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     if (layer === 'labels') labelsVisible = visible;
     section.dataset[`study${layer[0].toUpperCase()}${layer.slice(1)}`] = String(visible);
     section.querySelector(`button[data-study-${layer}]`)?.setAttribute('aria-pressed', String(visible));
+    syncLayerCount();
     renderer.shadowMap.needsUpdate = true;
     syncAction(); draw();
     status.textContent = layer === 'mushrooms' ? (visible ? 'Illustrated oyster mushrooms shown.' : 'Illustrated oyster mushrooms hidden. The substrate bag remains.') : `${layer[0].toUpperCase()}${layer.slice(1)} ${visible ? 'shown' : 'hidden'}.`;
@@ -493,6 +496,20 @@ export function mountMaterialStudy(section: HTMLElement) {
     else controls.rotateUp(event.key === 'ArrowUp' ? 0.09 : -0.09);
     wake();
   }, eventOptions);
+  // Layers and Play open as small disclosure panels above the toolbar.
+  const menus=[...section.querySelectorAll<HTMLElement>('[data-study-menu]')];
+  const closeMenus=(keep?:HTMLElement)=>menus.forEach(menu=>{
+    if(menu===keep)return;
+    menu.querySelector('[data-study-menu-toggle]')!.setAttribute('aria-expanded','false');menu.querySelector<HTMLElement>('.ms-menu-panel')!.hidden=true;
+  });
+  for(const menu of menus){
+    const toggle=menu.querySelector<HTMLButtonElement>('[data-study-menu-toggle]')!,panel=menu.querySelector<HTMLElement>('.ms-menu-panel')!;
+    toggle.addEventListener('click',()=>{const open=toggle.getAttribute('aria-expanded')!=='true';closeMenus(menu);toggle.setAttribute('aria-expanded',String(open));panel.hidden=!open;},eventOptions);
+    menu.addEventListener('keydown',event=>{if(event.key==='Escape'&&!panel.hidden){event.stopPropagation();closeMenus();toggle.focus();}},eventOptions);
+    menu.addEventListener('focusout',event=>{if(!menu.contains(event.relatedTarget as Node))closeMenus();},eventOptions);
+  }
+  document.addEventListener('pointerdown',event=>{if(!menus.some(menu=>menu.contains(event.target as Node)))closeMenus();},eventOptions);
+  section.querySelectorAll('.ms-play-item').forEach(item=>item.addEventListener('click',()=>closeMenus(),eventOptions));
   const raycaster = new THREE.Raycaster();raycaster.layers.enable(1);
   let down = new THREE.Vector2();
   const pickables = [...Object.entries(groups).filter(([id]) => id !== 'cover').map(([, group]) => group),wiring];
@@ -534,7 +551,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   },eventOptions);
   renderer.shadowMap.needsUpdate=true; draw(); fallback.hidden=true; detail.hidden=true;
   Object.assign(section.dataset,{studyState:'ready',studySelected:'bag',studyMushrooms:'true',studyCover:'false',studyWiring:'false',studyLabels:'true',studyDemo:'none',studyBuild:'idle',studyRegion:'overview',studyLighting:'day',studyScreen:'off',studySound:'true'});
-  studyButtons.forEach(button => button.disabled=false); syncAction();
+  studyButtons.forEach(button => button.disabled=false); syncAction(); syncLayerCount();
   syncDemos();
   status.textContent='Interactive habitat ready. Select any component to explore.';
   window.addEventListener('pageshow',()=>sounds.suspend(!inView||document.hidden),eventOptions);

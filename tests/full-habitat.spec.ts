@@ -1,4 +1,4 @@
-import { test as base, expect, type Page } from '@playwright/test';
+import { test as base, expect, type Locator, type Page } from '@playwright/test';
 
 const test = base.extend<{ staticBoundary: void }>({
   staticBoundary: [async ({ page, baseURL }, use) => {
@@ -80,6 +80,12 @@ async function openHabitat(page: Page) {
   return section;
 }
 
+/** Layer switches and Play actions live in small menus above the toolbar. */
+async function openMenu(section: Locator, name: 'layers' | 'play') {
+  const toggle = section.locator(`[data-study-menu="${name}"] [data-study-menu-toggle]`);
+  if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+}
+
 async function expectNoOverflow(page: Page) {
   const bounds = await page.evaluate(() => ({
     page: document.documentElement.scrollWidth,
@@ -138,6 +144,7 @@ test.describe('component explanations', () => {
     await expect(inspector).toBeHidden();
     await expect(section).toHaveAttribute('data-study-demo', 'none');
     await section.locator('button[data-study-region="overview"]').click();
+    await openMenu(section, 'layers');
     await section.locator('button[data-study-labels]').click();
     const point=await section.locator('[data-study-leader="bag"]').evaluate(line=>{
       const box=line.closest('[data-study-viewport]')!.getBoundingClientRect();
@@ -152,6 +159,8 @@ test.describe('component explanations', () => {
 
 test('layers and region controls consistently update the illustrated view', async ({ page }) => {
   const section = await openHabitat(page);
+  await openMenu(section, 'layers');
+  await expect(section.locator('[data-study-layer-count]')).toHaveText('2 on');
   for (const key of ['cover', 'wiring'] as const) {
     const button = section.locator(`button[data-study-${key}]`);
     await expect(button).toHaveAttribute('aria-pressed', 'false');
@@ -280,6 +289,7 @@ test('screen, sound excerpts and photograph behave as independent visual control
   const marker=section.locator('[data-study-hotspot="monitor"]');
   await expect(marker).toHaveCSS('opacity','0.58');
   await marker.focus();await expect(marker).toHaveCSS('opacity','1');
+  await openMenu(section, 'layers');
   await section.locator('[data-study-labels]').click();
   await viewport.scrollIntoViewIfNeeded();
   const screenPoint=await section.locator('[data-study-leader="monitor"]').evaluate(line=>{

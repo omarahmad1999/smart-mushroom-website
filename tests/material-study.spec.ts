@@ -124,6 +124,7 @@ test('zoom, reset, component selection, and the mushroom layer change only the i
   await expect(section.locator('[data-study-detail]')).not.toContainText('This website does not connect');
   await expect.poll(async () => (await readView(section)).zoom).toBeGreaterThan(initialView.zoom);
 
+  await section.locator('[data-study-menu="layers"] [data-study-menu-toggle]').click();
   const mushrooms = section.locator('[data-study-mushrooms]');
   await mushrooms.click();
   await expect(mushrooms).toHaveAttribute('aria-pressed', 'false');
