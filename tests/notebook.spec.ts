@@ -78,22 +78,69 @@ test('horizontal gestures turn the paper without requiring a page corner',async(
   await expect(page.locator('[data-nb-status]')).not.toContainText('Pages 1–2');
 });
 
-test('page folds keep separate faces through both directions and land on the incoming page',async({page},info)=>{
+test('soft page folds keep readable faces in both directions and land on the incoming page',async({page},info)=>{
   await page.goto('/documentation/#notebook-idea');
   const book=page.locator('[data-notebook]');
+  const before=await book.locator('[data-nb-binding]').boundingBox();
   for(const direction of ['next','prev']){
-    const state=await book.evaluate((root,direction)=>{
+    await book.evaluate((root,direction)=>{
       (root.querySelector(`[data-nb-controls] [data-nb-${direction}]`) as HTMLButtonElement).click();
-      const leaf=root.querySelector<HTMLElement>('.nb-leaf')!;
-      const animation=leaf.getAnimations()[0];animation.pause();animation.currentTime=470;
-      return {filter:getComputedStyle(leaf).filter,transformStyle:getComputedStyle(leaf).transformStyle,faces:[...leaf.children].map(el=>getComputedStyle(el).backfaceVisibility),back:leaf.querySelector('.nb-leaf-back')?.textContent};
+      const animation=root.querySelector<HTMLElement>('.nb-leaf')!.getAnimations()[0];animation.pause();animation.currentTime=animation.effect!.getTiming().duration as number*.5;
     },direction);
-    expect(state.filter).toBe('none');expect(state.transformStyle).toBe('preserve-3d');
-    expect(state.faces).toEqual(['hidden','hidden']);
-    if(info.project.name==='desktop')expect(state.back).toContain(direction==='next'?'Follow the wire':'Why create a controlled habitat?');
+    const state=await book.evaluate(root=>new Promise<{det:number;front:string;frontText:string;back:string;under:number}>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const leaf=root.querySelector<HTMLElement>('.nb-leaf')!;
+      const [a,b,c,d]=(getComputedStyle(leaf.querySelector('.nb-leaf-flap')!).transform.match(/-?[\d.e]+/g)??['1','0','0','1']).map(Number);
+      resolve({det:a*d-b*c,front:leaf.querySelector<HTMLElement>('.nb-leaf-front')!.style.clipPath,frontText:leaf.querySelector('.nb-leaf-front')!.textContent??'',back:leaf.querySelector('.nb-leaf-back')!.textContent??'',under:leaf.querySelectorAll('.nb-leaf-under > .nb-page').length});
+    }))));
+    // The reverse is a rotation of its page, never a mirror image, and the fold clips the front.
+    expect(state.det).toBeCloseTo(1,3);
+    expect(state.front).toMatch(/^polygon\(/);
+    expect(state.under).toBe(info.project.name==='desktop'?2:1);
+    // Turning forward, the incoming page is the reverse; turning back, it is the returning front.
+    if(info.project.name==='desktop'){if(direction==='next')expect(state.back).toContain('Follow the wire');else expect(state.frontText).toContain('Why create a controlled habitat?');}
     await book.locator('.nb-leaf').evaluate(el=>el.getAnimations()[0].finish());
     await expect(book.locator('.nb-leaf')).toHaveCount(0);
   }
+  const after=await book.locator('[data-nb-binding]').boundingBox();
+  expect(after!.width).toBeCloseTo(before!.width,1);expect(after!.height).toBeCloseTo(before!.height,1);
+});
+
+test('a dragged page follows the pointer, springs back when released early and turns when carried over',async({page},info)=>{
+  test.skip(info.project.name!=='desktop','Mouse dragging is checked on the desktop spread.');
+  await page.goto('/documentation/#notebook-idea');
+  const book=page.locator('[data-notebook]');const status=book.locator('[data-nb-status]');
+  await page.waitForTimeout(1200);
+  const box=(await book.locator('[data-nb-fold]').boundingBox())!;
+  const drag=async(distance:number)=>{
+    await page.mouse.move(box.x+box.width-40,box.y+box.height-90);await page.mouse.down();
+    for(let step=1;step<=8;step++)await page.mouse.move(box.x+box.width-40-distance*step/8,box.y+box.height-90-step*6);
+  };
+  await drag(120);
+  await expect(book.locator('.nb-leaf')).toHaveAttribute('data-kind','drag');
+  expect(await book.locator('.nb-leaf-front').evaluate(el=>el.style.clipPath)).toMatch(/^polygon\(/);
+  await page.mouse.up();
+  await expect(book.locator('.nb-leaf')).toHaveCount(0);
+  await expect(status).toContainText('Pages 1–2');
+  await drag(box.width*.6);await page.mouse.up();
+  await expect(status).toContainText('Pages 3–4');
+  await expect(book.locator('.nb-leaf')).toHaveCount(0);
+  await expect(page).toHaveURL(/#notebook-build$/);
+});
+
+test('hovering a page corner lifts it and clicking continues the turn',async({page},info)=>{
+  test.skip(info.project.name!=='desktop','Hover peeks need a fine pointer.');
+  await page.goto('/documentation/#notebook-idea');
+  const book=page.locator('[data-notebook]');
+  await page.waitForTimeout(1200);
+  const corner=book.getByRole('button',{name:'Turn to next page',exact:true});
+  await corner.hover();
+  await expect(book.locator('.nb-leaf')).toHaveAttribute('data-kind','peek');
+  await page.mouse.move(20,20);
+  await expect(book.locator('.nb-leaf')).toHaveCount(0);
+  await corner.hover();await expect(book.locator('.nb-leaf')).toHaveAttribute('data-kind','peek');
+  await corner.click();
+  await expect(book.locator('[data-nb-status]')).toContainText('Pages 3–4');
+  await expect(book.locator('.nb-leaf')).toHaveCount(0);
 });
 
 test('Initial design sticker opens the PVC drawing and cut list without resizing the notebook',async({page})=>{
