@@ -48,8 +48,9 @@ test('opening habitat, collapsed catalogue, separate notes and photo footer work
   await expect(page).toHaveURL(/\/about\/$/);
   await expect(page.getByRole('heading',{level:1})).toHaveText('Omar Ahmad');
   await expect(page.locator('.about-grid article')).toHaveCount(0);
-  await page.getByRole('link',{name:'Where the idea began'}).click();
-  await expect(page).toHaveURL(/\/documentation\/#notebook-idea$/);
+  await page.getByRole('tab',{name:'What I build'}).click();
+  await page.getByRole('link',{name:'Follow the build'}).click();
+  await expect(page).toHaveURL(/\/documentation\/#notebook-journey$/);
   await page.getByRole('link',{name:'Explore the interactive tent'}).click();
   await expect(page).toHaveURL(/\/#material-study$/);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);

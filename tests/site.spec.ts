@@ -227,6 +227,8 @@ test('documentation loads with readable notes and a contained schedule table', a
 
 test('mobile navigation closes through a link and Escape, restoring its accessible name', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'The mobile menu is only displayed at small widths.');
+  // The menu holds only page links, so closing it reloads the home page and its 3D scene.
+  test.setTimeout(90_000);
   await openHome(page);
   const toggle = page.locator('.menu-toggle');
   const navigation = page.getByRole('navigation', { name: 'Mobile navigation' });
@@ -234,7 +236,8 @@ test('mobile navigation closes through a link and Escape, restoring its accessib
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   await expect(navigation).toBeVisible();
-  await navigation.getByRole('link', { name: 'The cultivation cycle' }).click();
+  await navigation.getByRole('link', { name: 'Home' }).click();
+  await page.waitForLoadState('load');
   await expect(navigation).toBeHidden();
   await expect(toggle).toHaveAccessibleName('Open navigation');
   await toggle.click();
@@ -268,7 +271,7 @@ test.describe('without JavaScript', () => {
     await expect(page.locator('video')).toHaveJSProperty('autoplay', false);
     await expect(page.locator('#lessons')).toHaveCount(0);
     await page.goto('/about/');
-    await expect(page.locator('main')).toContainText('One experiment.');
+    await expect(page.locator('main')).toContainText('Where data meets cultivation.');
     await expectNoHorizontalOverflow(page);
     await page.goto('/documentation/');
     await expect(page.locator('#physical-setup')).toContainText('185 cm high');

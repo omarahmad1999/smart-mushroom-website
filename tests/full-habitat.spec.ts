@@ -320,7 +320,8 @@ test('screen, sound excerpts and photograph behave as independent visual control
       await viewport.scrollIntoViewIfNeeded();
       await expect.poll(async()=>(await audioState(clip))?.paused).toBe(false);
     }
-    await page.evaluate(()=>window.scrollTo(0,0));
+    // The habitat now opens the page, so leave it by scrolling to the footer.
+    await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
     await expect.poll(async()=>(await audioState(clip))?.paused).toBe(true);
     await viewport.scrollIntoViewIfNeeded();
     await expect.poll(async()=>(await audioState(clip))?.paused).toBe(false);
