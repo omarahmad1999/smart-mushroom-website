@@ -1,5 +1,6 @@
 import { createLeaf, type Leaf, type LeafOptions, type LeafState, type Row } from './notebook-turn';
 import { writeIn } from './notebook-ink';
+import { mountFlipbook } from './notebook-flipbook';
 
 const book = document.querySelector<HTMLElement>('[data-notebook]');
 if (book) {
@@ -163,6 +164,7 @@ if (book) {
   }
   book.dataset.enhanced='true';
   book.querySelectorAll<HTMLElement>('[data-nb-controls],[data-nb-hint],[data-nb-prev],[data-nb-next]').forEach(el=>el.hidden=false);
+  book.querySelectorAll<HTMLElement>('[data-nb-flipbook]').forEach(figure=>mountFlipbook(figure,reduced));
   render();fromHash();setCover(!location.hash);
   new IntersectionObserver(entries=>{inkVisible=entries.some(entry=>entry.isIntersecting);ink();},{threshold:.3}).observe(binding);
   const advance=(direction:number)=>turn(current+direction*(mobile.matches?1:2));
@@ -175,7 +177,7 @@ if (book) {
   window.addEventListener('popstate',fromHash);
   book.addEventListener('keydown',event=>{
     if(!cover.hidden)return;
-    if((event.target as HTMLElement).closest('dialog,summary')||event.altKey||event.ctrlKey||event.metaKey)return;
+    if((event.target as HTMLElement).closest('dialog,summary,[role=slider]')||event.altKey||event.ctrlKey||event.metaKey)return;
     if(event.key==='ArrowRight'||event.key==='ArrowLeft'){event.preventDefault();advance(event.key==='ArrowRight'?1:-1);}
   });
   // Only a horizontal gesture turns paper. Vertical scrolling remains native.
@@ -189,7 +191,7 @@ if (book) {
   const foldPoint=(event:PointerEvent)=>{const box=fold.getBoundingClientRect();return {x:event.clientX-box.left,y:event.clientY-box.top};};
   binding.addEventListener('pointerdown',event=>{
     const target=event.target as HTMLElement;
-    if(!cover.hidden||event.button>0||target.closest('summary,details,dialog,input,textarea')||target.closest('button:not(.nb-corner)'))return;
+    if(!cover.hidden||event.button>0||target.closest('summary,details,dialog,input,textarea,.nb-flip-frame')||target.closest('button:not(.nb-corner)'))return;
     dragged=false;grab=undefined;velocity=0;start={x:event.clientX,y:event.clientY,time:event.timeStamp,id:event.pointerId};last={x:event.clientX,time:event.timeStamp};
     if(event.isTrusted&&event.pointerType!=='mouse')(target.closest<HTMLElement>('.nb-corner')??binding).setPointerCapture(event.pointerId);
   });
@@ -246,7 +248,7 @@ if (book) {
   const image=dialog.querySelector('img')!;
   let opener:HTMLElement|undefined;
   book.querySelectorAll<HTMLAnchorElement>('[data-nb-image]').forEach(link=>link.addEventListener('click',event=>{
-    event.preventDefault();opener=link;image.src=link.href;image.alt=link.querySelector('img')!.alt;
+    event.preventDefault();opener=link;image.src=link.href;image.alt=(link.querySelector<HTMLImageElement>('img:not([aria-hidden="true"])')??link.querySelector('img'))!.alt;
     dialog.querySelector('figcaption')!.textContent=link.dataset.caption!;dialog.showModal();
   }));
   dialog.querySelector('button')!.addEventListener('click',()=>dialog.close());

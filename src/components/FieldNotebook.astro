@@ -4,7 +4,8 @@ import JourneyNotes from './JourneyNotes.astro';
 import BuildPhotos from './BuildPhotos.astro';
 import JourneyPhotoCollection from './JourneyPhotoCollection.astro';
 import type { MarkdownInstance } from 'astro';
-interface Entry { order:number; slug:string; tab:string; kicker?:string; title:string; image:string; alt:string; caption:string; source:string; scribble:string; note:string; annotation:string; x:number; y:number; reference:string }
+interface Still { image:string; date:string; short:string; alt:string }
+interface Entry { order:number; slug:string; tab:string; kicker?:string; title:string; image:string; alt:string; caption:string; source:string; scribble:string; note:string; annotation:string; x:number; y:number; reference:string; sequence?:Still[] }
 const entries = Object.values(import.meta.glob<MarkdownInstance<Entry>>('../content/notebook/*.md', { eager:true })).sort((a,b)=>a.frontmatter.order-b.frontmatter.order);
 const journeyMedia=[
   {slug:'pvc-pipes',title:'PVC Pipes',heading:'From cut pipe to reinforced frame.'},
@@ -39,7 +40,21 @@ const journeyMedia=[
         <div class="nb-page nb-photo-page" data-nb-page={i*2}>
           <div class="nb-running"><span>SMART MUSHROOM HUB</span><span>COLLECTED OBSERVATIONS</span></div>
           <p class="nb-scribble">{e.scribble}</p>
-          {e.slug==='build' ? <BuildPhotos /> : <figure class:list={['nb-photo',{'nb-portrait':e.slug==='build'||e.slug==='lessons'}]}>
+          {e.sequence ? (()=>{
+            // A flipbook of real dated stills in one frame; the entry image is the starting still.
+            const stills=e.sequence!,start=Math.max(0,stills.findIndex(still=>still.image===e.image)),lead=e.caption.split(' · ')[0];
+            return <figure class="nb-photo nb-flipbook" data-nb-flipbook data-start={start} data-lead={lead} data-source={e.source}>
+              <div class="nb-flip-frame">
+                <a href={stills[start].image} data-nb-image data-caption={`${lead} · ${stills[start].date}. ${e.source}.`} aria-label={`Enlarge photograph: ${lead} · ${stills[start].date}`}>{stills.map((still,index)=><img class="nb-flip-still" src={still.image} alt={still.alt} aria-hidden={index===start?undefined:'true'} data-date={still.date} loading="lazy" width="1600" height="900" style={`opacity:${index===start?1:0}`} />)}</a>
+                <div class="nb-flip-scale" role="slider" tabindex="0" aria-label="Incubation photograph date" aria-valuemin="0" aria-valuemax={stills.length-1} aria-valuenow={start} aria-valuetext={stills[start].date} data-nb-flip-scale>
+                  <span class="nb-flip-track" aria-hidden="true"><span class="nb-flip-thumb" data-nb-flip-thumb></span></span>
+                  {stills.map((still,index)=><span class="nb-flip-mark" data-nb-flip-mark={index} aria-hidden="true">{still.short}</span>)}
+                </div>
+              </div>
+              <details class="nb-annotation" style={`--pin-x:${e.x}%;--pin-y:${e.y}%`}><summary aria-label={`Photo note: ${e.tab}`}>1</summary><p>{e.annotation}</p></details>
+              <figcaption>{lead} · <time data-nb-flip-date>{stills[start].date}</time></figcaption>
+            </figure>;
+          })() : e.slug==='build' ? <BuildPhotos /> : <figure class:list={['nb-photo',{'nb-portrait':e.slug==='build'||e.slug==='lessons'}]}>
             <a href={e.image} data-nb-image data-caption={`${e.caption}. ${e.source}.`} aria-label={`Enlarge photograph: ${e.caption}`}><img src={e.image} alt={e.alt} loading={i===0?'eager':'lazy'} width={e.slug==='build'||e.slug==='lessons'?1200:1600} height={e.slug==='build'||e.slug==='lessons'?1600:900} /></a>
             <details class="nb-annotation" style={`--pin-x:${e.x}%;--pin-y:${e.y}%`}><summary aria-label={`Photo note: ${e.tab}`}>1</summary><p>{e.annotation}</p></details>
             <figcaption>{e.caption}</figcaption>
@@ -141,6 +156,16 @@ const journeyMedia=[
 @media(max-width:760px){.notebook{margin:30px 0 60px}.nb-intro{margin-bottom:30px}.nb-intro h1{font-size:47px}.nb-intro-note{display:none}.nb-toolbar{font-size:8px;letter-spacing:1px;margin-bottom:15px}.nb-contents{font-size:11px}.nb-tabs{padding:0 3px;gap:4px;overflow-x:auto;scrollbar-width:thin;align-items:end}.nb-tabs>a{white-space:nowrap;font-size:10px;padding:15px 12px;gap:7px;flex-shrink:0}.nb-tabs>a[aria-current=page]{transform:none;background:#fbf6e9}.nb-binding{padding:5px 5px 10px}.nb-spread{grid-template-columns:1fr}.nb-page{min-height:620px;padding:27px 24px 65px;border-radius:2px;border-left:0}.notebook[data-enhanced] .nb-page{grid-area:1/1}.notebook[data-enhanced] .nb-page:not([data-active]){visibility:hidden;pointer-events:none}.nb-writing-page{background-image:repeating-linear-gradient(transparent 0 29px,#97a49a18 29px 30px)}.nb-photo-page{background-image:radial-gradient(#9a886b19 .6px,transparent .8px);background-size:5px 5px}.nb-running{font-size:6px;letter-spacing:.8px}.nb-scribble{font-size:29px;margin-top:35px;margin-bottom:25px}.nb-photo{padding:9px}.nb-photo img{aspect-ratio:4/3}.nb-portrait{max-width:240px}.nb-portrait img{aspect-ratio:4/4.2}.nb-photo figcaption{font-size:21px}.nb-source{font-size:8px;line-height:1.5}.nb-margin-note{font-size:26px;margin-top:25px}.nb-writing-page h2{font-size:38px}.nb-entry{font-size:17px;line-height:1.55}.nb-folio{left:24px;right:24px;font-size:6px}.nb-controls{gap:5px;margin-top:24px}.nb-controls button{padding:7px 0;gap:7px;font-size:10px}.nb-controls p{font-size:9px;max-width:115px;line-height:1.5}.nb-hint{font-size:19px;margin-top:8px}.nb-hint span{display:block}.nb-fold{inset:5px 5px 10px;overflow:clip}.nb-corner-next{right:5px}.nb-corner-prev{left:5px}}
 @media(prefers-reduced-motion:reduce){.nb-tabs>a{transition:none}.nb-fold{display:none}}
 @media print{.nb-toolbar,.nb-tabs,.nb-controls,.nb-hint,.nb-corner,.nb-fold,.nb-annotation,.nb-lightbox{display:none!important}.notebook[data-enhanced] .nb-spread:not([data-active]){display:grid}.notebook[data-enhanced] .nb-page:not([data-active]){display:flex}.notebook[data-enhanced] .nb-spreads{display:block}.notebook[data-enhanced] .nb-spread,.notebook[data-enhanced] .nb-page{visibility:visible!important}.nb-spread{break-after:page}.nb-binding{box-shadow:none;padding:0}.nb-page{min-height:0;break-inside:avoid}.nb-folio{display:none}}
+/* Growth flipbook: real stills stacked in one frame, with a date scale over the photo's foot. */
+.nb-flip-frame{position:relative;touch-action:pan-y}.nb-flipbook>.nb-flip-frame>a{position:relative;cursor:ew-resize}
+.nb-flipbook .nb-flip-still:not(:first-child){position:absolute;inset:0;height:100%}
+.nb-flip-scale{position:absolute;left:12px;right:12px;bottom:10px;height:36px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;padding:0 4px 5px;background:#fbf6e8e6;box-shadow:0 2px 7px #2c21131f;border-radius:1px;transform:rotate(-.4deg);touch-action:none;cursor:ew-resize;-webkit-user-select:none;user-select:none}
+.nb-flip-scale:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+.nb-flip-track{position:absolute;left:calc(100% / 6);right:calc(100% / 6);top:10px;height:1px;background:repeating-linear-gradient(90deg,#8d8a72 0 5px,transparent 5px 8px)}
+.nb-flip-thumb{position:absolute;top:-5px;width:11px;height:11px;margin-left:-5.5px;border-radius:50%;background:var(--nb-rust);box-shadow:0 0 0 3px #fbf6e8,0 1px 3px #2c211340}
+.nb-flip-mark{position:relative;font-family:var(--hand);font-size:16px;line-height:1;text-align:center;color:#6d6f5c;transition:color .3s}.nb-flip-mark[data-current]{color:var(--nb-rust)}
+.notebook:not([data-enhanced]) .nb-flip-scale{display:none}
+@media(max-width:760px){.nb-flip-scale{left:8px;right:8px;bottom:8px;height:32px}.nb-flip-mark{font-size:15px}}
 /* Handwriting writes itself word by word (see notebook-ink.ts); the header arrow draws once. */
 .nb-binding :global(.nb-ink){display:inline-block}
 @media(prefers-reduced-motion:no-preference){.nb-intro-note svg path{stroke-dasharray:1;stroke-dashoffset:1;animation:nb-draw 1.1s .5s cubic-bezier(.45,.1,.3,1) forwards}}

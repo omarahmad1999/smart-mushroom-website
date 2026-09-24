@@ -14,6 +14,19 @@ annotation: Surface appearance reveals only part of colonization. The date ident
 x: 48
 y: 42
 reference: camera-schedules
+sequence:
+  - image: /media/photo-incubation-2026-08-19.webp
+    date: 19 August 2026
+    short: 19 Aug
+    alt: Actual controlled-camera still of the hanging bags during incubation on 19 August 2026.
+  - image: /media/photo-incubation-2026-08-27.webp
+    date: 27 August 2026
+    short: 27 Aug
+    alt: Actual controlled-camera still of the hanging bags during incubation on 27 August 2026.
+  - image: /media/photo-incubation-2026-09-04.webp
+    date: 4 September 2026
+    short: 4 Sep
+    alt: Actual controlled-camera still of the hanging bags during incubation on 4 September 2026.
 ---
 **Incubation → pinning → fruiting → harvest.** These are conceptual stages of cultivation, not a claim that this run reached every stage.
 

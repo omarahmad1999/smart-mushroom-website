@@ -239,3 +239,33 @@ test('handwriting writes itself once as a page settles and stays still with redu
   expect(await still.locator('.nb-ink').count()).toBe(0);
   await reduced.close();
 });
+
+test('growing notes flip through the three dated stills without turning or resizing the notebook',async({page},info)=>{
+  await page.goto('/documentation/#notebook-growing');
+  const book=page.locator('[data-notebook]'),flipbook=book.locator('[data-nb-flipbook]'),slider=flipbook.getByRole('slider',{name:'Incubation photograph date'});
+  const status=book.locator('[data-nb-status]');
+  const before=await book.locator('[data-nb-binding]').boundingBox();
+  await expect(slider).toHaveAttribute('aria-valuetext','27 August 2026');
+  await expect(flipbook.locator('figcaption')).toHaveText('An incubation observation · 27 August 2026');
+  await slider.focus();await page.keyboard.press('End');
+  await expect(slider).toHaveAttribute('aria-valuetext','4 September 2026');
+  await expect(flipbook.locator('figcaption')).toHaveText('An incubation observation · 4 September 2026');
+  await expect(flipbook.getByRole('link')).toHaveAttribute('href','/media/photo-incubation-2026-09-04.webp');
+  await expect(flipbook.getByRole('img')).toHaveAttribute('alt',/4 September 2026/);
+  await page.keyboard.press('ArrowLeft');await expect(slider).toHaveAttribute('aria-valuetext','27 August 2026');
+  await expect(status).toContainText('Growing Notes');
+  if(info.project.name==='desktop'){
+    const frame=(await flipbook.locator('.nb-flip-frame').boundingBox())!;
+    await page.mouse.move(frame.x+frame.width*.7,frame.y+30);await page.mouse.down();
+    for(let step=1;step<=6;step++)await page.mouse.move(frame.x+frame.width*.7-step*frame.width*.09,frame.y+30);
+    await page.mouse.up();
+    await expect(slider).toHaveAttribute('aria-valuetext','19 August 2026');
+    await expect(book.locator('.nb-lightbox')).toBeHidden();
+    await expect(status).toContainText('Growing Notes');
+  }
+  await flipbook.getByRole('link').click({position:{x:40,y:40}});
+  await expect(book.locator('.nb-lightbox img')).toHaveAttribute('src',info.project.name==='desktop'?/\/media\/photo-incubation-2026-08-19\.webp$/:/\/media\/photo-incubation-2026-08-27\.webp$/);
+  await page.keyboard.press('Escape');
+  const after=await book.locator('[data-nb-binding]').boundingBox();
+  expect(after!.width).toBeCloseTo(before!.width,1);expect(after!.height).toBeCloseTo(before!.height,1);
+});
