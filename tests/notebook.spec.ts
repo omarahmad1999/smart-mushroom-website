@@ -223,3 +223,19 @@ test('The Journey is fifth with twelve independent paper notes and persistent li
   const otherBox=await book.locator('[data-nb-binding]').boundingBox();
   for(const key of ['x','width','height'] as const)expect(journeyBox![key]).toBeCloseTo(otherBox![key],1);
 });
+
+test('handwriting writes itself once as a page settles and stays still with reduced motion',async({page,browser},info)=>{
+  await page.goto('/documentation/#notebook-idea');
+  const book=page.locator('[data-notebook]');
+  const scribble=book.locator('[data-nb-page="0"] .nb-scribble');
+  await expect(scribble).toHaveAttribute('data-ink','written');
+  await expect(scribble).toHaveText('A small space. Plenty of questions.');
+  expect(await scribble.locator('.nb-ink').count()).toBe(6);
+  if(info.project.name==='desktop')await expect(book.locator('[data-nb-page="1"] h2')).toHaveAttribute('data-ink','written');
+  const reduced=await browser.newContext({reducedMotion:'reduce',viewport:info.project.use.viewport});
+  const still=await reduced.newPage();await still.goto(`${info.project.use.baseURL}/documentation/#notebook-idea`);
+  await expect(still.locator('[data-notebook]')).toHaveAttribute('data-enhanced','true');
+  await still.waitForTimeout(800);
+  expect(await still.locator('.nb-ink').count()).toBe(0);
+  await reduced.close();
+});

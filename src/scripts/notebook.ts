@@ -1,4 +1,5 @@
 import { createLeaf, type Leaf, type LeafOptions, type LeafState, type Row } from './notebook-turn';
+import { writeIn } from './notebook-ink';
 
 const book = document.querySelector<HTMLElement>('[data-notebook]');
 if (book) {
@@ -59,7 +60,7 @@ if (book) {
       );
     }
     coverMotion=motion;
-    void Promise.all(motion.map(animation=>animation.finished)).then(()=>{if(coverMotion===motion)setCover(showCover);},()=>undefined);
+    void Promise.all(motion.map(animation=>animation.finished)).then(()=>{if(coverMotion===motion){setCover(showCover);ink();}},()=>undefined);
   }
   coverToggle.hidden=false;
   coverToggle.addEventListener('click',()=>{const show=Boolean(cover.hidden)&&!book!.dataset.coverMotion;playPaperSwipe();swingCover(show);});
@@ -127,8 +128,11 @@ if (book) {
   /** Plays the active leaf to rest and removes it, unless another leaf has replaced it. */
   function settle(state:LeafState,duration?:number){
     const entry=active!;
-    void entry.leaf.play(state,duration).then(()=>{if(active===entry)dropLeaf();else entry.leaf.destroy();});
+    return entry.leaf.play(state,duration).then(()=>{if(active===entry)dropLeaf();else entry.leaf.destroy();});
   }
+  // Handwriting on the pages at rest writes itself once, after any leaf has landed.
+  let inkVisible=false;
+  function ink(){if(inkVisible&&cover.hidden&&!reduced.matches&&!book!.dataset.coverMotion)writeIn(pages.filter(page=>page.hasAttribute('data-active')));}
   const pageStep=()=>mobile.matches?1:2;
   function commit(to:number,animate:boolean,updateUrl:boolean,old:number){
     current=to;render();
@@ -146,9 +150,9 @@ if (book) {
       playPaperSwipe();
       // A peeking corner continues into the turn instead of snapping back first.
       if(!reuse)buildLeaf(old,to,'bottom','turn');else active!.kind='turn';
-      settle(to<old?'flat':'turned');
-    }else dropLeaf();
-    commit(to,animate,updateUrl,old);
+      void settle(to<old?'flat':'turned').then(ink);
+      commit(to,animate,updateUrl,old);
+    }else{dropLeaf();commit(to,animate,updateUrl,old);ink();}
   }
   function fromHash() {
     const hash=location.hash.slice(1);
@@ -160,11 +164,12 @@ if (book) {
   book.dataset.enhanced='true';
   book.querySelectorAll<HTMLElement>('[data-nb-controls],[data-nb-hint],[data-nb-prev],[data-nb-next]').forEach(el=>el.hidden=false);
   render();fromHash();setCover(!location.hash);
+  new IntersectionObserver(entries=>{inkVisible=entries.some(entry=>entry.isIntersecting);ink();},{threshold:.3}).observe(binding);
   const advance=(direction:number)=>turn(current+direction*(mobile.matches?1:2));
   previous.forEach(button=>button.addEventListener('click',()=>advance(-1)));
   next.forEach(button=>button.addEventListener('click',()=>advance(1)));
   jumps.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();const wasContents=contents.contains(link);contents.open=false;turn(Number(link.dataset.nbJump)*2);if(wasContents)book.querySelector<HTMLElement>(`.nb-tabs [data-nb-jump="${link.dataset.nbJump}"]`)?.focus({preventScroll:true});}));
-  journeyTabs.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();selectJourney(link.dataset.journeyTab!);turn(journeyIndex*2+(mobile.matches?1:0),false,false);history.pushState(null,'',link.hash);status.textContent=`The Journey · ${link.textContent?.trim()}`;}));
+  journeyTabs.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();selectJourney(link.dataset.journeyTab!);turn(journeyIndex*2+(mobile.matches?1:0),false,false);ink();history.pushState(null,'',link.hash);status.textContent=`The Journey · ${link.textContent?.trim()}`;}));
   mobile.addEventListener('change',()=>turn(current,false,false));
   window.addEventListener('hashchange',fromHash);
   window.addEventListener('popstate',fromHash);
@@ -212,8 +217,8 @@ if (book) {
     if(grab&&active?.kind==='drag'){
       const entry=active,progress=entry.leaf.progress(),forward=grab.forward;grab=undefined;
       const done=!cancelled&&(forward?progress>.33||velocity<-.45:progress<.67||velocity>.45);
-      if(done){playPaperSwipe();const old=current;commit(entry.to,true,true,old);entry.kind='turn';settle(forward?'turned':'flat',420);}
-      else settle(forward?'flat':'turned',360);
+      if(done){playPaperSwipe();const old=current;commit(entry.to,true,true,old);entry.kind='turn';void settle(forward?'turned':'flat',420).then(ink);}
+      else void settle(forward?'flat':'turned',360);
       return;
     }
     grab=undefined;
@@ -233,7 +238,7 @@ if (book) {
       const rest=entry.leaf.corner(forward?'flat':'turned');
       void entry.leaf.play({x:rest.x+(forward?-70:70),y:rest.y-44},280);
     });
-    corner.addEventListener('pointerleave',()=>{if(active?.kind==='peek')settle(forward?'flat':'turned',220);});
+    corner.addEventListener('pointerleave',()=>{if(active?.kind==='peek')void settle(forward?'flat':'turned',220);});
   });
   addEventListener('resize',()=>{if(active&&active.kind!=='turn')dropLeaf();});
 
