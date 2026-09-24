@@ -101,7 +101,12 @@ test.describe('component explanations', () => {
     test.setTimeout(300_000);
     const section = await openHabitat(page);
     await expect(section.locator('[data-study-hotspot]')).toHaveCount(34);
+    // The overview names five groups; every part can still be numbered at once.
+    await expect(section.locator('.ms-group-marker:visible')).toHaveCount(5);
+    await openMenu(section, 'layers');
+    await section.locator('button[data-study-every]').click();
     await expect(section.locator('[data-study-hotspot]:visible')).toHaveCount(34);
+    await expect(section.locator('.ms-group-marker:visible')).toHaveCount(0);
     await section.locator('[data-study-hotspot="bag"]').click();
     await expect(section.locator('[data-study-detail]')).toBeVisible();
     const selectors = section.locator('button[data-study-select]');
@@ -179,12 +184,16 @@ test('layers and region controls consistently update the illustrated view', asyn
   await labels.click();
   await expect(labels).toHaveAttribute('aria-pressed', 'true');
   await section.locator('[data-study-viewport]').scrollIntoViewIfNeeded();
-  await expect.poll(() => section.locator('[data-study-hotspot]:visible').count()).toBeGreaterThan(0);
+  await expect.poll(() => section.locator('.ms-group-marker:visible').count()).toBe(5);
+  await expect(section.locator('[data-study-hotspot]:visible')).toHaveCount(0);
 
   for (const region of ['tent', 'workbench', 'overview']) {
     const button = section.locator(`button[data-study-region="${region}"]`);
     await button.click();
     await expect(section).toHaveAttribute('data-study-region', region);
+    // Regions number their own parts; the overview returns to the named groups.
+    if (region === 'overview') await expect(section.locator('.ms-group-marker:visible')).toHaveCount(5);
+    else await expect.poll(() => section.locator('[data-study-hotspot]:visible').count()).toBeGreaterThan(0);
     await expect(button).toHaveAttribute('aria-pressed', 'true');
     await expect(section.locator('button[data-study-region][aria-pressed="true"]')).toHaveCount(1);
     await expect(section.locator('[data-study-detail]')).toBeHidden();
@@ -252,7 +261,7 @@ test.describe('assembly with reduced motion', () => {
     await expect(section.locator('[data-study-status]')).not.toBeEmpty();
     await expect(section.locator('[data-study-viewport] canvas')).toBeVisible();
     await expect(section.locator('[data-study-fallback]')).toBeHidden();
-    await expect.poll(() => section.locator('[data-study-hotspot]:visible').count()).toBeGreaterThan(0);
+    await expect.poll(() => section.locator('.ms-group-marker:visible').count()).toBe(5);
     await section.locator('button[data-study-select="pi"]').click();
     await expect(section).toHaveAttribute('data-study-selected', 'pi');
     await expect(section.locator('[data-study-detail]')).toBeVisible();
@@ -286,6 +295,8 @@ test('screen, sound excerpts and photograph behave as independent visual control
   else expect(photoBox.y+photoBox.height).toBeLessThan(modelBox.y);
   expect(await page.evaluate(()=>(window as any).__studyAudio.length)).toBe(0);
 
+  await openMenu(section, 'layers');
+  await section.locator('button[data-study-every]').click();
   const marker=section.locator('[data-study-hotspot="monitor"]');
   await expect(marker).toHaveCSS('opacity','0.58');
   await marker.focus();await expect(marker).toHaveCSS('opacity','1');

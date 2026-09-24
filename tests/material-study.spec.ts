@@ -141,6 +141,23 @@ test('zoom, reset, component selection, and the mushroom layer change only the i
   await expectNoOverflow(page);
 });
 
+test('the overview names five groups, and a group numbers only its own parts', async ({ page }) => {
+  const { section } = await openStudy(page);
+  const initialView = await readView(section);
+  const groupMarkers = section.locator('.ms-group-marker');
+  await expect(groupMarkers.filter({ visible: true })).toHaveCount(5);
+  await expect(section.locator('[data-study-hotspot]:visible')).toHaveCount(0);
+  await section.locator('[data-study-group="The workbench"]').click();
+  await expect(section.locator('[data-study-status]')).toContainText('The workbench: 7 parts.');
+  await expect(section.locator('[data-study-hotspot]:visible')).toHaveCount(7);
+  for (const id of ['monitor', 'pi', 'ssd']) await expect(section.locator(`[data-study-hotspot="${id}"]`)).toBeVisible();
+  await expect(section.locator('[data-study-hotspot="fan"]')).toBeHidden();
+  await expect.poll(async () => (await readView(section)).zoom).toBeGreaterThan(initialView.zoom);
+  await section.locator('[data-study-reset]').click();
+  await expect(groupMarkers.filter({ visible: true })).toHaveCount(5);
+  await expect(section.locator('[data-study-hotspot]:visible')).toHaveCount(0);
+});
+
 test('keyboard controls turn and zoom the scene while wheel scrolling remains native', async ({ page }) => {
   // This sequence includes several animated camera moves on software WebGL.
   test.setTimeout(150_000);

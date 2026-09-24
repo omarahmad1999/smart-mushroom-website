@@ -10,9 +10,16 @@ import { createPeripherals } from './peripherals';
 import { createWiring } from './wiring';
 import { positions, add } from './layout';
 import { createStudySounds } from './sounds';
-import { components, componentById, type Component, type VisualAction } from './content';
+import { components, componentById, categories, type Component, type VisualAction } from './content';
 
 type Region = 'overview' | 'tent' | 'workbench';
+type Category = typeof categories[number];
+/** Which numbered markers are shown: the five group markers, some groups, or every part. */
+type Markers = { mode: 'groups' } | { mode: 'some'; show: Set<Category> } | { mode: 'every' };
+const regionGroups: Record<Exclude<Region, 'overview'>, Category[]> = {
+  tent: ['The habitat', 'Air & light', 'Observation'],
+  workbench: ['The workbench', 'Power & wiring'],
+};
 type Demo = 'cooling' | 'fan' | 'mist' | 'light' | 'camera';
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
@@ -164,6 +171,9 @@ export function mountMaterialStudy(section: HTMLElement) {
   const eventOptions = { signal: cleanup.signal };
   const leaderLayer=document.createElementNS('http://www.w3.org/2000/svg','svg');
   leaderLayer.dataset.studyLeaders='';leaderLayer.setAttribute('aria-hidden','true');viewport.append(leaderLayer);
+  let markers:Markers={mode:'groups'};
+  let everyPart=false;
+  const markerShown=(category:Category)=>everyPart||markers.mode==='every'||(markers.mode==='some'&&markers.show.has(category));
   const hotspots=components.map(item=>{
     const id=item.id;
     const button=document.createElement('button');button.type='button';button.dataset.studyHotspot=id;button.dataset.label=item.label;
@@ -174,7 +184,17 @@ export function mountMaterialStudy(section: HTMLElement) {
     const offset = id==='table'?[-1.45,.04,.65]:id==='monitor'?[0,.63,.035]:id==='humidity'?[0,.50,.27]
       :id==='cobbler'?[-.19,.054,0]:id==='pi'?[0,.05,.10]:id==='ai'?[0,.034,0]
       :id==='ups'?[0,.08,.22]:id.startsWith('wago-')?[0,.04,0]:[0,0,0];
-    return {id,button,line,anchor:V(...add(positions[id],offset as [number,number,number]))};
+    return {id,button,line,category:item.category as Category,anchor:V(...add(positions[id],offset as [number,number,number]))};
+  });
+  // Group markers name the five parts of the setup. Each sits at the middle of its parts.
+  const groupMarkers=categories.map(category=>{
+    const members=hotspots.filter(hotspot=>hotspot.category===category);
+    const anchor=members.reduce((sum,member)=>sum.add(member.anchor),V(0,0,0)).multiplyScalar(1/members.length);
+    const button=document.createElement('button');button.type='button';button.className='ms-group-marker';button.dataset.studyGroup=category;
+    button.innerHTML=`<span></span><b aria-hidden="true">${members.length}</b>`;button.querySelector('span')!.textContent=category;
+    button.setAttribute('aria-label',`${category}: ${members.length} parts. Show their markers`);
+    button.addEventListener('click',()=>openGroup(category),eventOptions);viewport.append(button);
+    return {category,button,anchor,members};
   });
 
   function draw() {
@@ -194,11 +214,24 @@ export function mountMaterialStudy(section: HTMLElement) {
     const used:THREE.Vector2[]=[];
     const width=viewport.clientWidth,height=viewport.clientHeight;
     leaderLayer.setAttribute('viewBox',`0 0 ${width} ${height}`);
-    for(const {button,line,anchor} of [...hotspots].sort((a,b)=>Number(b.id===selected)-Number(a.id===selected))) {
+    const groupsShown=labelsVisible&&!assembly&&!everyPart&&markers.mode==='groups';
+    for(const {button,anchor} of groupMarkers) {
+      const p=anchor.clone().project(camera);
+      const x=(p.x*.5+.5)*width,y=(-p.y*.5+.5)*height;
+      button.hidden=!groupsShown||x<0||x>width||y<0||y>height;
+      if(button.hidden)continue;
+      const half=button.offsetWidth/2+6;
+      const candidates=[new THREE.Vector2(THREE.MathUtils.clamp(x,half,width-half),THREE.MathUtils.clamp(y,24,height-24))];
+      for(let ring=1;ring<=6;ring++) for(let turn=0;turn<12;turn++) candidates.push(new THREE.Vector2(x+Math.cos(turn*Math.PI/6)*ring*28,y+Math.sin(turn*Math.PI/6)*ring*22));
+      const fits=(point:THREE.Vector2)=>point.x>=half&&point.x<=width-half&&point.y>=24&&point.y<=height-24&&!used.some(other=>Math.abs(other.x-point.x)<half*1.6&&Math.abs(other.y-point.y)<38);
+      const point=candidates.find(fits)??candidates[0];used.push(point);
+      button.style.left=`${point.x}px`;button.style.top=`${point.y}px`;
+    }
+    for(const {button,line,anchor,category} of [...hotspots].sort((a,b)=>Number(b.id===selected)-Number(a.id===selected))) {
       const p=anchor.clone().project(camera);
       const x=(p.x*.5+.5)*width,y=(-p.y*.5+.5)*height;
       const outside=x<0||x>width||y<0||y>height||p.z<-1||p.z>1;
-      button.hidden=!labelsVisible||!!assembly||outside;
+      button.hidden=!labelsVisible||!!assembly||outside||!markerShown(category);
       line.style.display=button.hidden?'none':'';
       if(button.hidden)continue;
       const candidates=[new THREE.Vector2(THREE.MathUtils.clamp(x,23,width-23),THREE.MathUtils.clamp(y,23,height-23))];
@@ -326,6 +359,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   }
   function regionView(region: Region) {
     finishAssembly(); stopRotation(); detail.hidden = true; setRegionState(region);
+    markers=region==='overview'?{mode:'groups'}:{mode:'some',show:new Set(regionGroups[region])};
     if (region === 'overview') moveTo(target.clone(), 1, originalCamera.clone());
     if (region === 'tent') moveTo(V(0.55, 2.12, -0.12), viewport.clientWidth < 700 ? 2.20 : 1.40, V(6.1, 6.2, 9.1));
     if (region === 'workbench') moveTo(V(-2.40, 1.31, .02), viewport.clientWidth < 700 ? 2.0 : 1.8, V(2.5, 6.5, 8.2));
@@ -378,6 +412,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     if (!alive || !componentById[id]) return;
     finishAssembly(); stopRotation(); selected = id;
     const item = componentById[id];
+    if(markers.mode!=='some'||!markers.show.has(item.category as Category))markers={mode:'some',show:new Set([item.category as Category])};
     section.dataset.studySelected = id;
     setRegionState('component');
     section.querySelector<HTMLElement>('[data-study-detail-category]')!.textContent = `${item.category.toUpperCase()} / ${item.number}`;
@@ -451,6 +486,25 @@ export function mountMaterialStudy(section: HTMLElement) {
     viewport.scrollIntoView({block:'center',behavior:reduceMotion.matches?'instant':'smooth'});
     status.textContent = `${action === 'cooling' ? 'Cool airflow' : action === 'fan' ? 'Airflow' : action === 'mist' ? 'Mist path' : action === 'camera' ? 'Camera viewing area' : 'LED lighting'} demonstration shown.${reduceMotion.matches ? ' Motion is reduced.' : ''}`;
   }
+  /** Fits the camera to a set of objects, keeping the current viewing direction. */
+  function frame(objects: THREE.Object3D[], padding = 1.3) {
+    const box=new THREE.Box3();objects.forEach(object=>box.expandByObject(object));
+    if(box.isEmpty())return;
+    camera.updateMatrixWorld();
+    const corners=[0,1,2,3,4,5,6,7].map(i=>V(i&1?box.max.x:box.min.x,i&2?box.max.y:box.min.y,i&4?box.max.z:box.min.z).applyMatrix4(camera.matrixWorldInverse));
+    const spanX=Math.max(...corners.map(c=>c.x))-Math.min(...corners.map(c=>c.x));
+    const spanY=Math.max(...corners.map(c=>c.y))-Math.min(...corners.map(c=>c.y));
+    const fit=Math.min((camera.right-camera.left)/(spanX*padding),(camera.top-camera.bottom)/(spanY*padding));
+    // A group view never zooms out past the whole-setup overview.
+    moveTo(box.getCenter(V(0,0,0)),THREE.MathUtils.clamp(fit,1,4.5));
+  }
+  function openGroup(category: Category) {
+    finishAssembly(); stopRotation(); detail.hidden = true;
+    markers={mode:'some',show:new Set([category])};setRegionState('group');
+    const members=components.filter(item=>item.category===category).map(item=>groups[item.id]);
+    frame(members);
+    status.textContent=`${category}: ${members.length} parts. Select a number to explore.`;
+  }
   function zoom(direction: string) {
     tween = null;
     camera.zoom = THREE.MathUtils.clamp(camera.zoom * (direction === 'in' ? 1.18 : 1 / 1.18), 0.85, 8);
@@ -480,6 +534,11 @@ export function mountMaterialStudy(section: HTMLElement) {
   },eventOptions);
   section.querySelector('[data-study-build]')?.addEventListener('click', replayBuild, eventOptions);
   for (const layer of ['cover', 'wiring', 'mushrooms', 'labels'] as const) section.querySelector(`button[data-study-${layer}]`)?.addEventListener('click', () => setLayer(layer), eventOptions);
+  section.querySelector('button[data-study-every]')?.addEventListener('click', event => {
+    everyPart=!everyPart;(event.currentTarget as HTMLElement).setAttribute('aria-pressed',String(everyPart));
+    section.dataset.studyEvery=String(everyPart);syncLayerCount();draw();
+    status.textContent=everyPart?'Every part is numbered.':'Parts are grouped. Select a group to number its parts.';
+  }, eventOptions);
   section.querySelector('[data-study-rotate]')?.addEventListener('click', event => {
     finishAssembly(); tween = null; controls.autoRotate = !controls.autoRotate;
     (event.currentTarget as HTMLElement).setAttribute('aria-pressed', String(controls.autoRotate));
@@ -550,7 +609,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     status.textContent='The browser paused 3D rendering. The still view is shown; reload to try again.';
   },eventOptions);
   renderer.shadowMap.needsUpdate=true; draw(); fallback.hidden=true; detail.hidden=true;
-  Object.assign(section.dataset,{studyState:'ready',studySelected:'bag',studyMushrooms:'true',studyCover:'false',studyWiring:'false',studyLabels:'true',studyDemo:'none',studyBuild:'idle',studyRegion:'overview',studyLighting:'day',studyScreen:'off',studySound:'true'});
+  Object.assign(section.dataset,{studyEvery:'false',studyState:'ready',studySelected:'bag',studyMushrooms:'true',studyCover:'false',studyWiring:'false',studyLabels:'true',studyDemo:'none',studyBuild:'idle',studyRegion:'overview',studyLighting:'day',studyScreen:'off',studySound:'true'});
   studyButtons.forEach(button => button.disabled=false); syncAction(); syncLayerCount();
   syncDemos();
   status.textContent='Interactive habitat ready. Select any component to explore.';

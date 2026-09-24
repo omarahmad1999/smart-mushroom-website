@@ -18,6 +18,7 @@ test('loading preview reserves the final layout and never flashes the inspector'
   const after=(await shell.boundingBox())!;
   expect(Math.abs(after.height-before.height)).toBeLessThanOrEqual(1);
   expect(Math.abs(after.width-before.width)).toBeLessThanOrEqual(1);
+  await section.locator('[data-study-group="Air & light"]').click();
   await section.locator('[data-study-hotspot="cooler"]').click();
   await expect(section.locator('[data-study-detail]')).toBeVisible();
 });
