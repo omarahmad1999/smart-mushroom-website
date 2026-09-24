@@ -2,10 +2,11 @@
 // into view. Words are wrapped in inline-block spans (line breaking and size are
 // unchanged) and revealed with a clip, so the notebook layout never moves.
 
-const HANDWRITING = [
-  '.nb-scribble', '.nb-photo figcaption', '.nb-margin-note', '.nb-writing-page > h2', '.nb-entry h3',
-  '.nb-journey-photo-board:not([hidden]) > h2', '.journey-note[data-active] h3', '.journey-note[data-active] .journey-heading',
-].join(',');
+const LINES = ['.nb-scribble', '.nb-photo figcaption', '.nb-margin-note', '.nb-writing-page > h2', '.nb-entry h3'];
+/** Every handwritten line, including Journey notes and photo boards that are not shown yet. */
+const ALL = [...LINES, '.nb-journey-photo-board > h2', '.journey-note h3', '.journey-note .journey-heading'].join(',');
+/** The handwritten lines a reader can currently see on a page. */
+const SHOWN = [...LINES, '.nb-journey-photo-board:not([hidden]) > h2', '.journey-note[data-active] h3', '.journey-note[data-active] .journey-heading'].join(',');
 
 function words(element: HTMLElement) {
   if (!element.dataset.ink) {
@@ -30,11 +31,19 @@ function words(element: HTMLElement) {
   return [...element.querySelectorAll<HTMLElement>('.nb-ink')];
 }
 
+/**
+ * Wraps every handwritten line ahead of time. Unwritten lines stay hidden (see the
+ * notebook styles), so a page arriving under a turning leaf is blank until it is written.
+ */
+export function prepareInk(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>(ALL).forEach(line => words(line));
+}
+
 /** Writes the handwriting inside `pages`, each page in reading order and the pages side by side. */
 export function writeIn(pages: HTMLElement[]) {
   pages.forEach((page, index) => {
     let delay = 120 + index * 260;
-    for (const line of page.querySelectorAll<HTMLElement>(HANDWRITING)) {
+    for (const line of page.querySelectorAll<HTMLElement>(SHOWN)) {
       if (line.dataset.ink === 'written') continue;
       for (const word of words(line)) {
         const duration = Math.max(110, (word.textContent?.length ?? 1) * 34);
