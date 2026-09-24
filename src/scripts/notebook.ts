@@ -2,6 +2,7 @@ import { createLeaf, type Leaf, type LeafOptions, type LeafState, type Row } fro
 import { prepareInk, writeIn } from './notebook-ink';
 import { mountFlipbook } from './notebook-flipbook';
 import { mountLoupe } from './notebook-loupe';
+import { pinNotes } from './notebook-pinned';
 
 const book = document.querySelector<HTMLElement>('[data-notebook]');
 if (book) {
@@ -170,6 +171,7 @@ if (book) {
   book.querySelectorAll<HTMLElement>('[data-nb-controls],[data-nb-hint],[data-nb-prev],[data-nb-next]').forEach(el=>el.hidden=false);
   book.querySelectorAll<HTMLElement>('[data-nb-flipbook]').forEach(figure=>mountFlipbook(figure,reduced));
   mountLoupe(book,binding);
+  pinNotes(pages,mobile);
   if(!reduced.matches)prepareInk(binding);
   render();fromHash();setCover(!location.hash);
   new IntersectionObserver(entries=>{inkVisible=entries.some(entry=>entry.isIntersecting);ink();},{threshold:.3}).observe(binding);

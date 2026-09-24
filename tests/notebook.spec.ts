@@ -329,3 +329,17 @@ test('on phones a Build steps sheet names every Journey step and closes after a 
   const after=await book.locator('[data-nb-binding]').boundingBox();
   expect(after!.width).toBeCloseTo(before!.width,1);expect(after!.height).toBeCloseTo(before!.height,1);
 });
+
+test('phone photo pages pin the photograph note in their free space without resizing',async({page},info)=>{
+  await page.goto('/documentation/#notebook-idea');
+  const book=page.locator('[data-notebook]');
+  const pinned=book.locator('[data-nb-page="0"] .nb-pinned-note');
+  if(info.project.name==='desktop'){await expect(pinned).toHaveCount(0);return;}
+  await expect(pinned).toContainText('The hanging bags contain the growing substrate.');
+  await expect(pinned).toHaveAttribute('aria-hidden','true');
+  const fits=await book.locator('[data-nb-page="0"]').evaluate(pageElement=>{
+    const note=pageElement.querySelector<HTMLElement>('.nb-pinned-note')!,folio=pageElement.querySelector<HTMLElement>(':scope > .nb-folio')!;
+    return note.offsetTop+note.offsetHeight<=folio.offsetTop-12;
+  });
+  expect(fits).toBe(true);
+});
