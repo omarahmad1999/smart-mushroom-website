@@ -31,6 +31,30 @@ test('illustrated cover plays, pauses, opens and preserves notebook geometry',as
   await book.locator('.nb-tabs').getByRole('link',{name:'02 The Build'}).click();await expect(cover).toBeHidden();
 });
 
+test('the cover swings open on its spine and closes the same way',async({page},info)=>{
+  await page.goto('/documentation/');
+  const book=page.locator('[data-notebook]'),cover=book.locator('[data-nb-cover]');
+  await cover.scrollIntoViewIfNeeded();
+  const geometry=await book.locator('[data-nb-binding]').boundingBox();
+  const midway=await book.evaluate(root=>{
+    root.querySelector<HTMLButtonElement>('[data-nb-open-cover]')!.click();
+    const motion=root.querySelector<HTMLElement>('[data-nb-cover]')!.getAnimations()[0];motion.pause();motion.currentTime=(motion.effect!.getTiming().duration as number)*.6;
+    return {state:(root as HTMLElement).dataset.coverMotion,back:root.querySelector('.nb-cover-back')?.textContent??'',transform:getComputedStyle(root.querySelector('[data-nb-cover]')!).transform};
+  });
+  expect(midway.state).toBe('open');
+  expect(midway.transform).toMatch(/^matrix3d\(/);
+  // On a spread, the inside of the board is the left page it lands on.
+  if(info.project.name==='desktop')expect(midway.back).toContain('A small space. Plenty of questions.');
+  await book.evaluate(root=>root.querySelector<HTMLElement>('[data-nb-cover]')!.getAnimations().forEach(animation=>animation.play()));
+  await expect(cover).toBeHidden();await expect(book).not.toHaveAttribute('data-cover-motion');
+  await expect(book.locator('.nb-cover-back')).toHaveCount(0);
+  await book.getByRole('button',{name:'View cover'}).click();
+  await expect(book).toHaveAttribute('data-cover-motion','close');
+  await expect(book).toHaveAttribute('data-cover','');await expect(book).not.toHaveAttribute('data-cover-motion');
+  const closed=await book.locator('[data-nb-binding]').boundingBox();
+  for(const key of ['x','width','height'] as const)expect(closed![key]).toBeCloseTo(geometry![key],1);
+});
+
 test('reduced motion keeps the cover still and deep links open the requested pages',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/documentation/');
   const cover=page.locator('[data-nb-cover]');await cover.scrollIntoViewIfNeeded();

@@ -29,14 +29,41 @@ if (book) {
     coverPause.textContent=coverPaused?'Play animation':'Pause animation';
     coverPause.setAttribute('aria-label',coverPaused?'Play cover animation':'Pause cover animation');
   }
+  let coverMotion:Animation[]=[];
+  function stopCoverMotion(){
+    const running=coverMotion;coverMotion=[];running.forEach(animation=>animation.cancel());
+    book!.querySelector('.nb-cover-back')?.remove();delete book!.dataset.coverMotion;
+  }
   function setCover(open:boolean){
+    stopCoverMotion();
     cover.hidden=!open;book!.toggleAttribute('data-cover',open);spreadsWrap.inert=open;
     coverToggle.textContent=open?'Skip to pages':'View cover';
     syncCoverPlayback();
   }
+  // The cover is a rigid board hinged at the spine. Opening, the closed book slides so the
+  // spine reaches the centre, then the board swings over and its inside lands on the left page.
+  // Closing plays the same motion in reverse.
+  function swingCover(showCover:boolean){
+    if(reduced.matches){setCover(showCover);return;}
+    const desktop=!mobile.matches;
+    setCover(false);cover.hidden=false;spreadsWrap.inert=true;book!.dataset.coverMotion=showCover?'close':'open';
+    const timing:KeyframeAnimationOptions={duration:desktop?1150:760,fill:'both',direction:showCover?'reverse':'normal'};
+    const ease='cubic-bezier(.42,.06,.22,1)',lift=desktop?.32:.08;
+    const motion=[cover.animate([{transform:'rotateY(0deg)',filter:'brightness(1)',easing:ease},{transform:'rotateY(-10deg)',filter:'brightness(.98)',offset:lift,easing:ease},{transform:'rotateY(-180deg)',filter:'brightness(.78)'}],timing)];
+    if(desktop){
+      const back=document.createElement('div');back.className='nb-cover-back';back.setAttribute('aria-hidden','true');
+      back.append(copyPage(Math.floor(current/2)*2));binding.append(back);
+      motion.push(
+        back.animate([{transform:'rotateY(180deg)',filter:'brightness(.78)',easing:ease},{transform:'rotateY(170deg)',filter:'brightness(.8)',offset:lift,easing:ease},{transform:'rotateY(0deg)',filter:'brightness(1)'}],timing),
+        binding.animate([{transform:'translateX(-25%)',easing:'cubic-bezier(.3,.1,.2,1)'},{transform:'translateX(0)',offset:lift+.04},{transform:'translateX(0)'}],timing),
+      );
+    }
+    coverMotion=motion;
+    void Promise.all(motion.map(animation=>animation.finished)).then(()=>{if(coverMotion===motion)setCover(showCover);},()=>undefined);
+  }
   coverToggle.hidden=false;
-  coverToggle.addEventListener('click',()=>setCover(Boolean(cover.hidden)));
-  book.querySelector('[data-nb-open-cover]')!.addEventListener('click',()=>{playPaperSwipe();setCover(false);binding.focus({preventScroll:true});});
+  coverToggle.addEventListener('click',()=>{const show=Boolean(cover.hidden)&&!book!.dataset.coverMotion;playPaperSwipe();swingCover(show);});
+  book.querySelector('[data-nb-open-cover]')!.addEventListener('click',()=>{playPaperSwipe();swingCover(false);binding.focus({preventScroll:true});});
   coverPause.addEventListener('click',()=>{coverPaused=!coverPaused;syncCoverPlayback();});
   new IntersectionObserver(entries=>{coverInView=entries[0].isIntersecting;syncCoverPlayback();},{threshold:.05}).observe(cover);
   document.addEventListener('visibilitychange',syncCoverPlayback);
