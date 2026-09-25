@@ -150,6 +150,14 @@ export function mountMaterialStudy(section: HTMLElement) {
   illustrativeLight.layers.set(1);
   const tentFill=new THREE.HemisphereLight('#ffefc6','#948364',0);tentFill.layers.set(1);
   world.add(illustrativeLight,illustrativeLight.target,tentFill);
+  // A soft additive glow around the LED strip, drawn with the tent's own lighting pass.
+  const glowCanvas=document.createElement('canvas');glowCanvas.width=glowCanvas.height=128;
+  const glowPaint=glowCanvas.getContext('2d')!,glowGradient=glowPaint.createRadialGradient(64,64,0,64,64,64);
+  glowGradient.addColorStop(0,'rgba(255,238,196,.95)');glowGradient.addColorStop(.28,'rgba(255,222,156,.42)');glowGradient.addColorStop(1,'rgba(255,214,146,0)');
+  glowPaint.fillStyle=glowGradient;glowPaint.fillRect(0,0,128,128);
+  const ledGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(glowCanvas),blending:THREE.AdditiveBlending,transparent:true,depthWrite:false,toneMapped:false}));
+  ledGlow.position.set(.55,3.96,-.12);ledGlow.scale.set(1.7,.85,1);ledGlow.visible=false;ledGlow.layers.set(1);ledGlow.userData.ignorePicking=true;
+  world.add(ledGlow);
   const litFloor=new THREE.Mesh(new THREE.PlaneGeometry(1.68,1.12),new THREE.MeshStandardMaterial({color:'#dddfca',roughness:.93}));
   litFloor.rotation.x=-Math.PI/2;litFloor.position.set(.55,.144,-.12);litFloor.layers.set(1);litFloor.visible=false;world.add(litFloor);
   const emitterIntensities=devices.lightEmitters.map(mesh=>(mesh.material as THREE.MeshStandardMaterial).emissiveIntensity);
@@ -240,7 +248,9 @@ export function mountMaterialStudy(section: HTMLElement) {
     const used:THREE.Vector2[]=[];
     const width=viewport.clientWidth,height=viewport.clientHeight;
     leaderLayer.setAttribute('viewBox',`0 0 ${width} ${height}`);
-    const groupsShown=labelsVisible&&!assembly&&!everyPart&&markers.mode==='groups';
+    // Markers step aside while the tent is lit, so the light itself is the subject.
+    const lit=demos.has('light');
+    const groupsShown=labelsVisible&&!assembly&&!lit&&!everyPart&&markers.mode==='groups';
     for(const {button,anchor} of groupMarkers) {
       const p=anchor.clone().project(camera);
       const x=(p.x*.5+.5)*width,y=(-p.y*.5+.5)*height;
@@ -257,7 +267,7 @@ export function mountMaterialStudy(section: HTMLElement) {
       const p=anchor.clone().project(camera);
       const x=(p.x*.5+.5)*width,y=(-p.y*.5+.5)*height;
       const outside=x<0||x>width||y<0||y>height||p.z<-1||p.z>1;
-      button.hidden=!labelsVisible||!!assembly||outside||!markerShown(category);
+      button.hidden=!labelsVisible||!!assembly||lit||outside||!markerShown(category);
       line.style.display=button.hidden?'none':'';
       if(button.hidden)continue;
       const candidates=[new THREE.Vector2(THREE.MathUtils.clamp(x,23,width-23),THREE.MathUtils.clamp(y,23,height-23))];
@@ -307,7 +317,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     if(stop('camera'))devices.cameraField.visible=devices.cameraField2.visible=false;
     if(stop('light')){
       if(lightBeam)lightBeam.visible=false;
-      illustrativeLight.intensity=tentFill.intensity=0;litFloor.visible=false;
+      illustrativeLight.intensity=tentFill.intensity=0;litFloor.visible=false;ledGlow.visible=false;
       ambient.intensity=1;key.intensity=2.5;fill.intensity=.4;scene.environmentIntensity=.25;
       renderer.setClearColor(0x000000,0);section.dataset.studyLighting='day';
       devices.lightEmitters.forEach((mesh,index)=>{(mesh.material as THREE.MeshStandardMaterial).emissiveIntensity=emitterIntensities[index];});
@@ -547,8 +557,12 @@ export function mountMaterialStudy(section: HTMLElement) {
       if (lightBeam) lightBeam.visible = true;
       ambient.intensity=.07;key.intensity=.13;fill.intensity=.025;scene.environmentIntensity=.025;
       illustrativeLight.intensity=17;tentFill.intensity=1.20;litFloor.visible=true;
-      renderer.setClearColor('#17242a',1);section.dataset.studyLighting='tent';
-      moveTo(target.clone(),1,originalCamera.clone());
+      renderer.setClearColor('#17242a',1);section.dataset.studyLighting='tent';ledGlow.visible=true;
+      // Frame the lit tent, leaving room for the explanation card on wider screens.
+      const tentCentre=V(.55,2.12,-.12),tentView=tentCentre.clone();
+      if(viewport.clientWidth>700)tentView.addScaledVector(V(1,0,0).applyQuaternion(camera.quaternion),.5);
+      moveTo(tentView,viewport.clientWidth<700?1.75:1.3,V(6.1,6.2,9.1).add(tentView).sub(tentCentre));
+      setFocus(null);
       devices.lightEmitters.forEach(mesh => { (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.8; });
     }
     syncDemos();

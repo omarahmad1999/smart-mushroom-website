@@ -20,7 +20,8 @@ test('fan, humidifier and LED stay active together through exploration and play 
     await section.locator('[data-study-zoom="in"]').click();
     await action.click();
     const mobile=await section.locator('[data-study-viewport]').evaluate(el=>el.clientWidth<700);
-    const zoom=id==='light'?1:id==='humidity'?(mobile?1.7:1.35):3.5*(mobile?1.2:1);
+    // The lighting demonstration frames the lit tent rather than the whole setup.
+    const zoom=id==='light'?(mobile?1.75:1.3):id==='humidity'?(mobile?1.7:1.35):3.5*(mobile?1.2:1);
     await expect(section).toHaveAttribute('data-study-view',new RegExp(`,${zoom.toFixed(2).replace('.', '\\.')}$`));
     await expect(section).toHaveAttribute(`data-study-${name}-active`,'true');
   }
