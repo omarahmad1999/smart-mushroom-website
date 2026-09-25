@@ -6,10 +6,10 @@ if(page){
   let idleTwo:number|undefined,idleFour:number|undefined,reaction:number|undefined,blink:number|undefined,blinkEnd:number|undefined;
   let pointer:{x:number;y:number}|undefined;
   const symbols:Record<string,string>={neutral:'',happy:'〃',curious:'?',melancholic:'…',sleepy:'Zzz',surprised:'!!',dizzy:'@',squint:'!',peek:''};
-  const labels:Record<string,string>={neutral:'Myko · say hello',happy:'A little hello back.',curious:'Oh? What’s that?',melancholic:'Still there…?',sleepy:'Just resting my eyes.',surprised:'Oh! You’re back!',dizzy:'Whoa… it’s all spinning.',squint:'Hey!',peek:'…you’re sneaky.'};
+  const labels:Record<string,string>={neutral:'Myko · say hello',happy:'A little hello back.',curious:'Oh? What’s that?',melancholic:'Still there…?',sleepy:'Just resting my eyes.',surprised:'Oh! You’re back!',dizzy:'Whoa… it’s all spinning.',squint:'Hey!',peek:'…you’re sneaky.',crossed:'That’s… very close.'};
   // Each click says the next line; after the first hello the rest loop.
   const sequence:[string,string][]=[['happy','Hi! I’m Myko.'],['happy','Hehe, that tickles!'],['curious','The mushrooms grew on me.'],['happy','Small explorer, big world.'],['curious','Fungi connect worlds.']];
-  let told=0,movedAt=0,sneaked=0,approached=false;const clicks:number[]=[],pending:number[]=[];
+  let told=0,movedAt=0,sneaked=0,approached=false,hovering=false;const clicks:number[]=[],pending:number[]=[];
   // Tap spots in the 1254px image: centre x, centre y, radius x, radius y.
   const caps=[[616,88,160,72],[478,205,58,36],[812,205,84,50],[876,305,66,44]],visor=[502,442,136,140],pack=[945,630,68,180];
   const spots:Record<string,[string,string][]>={cap:[['curious','Ooh, spores!'],['happy','Make a wish!'],['curious','They’ll grow somewhere nice.']],visor:[['squint','Hey! That’s my visor.'],['squint','Now it’s all smudgy.']],pack:[['happy','My field kit!'],['curious','Sample jars and a notebook.'],['happy','No snacks in there. Sadly.']]};
@@ -29,7 +29,9 @@ if(page){
     myko.style.setProperty('--eye-x',`${distance?dx/distance*reach*26:0}px`);
     myko.style.setProperty('--eye-y',`${distance?dy/distance*reach*45:0}px`);
   }
-  function mood(value:string,line=labels[value],mark=symbols[value]){myko.dataset.mood=value;myko.dataset.tracking=String(value==='neutral'&&motion&&!locked);symbol.textContent=mark;hint.textContent=line;if(value==='sleepy')dreamOn();else dreamOff();if(value==='neutral')gaze();}
+  function mood(value:string,line=labels[value],mark=symbols[value]){myko.dataset.mood=value;myko.dataset.tracking=String(value==='neutral'&&motion&&!locked);symbol.textContent=mark;hint.textContent=line;if(value==='sleepy')dreamOn();else dreamOff();if(value==='neutral'){gaze();cross();}else myko.removeAttribute('data-crossed');}
+  // A mouse resting on the visor makes Myko cross-eyed; touches never hover, so they skip it.
+  function cross(){const on=hovering&&!!pointer&&!locked&&myko.dataset.mood==='neutral'&&within(visor,toImage(pointer.x,pointer.y)),was=myko.hasAttribute('data-crossed');myko.toggleAttribute('data-crossed',on);if(on)hint.textContent=labels.crossed;else if(was)hint.textContent=labels.neutral;}
   // Dreams start once the Zzz has shown for a moment, then a new doodle drifts up every 3.4 seconds.
   function dreamOn(){
     clearTimeout(dreaming);
@@ -75,10 +77,10 @@ if(page){
   }
   function active(event?:PointerEvent){
     const from=pointer,now=performance.now(),elapsed=now-movedAt;
-    if(event){pointer={x:event.clientX,y:event.clientY};if(event.type==='pointermove')movedAt=now;}
+    if(event){pointer={x:event.clientX,y:event.clientY};hovering=event.pointerType!=='touch';if(event.type==='pointermove')movedAt=now;}
     if(!visible||document.hidden)return;if(locked)return;const current=myko.dataset.mood;
     if(current==='sleepy'){if(event?.type==='pointermove'&&from&&creep(from,pointer!,elapsed))return;react('surprised');}
-    else if(current==='melancholic')react('curious');else{gaze();idle();}
+    else if(current==='melancholic')react('curious');else{gaze();cross();idle();}
   }
   document.addEventListener('pointermove',active);document.addEventListener('pointerdown',active);document.addEventListener('keydown',()=>active());
   stage.addEventListener('click',event=>{

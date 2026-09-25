@@ -84,6 +84,16 @@ test('sleeping Myko dreams in little doodles until he wakes',async({page})=>{
   await expect(dream.locator('.doodle:visible')).toHaveCount(1);
   await page.mouse.move(300,500);await expect(myko).toHaveAttribute('data-mood','surprised');await expect(dream).not.toHaveAttribute('data-dream');await expect(dream.locator('.doodle:visible')).toHaveCount(0);
 });
+test('a cursor resting on the visor makes Myko cross-eyed',async({page})=>{
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));await page.goto('/about/');
+  const myko=page.locator('[data-myko]'),hint=page.locator('[data-myko-hint]'),box=(await page.locator('.myko-stage').boundingBox())!;
+  const visorX=box.x+box.width*502/1254,visorY=box.y+box.height*442/1254;
+  await page.mouse.move(visorX,visorY);await expect(myko).toHaveAttribute('data-crossed','');await expect(hint).toHaveText('That’s… very close.');
+  await expect(myko.locator('.eye-left')).toHaveCSS('transform','matrix(1, 0, 0, 1, 30, 6)');await expect(myko.locator('.eye-right')).toHaveCSS('transform','matrix(1, 0, 0, 1, -30, 10)');
+  await page.mouse.move(box.x+20,box.y+box.height*.9);await expect(myko).not.toHaveAttribute('data-crossed');await expect(hint).toHaveText('Myko · say hello');
+  await page.mouse.move(visorX+5,visorY);await expect(myko).toHaveAttribute('data-crossed','');
+  await page.clock.runFor(2000);await expect(myko).toHaveAttribute('data-mood','melancholic');await expect(myko).not.toHaveAttribute('data-crossed');await expect(hint).toHaveText('Still there…?');
+});
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
   const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width);await expect(page.locator('canvas')).toHaveCount(0);
