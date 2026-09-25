@@ -21,6 +21,22 @@ const threads=[
   {main:'M4.5 0C0 20 9 40 4 60S2 88 4.5 100',branch:'M4.5 64C13 67 17 76 29 79Q37 81 42 86',tip:'M42 86h.01'},
   {main:'M4.5 0C8 25 1 45 5 65S7 90 4.5 100',branch:'M5 42C17 45 24 41 36 48S48 50 52 57',tip:'M52 57h.01'},
 ];
+// Faint hyphae creeping in from the page edges: a seeded branching walk, so every build draws the same threads.
+function hyphae(seed:number,roots:[number,number,number][],reach:number){
+  let n=seed;const rand=()=>(n=n*16807%2147483647)/2147483647;const strands:string[]=[];
+  const grow=(x:number,y:number,angle:number,length:number,depth:number)=>{
+    let d=`M${x.toFixed(1)} ${y.toFixed(1)}`;
+    for(let walked=0;walked<length;walked+=9){
+      angle+=(rand()-.5)*.55;x+=Math.cos(angle)*9;y+=Math.sin(angle)*9;d+=`L${x.toFixed(1)} ${y.toFixed(1)}`;
+      if(depth<3&&rand()<.13)grow(x,y,angle+(rand()<.5?-1:1)*(.45+rand()*.6),(length-walked)*(.4+rand()*.35),depth+1);
+    }
+    strands.push(d);
+  };
+  roots.forEach(([x,y,angle])=>grow(x,y,angle,reach*(.7+rand()*.5),0));
+  return strands.join('');
+}
+const edgeHyphae=hyphae(29,[[520,46,Math.PI+.12],[520,120,Math.PI-.05],[520,196,Math.PI-.3]],300);
+const footHyphae=hyphae(83,[[0,70,-.2],[0,150,.05],[0,205,-.5]],280);
 const socials=[
   {name:'X',handle:'@mycolabz',icon:'x',href:'https://x.com/mycolabz',className:'social-x'},
   {name:'LinkedIn',handle:'Omar Ahmad',icon:'linkedin',href:'https://www.linkedin.com/in/omar-ahmad-916378186/',className:'social-linkedin'},
@@ -29,6 +45,8 @@ const socials=[
 ---
 <BaseLayout title="About Me | Smart Mushroom Hub" description="Meet the maker behind Smart Mushroom Hub, and Myko, a little companion for a growing experiment.">
   <article class="about-page" data-about-page>
+    <svg class="about-hyphae hyphae-top" viewBox="0 0 520 240" aria-hidden="true"><path d={edgeHyphae}/></svg>
+    <svg class="about-hyphae hyphae-foot" viewBox="0 0 420 240" aria-hidden="true"><path d={footHyphae}/></svg>
     <header class="about-header"><p class="eyebrow"><span class="eyebrow-dot"></span> THE PERSON BEHIND THE HABITAT</p><h1>Omar Ahmad</h1></header>
     <div class="about-introduction">
       <figure class="profile profile-main" data-myko-glance="That peacock was taller than me." data-myko-mood="curious"><Image src={portrait} alt="The maker of Smart Mushroom Hub beside a peacock" widths={[640,1000,1400]} sizes="(max-width:650px) 92vw, 48vw" width={1400} format="webp" quality={85} loading="eager" /><figcaption>the person behind the experiment</figcaption></figure>
@@ -84,6 +102,8 @@ const socials=[
 .personal-journey[data-thread] .thread [pathLength]{stroke-dasharray:1 1.1;stroke-dashoffset:1.02}.personal-journey[data-thread] .thread .tip{opacity:0}
 .personal-journey[data-thread=grown] .thread [pathLength]{stroke-dashoffset:0;transition:stroke-dashoffset .8s steps(10) calc(var(--i) * .8s)}.personal-journey[data-thread=grown] .thread .branch{transition-delay:calc(var(--i) * .8s + .55s)}.personal-journey[data-thread=grown] .thread .tip{opacity:1;transition:opacity 0s calc(var(--i) * .8s + 1.35s)}
 .personal-journey li:hover .thread,.personal-journey li:focus-within .thread{stroke:#46aebd}.personal-journey li:hover:after,.personal-journey li:focus-within:after{border-color:#46aebd;box-shadow:0 0 0 3px #98e3eb59,0 0 10px 2px #59ddeb66}.personal-journey li:first-child:hover:after{background:#46aebd}
+/* Faint static hyphae creep in from the page edges, behind everything else. */
+.about-page{position:relative}.about-hyphae{position:absolute;z-index:-1;height:auto;pointer-events:none;fill:none;stroke:#8a8e72;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;opacity:.3}.about-hyphae path{vector-effect:non-scaling-stroke}.hyphae-top{top:0;right:0;width:min(520px,62%)}.hyphae-foot{left:0;bottom:0;width:min(420px,70%)}
 /* Social cards carry a spore print: long gills with short ones between, left under the logo like a cap lifted off paper. */
 .social-mark{position:relative;--print-size:-16px}.social-mark:before,.social-mark:after{content:'';position:absolute;inset:var(--print-size);z-index:-1;border-radius:50%;pointer-events:none;opacity:.34;transition:opacity .35s,transform .6s cubic-bezier(.34,1.56,.64,1)}
 .social-mark:before{background:repeating-conic-gradient(from 2deg,var(--print) 0 .8deg,transparent .8deg 6deg),radial-gradient(circle,transparent 30%,color-mix(in srgb,var(--print) 22%,transparent) 46%,transparent 71%);-webkit-mask:radial-gradient(circle,transparent 0 23%,#000 25%,#000 58%,transparent 71%);mask:radial-gradient(circle,transparent 0 23%,#000 25%,#000 58%,transparent 71%)}

@@ -145,6 +145,15 @@ test('social cards carry spore prints that stay inside the card and darken on ho
   const opacity=()=>marks.nth(1).evaluate(el=>parseFloat(getComputedStyle(el,'::before').opacity));const rest=await opacity();
   await cards.nth(1).hover();await expect.poll(opacity).toBeGreaterThan(rest+.1);
 });
+test('faint hyphae creep in from the page edges behind the content',async({page})=>{
+  await page.goto('/about/');
+  const threads=page.locator('.about-hyphae');await expect(threads).toHaveCount(2);
+  for(const thread of await threads.all()){
+    await expect(thread).toHaveAttribute('aria-hidden','true');await expect(thread).toHaveCSS('pointer-events','none');await expect(thread).toHaveCSS('z-index','-1');
+    expect(await thread.evaluate(el=>(el as SVGSVGElement).querySelector('path')!.getTotalLength())).toBeGreaterThan(500);
+  }
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
   const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width);await expect(page.locator('canvas')).toHaveCount(0);
