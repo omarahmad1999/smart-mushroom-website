@@ -158,6 +158,40 @@ test('the overview names five groups, and a group numbers only its own parts', a
   await expect(section.locator('[data-study-hotspot]:visible')).toHaveCount(0);
 });
 
+test('pointing at a part highlights and names it, and choosing one fades the rest', async ({ page }, info) => {
+  const { section, canvas } = await openStudy(page);
+  if (info.project.name === 'desktop') {
+    // Read the fan's projected position from its leader, then point at the model itself.
+    await section.locator('[data-study-menu="layers"] [data-study-menu-toggle]').click();
+    await section.locator('button[data-study-every]').click();
+    const point = await section.locator('[data-study-leader="fan"]').evaluate(line => {
+      const box = line.closest('[data-study-viewport]')!.getBoundingClientRect();
+      return { x: box.x + Number(line.getAttribute('x1')), y: box.y + Number(line.getAttribute('y1')) };
+    });
+    await section.locator('button[data-study-labels]').click();
+    await page.mouse.move(point.x, point.y);
+    await page.mouse.move(point.x + 1, point.y + 1);
+    await expect(section.locator('.ms-hover-label')).toBeVisible();
+    await expect(section.locator('.ms-hover-label')).toHaveText('Low exhaust fan');
+    await page.mouse.move(2, 2);
+    await expect(section.locator('.ms-hover-label')).toBeHidden();
+    // Return the markers to their default: grouped and shown.
+    const layers = section.locator('[data-study-menu="layers"] [data-study-menu-toggle]');
+    if (await layers.getAttribute('aria-expanded') !== 'true') await layers.click();
+    await section.locator('button[data-study-every]').click();
+    await section.locator('button[data-study-labels]').click();
+  }
+  await expect(section).toHaveAttribute('data-study-focus', 'none');
+  await section.locator('[data-study-select="pi"]').click();
+  await expect(section).toHaveAttribute('data-study-focus', 'pi');
+  await section.locator('[data-study-close]').click();
+  await expect(section).toHaveAttribute('data-study-focus', 'none');
+  await section.locator('[data-study-reset]').click();
+  await section.locator('[data-study-group="Observation"]').click();
+  await expect(section).toHaveAttribute('data-study-focus', 'camera camera2 sensor sht');
+  await expect(canvas).toBeVisible();
+});
+
 test('keyboard controls turn and zoom the scene while wheel scrolling remains native', async ({ page }) => {
   // This sequence includes several animated camera moves on software WebGL.
   test.setTimeout(150_000);

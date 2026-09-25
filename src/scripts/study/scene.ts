@@ -116,6 +116,29 @@ export function mountMaterialStudy(section: HTMLElement) {
   };
   world.add(createStage(),...Object.values(groups));
   const wiring=createWiring();wiring.visible=false;world.add(wiring);
+  // Each part gets its own copies of its lit materials, so it can be highlighted or faded
+  // on its own. Effect materials (screen, airflow, mist, beams) stay shared and untouched.
+  type PartMaterial = THREE.MeshStandardMaterial & { userData: { base: { opacity:number; transparent:boolean; depthWrite:boolean; emissive:THREE.Color; emissiveIntensity:number }; target?: number; from?: number } };
+  const partMaterials=new Map<Component,PartMaterial[]>();
+  const ownMaterials=(id:Component,root:THREE.Object3D)=>{
+    const own=new Map<THREE.Material,PartMaterial>();
+    root.traverse(object=>{
+      if(!(object instanceof THREE.Mesh))return;
+      const swap=(material:THREE.Material)=>{
+        if(!(material instanceof THREE.MeshStandardMaterial))return material;
+        if(!own.has(material)){
+          const copy=material.clone() as PartMaterial;
+          copy.userData.base={opacity:copy.opacity,transparent:copy.transparent,depthWrite:copy.depthWrite,emissive:copy.emissive.clone(),emissiveIntensity:copy.emissiveIntensity};
+          own.set(material,copy);
+        }
+        return own.get(material)!;
+      };
+      object.material=Array.isArray(object.material)?object.material.map(swap):swap(object.material);
+    });
+    partMaterials.set(id,[...(partMaterials.get(id)??[]),...own.values()]);
+  };
+  for(const [id,group] of Object.entries(groups) as [Component,THREE.Group][])ownMaterials(id,group);
+  for(const owner of wiring.children)if(componentById[owner.userData.component as Component])ownMaterials(owner.userData.component as Component,owner);
   const tentParts=[tent.frame,tent.cover,tent.bags,tent.bag2,devices.fan,devices.vent,devices.duct,devices.light,devices.camera,devices.camera2,devices.sensor,devices.sht];
   tentParts.forEach(group=>group.traverse(object=>object.layers.set(1)));
   const fanAirflow=devices.fan.getObjectByName('fan-airflow');
@@ -161,6 +184,8 @@ export function mountMaterialStudy(section: HTMLElement) {
   let lastFrame = 0;
   let selected: Component = 'bag';
   let labelsVisible = true;
+  let hovered: Component | null = null;
+  let fading = false;
   let mushroomsVisible = true;
   const demos=new Set<Demo>();
   let demoStarted = 0;
@@ -171,6 +196,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   const eventOptions = { signal: cleanup.signal };
   const leaderLayer=document.createElementNS('http://www.w3.org/2000/svg','svg');
   leaderLayer.dataset.studyLeaders='';leaderLayer.setAttribute('aria-hidden','true');viewport.append(leaderLayer);
+  const hoverLabel=document.createElement('span');hoverLabel.className='ms-hover-label';hoverLabel.setAttribute('aria-hidden','true');hoverLabel.hidden=true;viewport.append(hoverLabel);
   let markers:Markers={mode:'groups'};
   let everyPart=false;
   const markerShown=(category:Category)=>everyPart||markers.mode==='every'||(markers.mode==='some'&&markers.show.has(category));
@@ -335,11 +361,12 @@ export function mountMaterialStudy(section: HTMLElement) {
       if (elapsed > assembly.saved.length*80+650) { finishAssembly(); status.textContent = 'The habitat is assembled. Select any component to explore.'; }
     }
     updateDemo(now, dt);
+    if (fading) stepFade(now);
     controls.update(dt);
     draw();
     renderingFrame = false;
     const animatedDemo = !reduceMotion.matches && (demos.has('fan') || demos.has('mist') || demos.has('cooling'));
-    if (tween || assembly || animatedDemo || controls.autoRotate || now < keepMovingUntil) animationFrame = requestAnimationFrame(loop);
+    if (tween || assembly || animatedDemo || fading || controls.autoRotate || now < keepMovingUntil) animationFrame = requestAnimationFrame(loop);
   }
   function wake(duration = 500) {
     keepMovingUntil = Math.max(keepMovingUntil, performance.now() + duration);
@@ -352,6 +379,47 @@ export function mountMaterialStudy(section: HTMLElement) {
       camera.updateProjectionMatrix(); controls.update(); tween = null; draw();
     } else { tween = { start: performance.now(), from: camera.position.clone(), to: nextPosition, fromTarget: controls.target.clone(), toTarget: newTarget, fromZoom: camera.zoom, toZoom: zoom }; wake(750); }
   }
+  /** Fades every part outside `parts` back, leaving the chosen parts in full colour. */
+  let fadeStart = 0;
+  function setFocus(parts: Component[] | null) {
+    const keep = parts ? new Set(parts) : null;
+    for (const [id, materials] of partMaterials) {
+      const faded = !!keep && !keep.has(id);
+      for (const material of materials) {
+        const base = material.userData.base;
+        material.userData.from = material.opacity;
+        material.userData.target = faded ? base.opacity * .16 : base.opacity;
+        if (faded) { material.transparent = true; material.depthWrite = false; }
+      }
+    }
+    // The monitor's screen keeps its shared material, so it fades with the monitor here.
+    const screenFaded = !!keep && !keep.has('monitor');
+    screenMaterial.transparent = screenFaded; screenMaterial.opacity = screenFaded ? .16 : 1; screenMaterial.depthWrite = !screenFaded;
+    section.dataset.studyFocus = parts ? parts.join(' ') : 'none';
+    fadeStart = performance.now(); fading = true;
+    if (reduceMotion.matches) stepFade(fadeStart + 1e4); else wake();
+  }
+  /** A short, time-based fade: it finishes on schedule however slowly frames are drawn. */
+  function stepFade(now: number) {
+    const k = Math.min(1, (now - fadeStart) / 280), eased = 1 - (1 - k) ** 3;
+    for (const materials of partMaterials.values()) for (const material of materials) {
+      const base = material.userData.base, target = material.userData.target ?? base.opacity, from = material.userData.from ?? target;
+      material.opacity = from + (target - from) * eased;
+      if (k >= 1 && target === base.opacity) { material.transparent = base.transparent; material.depthWrite = base.depthWrite; }
+    }
+    fading = k < 1;
+  }
+  /** Warms a part under the pointer and names it beside the cursor. */
+  function setHover(id: Component | null, x = 0, y = 0) {
+    if (id !== hovered) {
+      for (const material of hovered ? partMaterials.get(hovered) ?? [] : []) { material.emissive.copy(material.userData.base.emissive); material.emissiveIntensity = material.userData.base.emissiveIntensity; }
+      for (const material of id ? partMaterials.get(id) ?? [] : []) { material.emissive.set('#e2b25e'); material.emissiveIntensity = material.userData.base.emissiveIntensity + .26; }
+      hovered = id; canvas.style.cursor = id ? 'pointer' : '';
+      hoverLabel.hidden = !id; if (id) hoverLabel.textContent = componentById[id].label;
+      draw();
+    }
+    if (id) hoverLabel.style.translate = `${x + 14}px ${y + 16}px`;
+  }
   function stopRotation() { controls.autoRotate = false; section.querySelector('[data-study-rotate]')?.setAttribute('aria-pressed', 'false'); }
   function setRegionState(region: string) {
     section.dataset.studyRegion = region;
@@ -360,6 +428,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   function regionView(region: Region) {
     finishAssembly(); stopRotation(); detail.hidden = true; setRegionState(region);
     markers=region==='overview'?{mode:'groups'}:{mode:'some',show:new Set(regionGroups[region])};
+    setFocus(null);
     if (region === 'overview') moveTo(target.clone(), 1, originalCamera.clone());
     if (region === 'tent') moveTo(V(0.55, 2.12, -0.12), viewport.clientWidth < 700 ? 2.20 : 1.40, V(6.1, 6.2, 9.1));
     if (region === 'workbench') moveTo(V(-2.40, 1.31, .02), viewport.clientWidth < 700 ? 2.0 : 1.8, V(2.5, 6.5, 8.2));
@@ -427,6 +496,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     if(id==='monitor'&&!screenOn)setScreen(true);
     section.querySelectorAll<HTMLElement>('[data-study-select], [data-study-hotspot]').forEach(button => button.setAttribute('aria-pressed', String((button.dataset.studySelect || button.dataset.studyHotspot) === id)));
     focusComponent(id);
+    setFocus([id]);
     const terminalTable=section.querySelector<HTMLElement>('[data-study-terminals]')!;
     terminalTable.hidden=id!=='mosfets'&&id!=='mosfet-led';
     if(!terminalTable.hidden) {
@@ -501,8 +571,9 @@ export function mountMaterialStudy(section: HTMLElement) {
   function openGroup(category: Category) {
     finishAssembly(); stopRotation(); detail.hidden = true;
     markers={mode:'some',show:new Set([category])};setRegionState('group');
-    const members=components.filter(item=>item.category===category).map(item=>groups[item.id]);
-    frame(members);
+    const ids=components.filter(item=>item.category===category).map(item=>item.id);
+    const members=ids.map(id=>groups[id]);
+    frame(members);setFocus(ids);
     status.textContent=`${category}: ${members.length} parts. Select a number to explore.`;
   }
   function zoom(direction: string) {
@@ -525,7 +596,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   section.querySelectorAll<HTMLElement>('[data-study-select]').forEach(button => button.addEventListener('click', () => select(button.dataset.studySelect as Component, true), eventOptions));
   section.querySelectorAll<HTMLElement>('button[data-study-region]').forEach(button => button.addEventListener('click', () => regionView(button.dataset.studyRegion as Region), eventOptions));
   section.querySelector('[data-study-reset]')?.addEventListener('click', () => regionView('overview'), eventOptions);
-  section.querySelector('[data-study-close]')?.addEventListener('click', () => { detail.hidden = true; draw(); status.textContent = 'Component explanation closed.'; }, eventOptions);
+  section.querySelector('[data-study-close]')?.addEventListener('click', () => { detail.hidden = true; setFocus(null); draw(); status.textContent = 'Component explanation closed.'; }, eventOptions);
   actionButton.addEventListener('click', runAction, eventOptions);
   section.querySelector('[data-study-sound]')?.addEventListener('click',event=>{
     soundEnabled=!soundEnabled;sounds.setEnabled(soundEnabled);
@@ -553,7 +624,8 @@ export function mountMaterialStudy(section: HTMLElement) {
     else if (['+','=','-'].includes(event.key)) zoom(event.key === '-' ? 'out' : 'in');
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') controls.rotateLeft(event.key === 'ArrowLeft' ? 0.12 : -0.12);
     else controls.rotateUp(event.key === 'ArrowUp' ? 0.09 : -0.09);
-    wake();
+    // Apply the turn at once, so a key press never waits on the next animation frame.
+    controls.update(); draw(); wake();
   }, eventOptions);
   // Layers and Play open as small disclosure panels above the toolbar.
   const menus=[...section.querySelectorAll<HTMLElement>('[data-study-menu]')];
@@ -572,17 +644,30 @@ export function mountMaterialStudy(section: HTMLElement) {
   const raycaster = new THREE.Raycaster();raycaster.layers.enable(1);
   let down = new THREE.Vector2();
   const pickables = [...Object.entries(groups).filter(([id]) => id !== 'cover').map(([, group]) => group),wiring];
-  canvas.addEventListener('pointerdown', event => { down.set(event.clientX,event.clientY); finishAssembly(); tween = null; stopRotation(); wake(); }, eventOptions);
-  canvas.addEventListener('pointerup', event => {
-    if (down.distanceTo(new THREE.Vector2(event.clientX,event.clientY)) > 6) return;
+  const pickAt=(clientX:number,clientY:number)=>{
     const bounds = canvas.getBoundingClientRect();
-    raycaster.setFromCamera(new THREE.Vector2((event.clientX-bounds.left)/bounds.width*2-1, -(event.clientY-bounds.top)/bounds.height*2+1),camera);
+    raycaster.setFromCamera(new THREE.Vector2((clientX-bounds.left)/bounds.width*2-1, -(clientY-bounds.top)/bounds.height*2+1),camera);
     const hit = raycaster.intersectObjects(pickables,true).find(item => {
       let object: THREE.Object3D | null = item.object;
       while (object) { if (!object.visible || object.userData.ignorePicking) return false; object = object.parent; } return true;
     });
     let object: THREE.Object3D | null = hit?.object ?? null;
-    while (object) { if (object.userData.component && componentById[object.userData.component as Component]) { select(object.userData.component as Component); break; } object = object.parent; }
+    while (object) { if (object.userData.component && componentById[object.userData.component as Component]) return object.userData.component as Component; object = object.parent; }
+    return null;
+  };
+  let hoverFrame=0;
+  canvas.addEventListener('pointermove', event => {
+    if (event.pointerType !== 'mouse' || event.buttons || assembly || demos.has('light')) { setHover(null); return; }
+    const {clientX,clientY}=event;
+    cancelAnimationFrame(hoverFrame);
+    hoverFrame=requestAnimationFrame(()=>{const bounds=viewport.getBoundingClientRect();setHover(pickAt(clientX,clientY),clientX-bounds.left,clientY-bounds.top);});
+  }, eventOptions);
+  canvas.addEventListener('pointerleave', () => { cancelAnimationFrame(hoverFrame); setHover(null); }, eventOptions);
+  canvas.addEventListener('pointerdown', event => { down.set(event.clientX,event.clientY); finishAssembly(); tween = null; stopRotation(); setHover(null); wake(); }, eventOptions);
+  canvas.addEventListener('pointerup', event => {
+    if (down.distanceTo(new THREE.Vector2(event.clientX,event.clientY)) > 6) return;
+    const id = pickAt(event.clientX, event.clientY);
+    if (id) select(id);
   }, eventOptions);
   controls.addEventListener('start', () => wake());
   controls.addEventListener('change', () => wake(100));
@@ -609,7 +694,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     status.textContent='The browser paused 3D rendering. The still view is shown; reload to try again.';
   },eventOptions);
   renderer.shadowMap.needsUpdate=true; draw(); fallback.hidden=true; detail.hidden=true;
-  Object.assign(section.dataset,{studyEvery:'false',studyState:'ready',studySelected:'bag',studyMushrooms:'true',studyCover:'false',studyWiring:'false',studyLabels:'true',studyDemo:'none',studyBuild:'idle',studyRegion:'overview',studyLighting:'day',studyScreen:'off',studySound:'true'});
+  Object.assign(section.dataset,{studyFocus:'none',studyEvery:'false',studyState:'ready',studySelected:'bag',studyMushrooms:'true',studyCover:'false',studyWiring:'false',studyLabels:'true',studyDemo:'none',studyBuild:'idle',studyRegion:'overview',studyLighting:'day',studyScreen:'off',studySound:'true'});
   studyButtons.forEach(button => button.disabled=false); syncAction(); syncLayerCount();
   syncDemos();
   status.textContent='Interactive habitat ready. Select any component to explore.';
