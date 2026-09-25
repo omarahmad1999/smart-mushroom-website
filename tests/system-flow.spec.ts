@@ -1,4 +1,4 @@
-import {test as base,expect,type Page} from '@playwright/test';
+import {test as base,expect,type Page,type Locator} from '@playwright/test';
 
 const test=base.extend<{staticBoundary:void}>({
   staticBoundary:[async({page},use)=>{
@@ -13,226 +13,207 @@ const test=base.extend<{staticBoundary:void}>({
 });
 
 test.setTimeout(60_000);
+const mapOf=(page:Page)=>page.locator('[data-system-map]');
+const drawingOf=(page:Page)=>page.locator('[data-system-map] .map-drawing:visible');
+// Keep centring the map until it runs: its handwriting is measured once the font loads, visibility arrives
+// asynchronously (never during a paused-clock run), and the page's smooth anchor scroll can land late.
+async function centre(page:Page,state='running'){
+  const map=mapOf(page);
+  for(let tries=0;tries<50;tries++){
+    await map.locator('[data-pathway-canvas]').evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
+    if(await map.getAttribute('data-flow-state')===state)break;
+    await page.waitForTimeout(200);
+  }
+  await expect(map).toHaveAttribute('data-flow-state',state);
+}
 async function openClocked(page:Page,route='observe'){
   await page.clock.install({time:new Date('2026-09-06T00:00:00Z')});
   await page.clock.pauseAt(new Date('2026-09-06T00:00:01Z'));
   await page.goto('/#architecture');
   if(route!=='observe')await page.locator(`[data-route="${route}"]`).evaluate((button:HTMLButtonElement)=>button.click());
-  const flow=page.locator(`[data-system-flow="${route}"]`);
-  // Wait until the drawing is ready and knows it is on screen: the ink drawing measures its handwriting once the
-  // font has loaded, and visibility arrives asynchronously, never during a paused-clock run. The page's smooth
-  // anchor scroll can land after an instant scroll, so keep centring the drawing until it runs.
-  for(let tries=0;tries<50;tries++){
-    await flow.locator('[data-pathway-canvas]').evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
-    if(await flow.getAttribute('data-flow-state')==='running')break;
-    await page.waitForTimeout(200);
-  }
-  await expect(flow).toHaveAttribute('data-flow-state','running');
+  await centre(page);
   await page.clock.runFor(100);
-  await flow.locator('[data-pathway-replay]').evaluate((button:HTMLButtonElement)=>button.click());
-  return flow;
+  await mapOf(page).locator('[data-pathway-replay]').evaluate((button:HTMLButtonElement)=>button.click());
+  return drawingOf(page);
 }
-const opacities=(page:Page,id:string)=>page.locator(`.pathway-diagram:visible [data-flow-caption="${id}"] [data-flow-letter]`).evaluateAll(letters=>letters.map(letter=>Number(getComputedStyle(letter).opacity)));
-async function reachStage(page:Page,name:string,route='observe') {
-  const flow=page.locator(`[data-system-flow="${route}"]`);
-  for(let elapsed=0;elapsed<3000;elapsed+=16) {
-    if(await flow.getAttribute('data-flow-stage')===name)return;
+async function reachStage(page:Page,name:string){
+  const map=mapOf(page);
+  for(let elapsed=0;elapsed<3000;elapsed+=16){
+    if(await map.getAttribute('data-flow-stage')===name)return;
     await page.clock.runFor(16);
   }
-  await expect(flow).toHaveAttribute('data-flow-stage',name);
+  await expect(map).toHaveAttribute('data-flow-stage',name);
 }
-const expectGreyPaths=async(diagram:ReturnType<Page['locator']>)=>{
-  const styles=await diagram.locator('[data-flow-path]').evaluateAll(paths=>paths.map(path=>{const style=getComputedStyle(path);return{stroke:style.stroke,opacity:style.opacity,dash:style.strokeDasharray};}));
-  expect(styles.length).toBeGreaterThan(0);
-  for(const style of styles)expect(style).toEqual({stroke:'rgb(205, 209, 211)',opacity:'1',dash:'none'});
-};
-const boltDistance=(page:Page,selector:string)=>page.locator(`.pathway-diagram:visible ${selector}`).evaluate(item=>{
-  const geometry=item as SVGGeometryElement;
-  return -parseFloat(getComputedStyle(item).strokeDashoffset)*geometry.getTotalLength();
-});
+const trails=(drawing:Locator,route:string)=>drawing.locator(`[data-map-link-group][data-member="${route}"] [data-map-trail]`).evaluateAll(paths=>paths.map(path=>parseFloat(getComputedStyle(path).strokeDashoffset)));
+const written=(drawing:Locator,route:string)=>drawing.locator(`[data-map-note][data-member="${route}"] [data-map-note-line]`).evaluateAll(lines=>lines.map(line=>{
+  const rect=(line as SVGTextElement).ownerSVGElement!.querySelector(`[data-map-note-reveal="${(line as SVGElement).dataset.mapNoteLine}"]`)!;
+  return Number(rect.getAttribute('width'))/Number((rect as SVGElement).dataset.width);
+}));
+const states=(drawing:Locator)=>drawing.locator('[data-map-part]').evaluateAll(parts=>Object.fromEntries(parts.map(part=>[(part as SVGElement).dataset.mapPart!,(part as SVGElement).dataset.state!])));
+// Each drop sits exactly at the inked end of its own stretch.
+const heads=(drawing:Locator,ids:string[])=>drawing.evaluate((svg,ids)=>ids.map(id=>{
+  const trail=svg.querySelector<SVGPathElement>(`[data-map-trail="${id}"]`)!,drop=svg.querySelector<SVGGElement>(`[data-map-drop="${id}"]`)!;
+  const progress=1-parseFloat(getComputedStyle(trail).strokeDashoffset)/1.03,point=trail.getPointAtLength(progress*trail.getTotalLength());
+  const [x,y]=drop.getAttribute('transform')!.match(/translate\(([-\d.]+) ([-\d.]+)\)/)!.slice(1).map(Number);
+  return{progress,gap:Math.hypot(point.x-x,point.y-y),visibility:getComputedStyle(drop).visibility};
+}),ids);
 
-type Diagram=ReturnType<Page['locator']>;
-const trailOffsets=(diagram:Diagram)=>diagram.locator('[data-ink-trail]').evaluateAll(paths=>paths.map(path=>parseFloat(getComputedStyle(path).strokeDashoffset)));
-const written=(diagram:Diagram,note='')=>diagram.locator(`[data-ink-note-reveal^="${note}"]`).evaluateAll(rects=>rects.map(rect=>Number(rect.getAttribute('width'))/Number((rect as SVGElement).dataset.width)));
-const states=(diagram:Diagram)=>diagram.locator('[data-ink-node]').evaluateAll(nodes=>Object.fromEntries(nodes.map(node=>[(node as SVGElement).dataset.inkNode!,(node as SVGElement).dataset.state!])));
-
-test('the Observe ink drawing carries merged readings through every part and leaves a complete page',async({page})=>{
-  const flow=await openClocked(page);
-  const started=await page.evaluate(()=>performance.now());
-  const diagram=flow.locator('.ink-diagram:visible');
-  await expect(flow).toHaveAttribute('data-flow-style','ink');
-  await expect(diagram.locator('[data-ink-node]')).toHaveCount(6);
-  // Nothing is inked before the readings leave the sensors.
-  expect(Object.values(await states(diagram)).every(state=>state==='pencil')).toBe(true);
-  expect((await trailOffsets(diagram)).every(offset=>offset>1)).toBe(true);
-  expect((await written(diagram)).every(value=>value===0)).toBe(true);
+test('Observe inks its stretches on the map, keeps its notes and lets the other paths step back while it plays',async({page},info)=>{
+  const drawing=await openClocked(page),map=mapOf(page),wide=info.project.name==='desktop';
+  await expect(drawing).toHaveAttribute('data-map-layout',wide?'wide':'narrow-observe');
+  await expect(drawing.locator('[data-map-part]')).toHaveCount(wide?15:6);
+  expect(Object.values(await states(drawing)).every(state=>state==='pencil')).toBe(true);
+  expect((await trails(drawing,'observe')).every(offset=>offset>1)).toBe(true);
   // Both sensor routes end exactly where the merged route to Mosquitto begins.
-  const ends=await diagram.locator('[data-ink-route="sht31"],[data-ink-route="scd41"],[data-ink-route="merged"]').evaluateAll(paths=>paths.map((element,index)=>{const path=element as SVGPathElement,point=path.getPointAtLength(index===2?0:path.getTotalLength());return[Math.round(point.x),Math.round(point.y)];}));
+  const ends=await drawing.locator('[data-map-link="sht31"],[data-map-link="scd41"],[data-map-link="merged"]').evaluateAll(paths=>paths.map((element,index)=>{const path=element as SVGPathElement,point=path.getPointAtLength(index===2?0:path.getTotalLength());return[Math.round(point.x),Math.round(point.y)];}));
   expect(ends[0]).toEqual(ends[2]);expect(ends[1]).toEqual(ends[2]);
   await page.clock.runFor(400);
-  expect((await states(diagram)).sht31).toBe('ink');expect((await states(diagram)).mqtt).toBe('pencil');
+  expect((await states(drawing)).sht31).toBe('ink');expect((await states(drawing)).mqtt).toBe('pencil');
+  if(wide){
+    await expect(map).toHaveAttribute('data-map-playing','observe');
+    await expect.poll(()=>drawing.locator('[data-map-part="controllers"]').evaluate(part=>Number(getComputedStyle(part).opacity))).toBeLessThan(.5);
+  }
   await reachStage(page,'to-mqtt');await page.clock.runFor(250);
-  // The two drops travel together, and each route is inked exactly up to its drop.
-  const heads=await diagram.evaluate(svg=>['sht31','scd41'].map(id=>{
-    const trail=svg.querySelector<SVGPathElement>(`[data-ink-trail="${id}"]`)!,drop=svg.querySelector<SVGGElement>(`[data-ink-drop="${id}"]`)!;
-    const progress=1-parseFloat(getComputedStyle(trail).strokeDashoffset)/1.03,point=trail.getPointAtLength(progress*trail.getTotalLength());
-    const [x,y]=drop.getAttribute('transform')!.match(/translate\(([-\d.]+) ([-\d.]+)\)/)!.slice(1).map(Number);
-    return{progress,gap:Math.hypot(point.x-x,point.y-y),visibility:getComputedStyle(drop).visibility};
-  }));
-  for(const head of heads){expect(head.progress).toBeGreaterThan(.05);expect(head.progress).toBeLessThan(1);expect(head.gap).toBeLessThan(1.5);expect(head.visibility).toBe('visible');}
-  expect(heads[0].progress).toBeCloseTo(heads[1].progress,4);
-  const readings=await written(diagram,'readings-');
-  expect(readings[0]).toBeGreaterThan(0);expect(readings[0]).toBeLessThan(1);
+  const drops=await heads(drawing,['sht31','scd41']);
+  for(const head of drops){expect(head.progress).toBeGreaterThan(.05);expect(head.progress).toBeLessThan(1);expect(head.gap).toBeLessThan(1.5);expect(head.visibility).toBe('visible');}
+  expect(drops[0].progress).toBeCloseTo(drops[1].progress,4);
   await reachStage(page,'mqtt');
-  expect((await states(diagram)).mqtt).toBe('ink');
+  expect((await states(drawing)).mqtt).toBe('ink');
   await page.clock.runFor(500);
-  expect(Number(await diagram.locator('[data-ink-stamp]').evaluate(stamp=>getComputedStyle(stamp).opacity))).toBeGreaterThan(.5);
-  for(const part of ['writer','timescale','grafana']){await reachStage(page,part);expect((await states(diagram))[part]).toBe('ink');}
-  await page.clock.runFor(1600);
-  await expect(flow).toHaveAttribute('data-flow-state','complete');
-  expect(await page.evaluate(()=>performance.now())-started).toBeLessThan(9000);
-  // The finished page keeps every route inked and every note written; the last part is circled in olive.
-  expect((await trailOffsets(diagram)).every(offset=>offset===0)).toBe(true);
-  for(const value of await written(diagram))expect(value).toBeCloseTo(1,3);
-  expect(Object.values(await states(diagram)).every(state=>state==='ink')).toBe(true);
-  expect(await diagram.locator('[data-ink-drop]').evaluateAll(drops=>drops.every(drop=>getComputedStyle(drop).visibility==='hidden'))).toBe(true);
-  await expect(diagram.locator('[data-ink-node="grafana"] .ink-name')).toHaveCSS('fill','rgb(79, 90, 60)');
-  expect(await diagram.locator('[data-ink-loop]').evaluate(loop=>parseFloat(getComputedStyle(loop).strokeDashoffset))).toBe(0);
-  await expect(flow.locator('[data-pathway-pause]')).toBeDisabled();
-  await page.clock.runFor(5000);
-  await expect(flow).toHaveAttribute('data-flow-state','complete');
+  expect(Number(await drawing.locator('[data-map-stamp]').evaluate(stamp=>getComputedStyle(stamp).opacity))).toBeGreaterThan(.5);
+  for(const part of ['writer','timescale','grafana']){await reachStage(page,part);expect((await states(drawing))[part]).toBe('ink');}
+  await reachStage(page,'complete');
+  await expect(map).toHaveAttribute('data-flow-state','complete');
+  expect((await trails(drawing,'observe')).every(offset=>offset===0)).toBe(true);
+  for(const value of await written(drawing,'observe'))expect(value).toBeCloseTo(1,3);
+  await expect(drawing.locator('[data-map-part="grafana"] .map-name')).toHaveCSS('fill','rgb(79, 90, 60)');
+  expect(await drawing.locator('[data-map-part="grafana"] [data-map-loop]').evaluate(loop=>parseFloat(getComputedStyle(loop).strokeDashoffset))).toBe(0);
+  await expect(map.locator('[data-pathway-pause]')).toBeDisabled();
+  if(wide){
+    // The other paths wait in pencil, back at full strength once Observe is finished.
+    expect((await trails(drawing,'respond')).every(offset=>offset>1)).toBe(true);
+    expect((await states(drawing)).controllers).toBe('pencil');
+    await expect(map).not.toHaveAttribute('data-map-playing');
+    await expect.poll(()=>drawing.locator('[data-map-part="controllers"]').evaluate(part=>Number(getComputedStyle(part).opacity))).toBe(1);
+  }
+  await map.getByRole('button',{name:/These readings also feed the controllers/}).click();
+  await expect(page.getByRole('tab',{name:/Respond/})).toHaveAttribute('aria-selected','true');
+  await expect(map).toHaveAttribute('data-map-route','respond');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
 
-test('pause, replay, offscreen suspension and keyboard tabs keep the sequence under control',async({page})=>{
-  const flow=await openClocked(page);
-  const diagram=flow.locator('.ink-diagram:visible');
-  const pause=flow.locator('[data-pathway-pause]');
-  await page.clock.runFor(1300);
-  await pause.evaluate((button:HTMLButtonElement)=>button.click());
-  await expect(flow).toHaveAttribute('data-flow-state','paused');
-  const snapshot=()=>diagram.evaluate(svg=>({trail:getComputedStyle(svg.querySelector('[data-ink-trail="sht31"]')!).strokeDashoffset,drop:svg.querySelector('[data-ink-drop="sht31"]')!.getAttribute('transform'),note:svg.querySelector('[data-ink-note-reveal="readings-0"]')!.getAttribute('width')}));
-  const before=await snapshot();
-  expect(parseFloat(before.trail)).toBeLessThan(1);expect(parseFloat(before.trail)).toBeGreaterThan(0);
-  await page.clock.runFor(6000);expect(await snapshot()).toEqual(before);
-  await pause.evaluate((button:HTMLButtonElement)=>button.click());
-  await page.clock.runFor(400);expect(await snapshot()).not.toEqual(before);
-  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));await page.clock.runFor(100);
-  await expect(flow).toHaveAttribute('data-flow-state','paused');
-  const stage=await flow.getAttribute('data-flow-stage');await page.clock.runFor(8000);
-  await expect(flow).toHaveAttribute('data-flow-stage',stage!);
-  const tabs=page.getByRole('tablist',{name:'Explore a system pathway'}).getByRole('tab');
-  await tabs.nth(0).focus();await page.keyboard.press('ArrowRight');
-  await expect(page.locator('#architecture-panel-respond')).toBeVisible();
-  await expect(page.locator('#architecture-panel-respond .pathway-diagram:visible [data-flow-node]')).toHaveCount(5);
-  await page.keyboard.press('ArrowRight');
-  await expect(page.locator('#architecture-panel-record')).toBeVisible();
-  await expect(page.locator('#architecture-panel-record .pathway-diagram:visible [data-flow-node]')).toHaveCount(4);
-  await page.keyboard.press('Home');
-  await flow.locator('[data-pathway-canvas]').evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
-  await page.clock.runFor(450);
-  await expect(flow).toHaveAttribute('data-flow-stage','sensors');
-  expect((await written(diagram,'visualized-')).every(value=>value===0)).toBe(true);
-  await page.clock.runFor(5000);
-  await flow.locator('[data-pathway-replay]').evaluate((button:HTMLButtonElement)=>button.click());
-  expect(Object.values(await states(diagram)).every(state=>state==='pencil')).toBe(true);
-  await page.clock.runFor(450);
-  await expect(flow).toHaveAttribute('data-flow-stage','sensors');
-  expect((await states(diagram)).sht31).toBe('ink');
+test('Respond meets at the controllers and Mosquitto, including manual control, and closes the loop through the tent',async({page},info)=>{
+  const drawing=await openClocked(page,'respond'),map=mapOf(page),wide=info.project.name==='desktop';
+  await expect(drawing).toHaveAttribute('data-map-layout',wide?'wide':'narrow-respond');
+  for(const part of ['settings','controllers','ha','actuators','devices'])expect((await states(drawing))[part]).toBe('pencil');
+  await page.clock.runFor(400);
+  expect((await states(drawing)).settings).toBe('ink');expect((await states(drawing)).mqtt).toBe('ink');
+  // Readings and the phase settings travel to the controllers together.
+  await reachStage(page,'to-controllers');await page.clock.runFor(250);
+  for(const head of await heads(drawing,['feed','settings'])){expect(head.gap).toBeLessThan(1.5);expect(head.visibility).toBe('visible');}
+  await reachStage(page,'controllers');expect((await states(drawing)).controllers).toBe('ink');
+  // Automatic commands and Home Assistant's manual control both go through Mosquitto.
+  await reachStage(page,'to-mqtt');await page.clock.runFor(250);
+  expect((await states(drawing)).ha).toBe('ink');
+  for(const head of await heads(drawing,['commands','manual'])){expect(head.gap).toBeLessThan(1.5);expect(head.visibility).toBe('visible');}
+  for(const part of ['mqtt','actuators','devices',wide?'sht31':'tent'])await reachStage(page,part);
+  await reachStage(page,'complete');
+  expect((await trails(drawing,'respond')).every(offset=>offset===0)).toBe(true);
+  for(const value of await written(drawing,'respond'))expect(value).toBeCloseTo(1,3);
+  for(const part of ['settings','controllers','ha','actuators','devices'])expect((await states(drawing))[part]).toBe('ink');
+  await expect(map.getByRole('button',{name:/The sensors notice the change/})).toBeVisible();
+  await expect(map.getByRole('button',{name:/These readings also feed the controllers/})).toBeHidden();
 });
 
-test('reduced motion shows the full explanation without travelling pulses',async({page})=>{
+test('paths build up one map: finished paths stay inked, a path left mid-way returns to pencil',async({page},info)=>{
+  test.skip(info.project.name!=='desktop','the one map is the desktop drawing; phones show one chain at a time');
+  await page.goto('/#architecture');
+  await centre(page);
+  const map=mapOf(page),drawing=drawingOf(page),tab=(name:string)=>page.getByRole('tab',{name:new RegExp(name)});
+  await expect(map).toHaveAttribute('data-flow-state','complete',{timeout:15000});
+  // Leave Record half-drawn: it goes back to pencil while Observe keeps its ink.
+  await tab('Record').click();await expect.poll(()=>trails(drawing,'record').then(offsets=>offsets.some(offset=>offset<1))).toBe(true);
+  await tab('Respond').click();
+  expect((await trails(drawing,'record')).every(offset=>offset>1)).toBe(true);
+  expect((await states(drawing)).cameras).toBe('pencil');
+  expect((await trails(drawing,'observe')).every(offset=>offset===0)).toBe(true);
+  await expect(map).toHaveAttribute('data-flow-state','complete',{timeout:15000});
+  await tab('Record').click();await expect(map).toHaveAttribute('data-flow-state','complete',{timeout:15000});
+  for(const route of ['observe','respond','record'])expect((await trails(drawing,route)).every(offset=>offset===0)).toBe(true);
+  expect(Object.values(await states(drawing)).every(state=>state==='ink')).toBe(true);
+  // Returning to a finished path replays it; the parts it shares with another finished path keep their ink.
+  await tab('Observe').click();
+  expect((await states(drawing)).writer).toBe('pencil');expect((await states(drawing)).mqtt).toBe('ink');
+});
+
+test('pause, replay, offscreen suspension and keyboard tabs keep the sequence under control',async({page},info)=>{
+  const drawing=await openClocked(page),map=mapOf(page);
+  const pause=map.locator('[data-pathway-pause]');
+  await page.clock.runFor(1300);
+  await pause.evaluate((button:HTMLButtonElement)=>button.click());
+  await expect(map).toHaveAttribute('data-flow-state','paused');
+  const snapshot=()=>drawing.evaluate(svg=>({trail:getComputedStyle(svg.querySelector('[data-map-trail="sht31"]')!).strokeDashoffset,drop:svg.querySelector('[data-map-drop="sht31"]')!.getAttribute('transform'),note:svg.querySelector('[data-map-note-reveal="merged-0"]')!.getAttribute('width')}));
+  const before=await snapshot();
+  expect(parseFloat(before.trail)).toBeLessThan(1);expect(parseFloat(before.trail)).toBeGreaterThan(0);
+  await page.clock.runFor(3000);expect(await snapshot()).toEqual(before);
+  await pause.evaluate((button:HTMLButtonElement)=>button.click());
+  await page.clock.runFor(400);expect(await snapshot()).not.toEqual(before);
+  // Scrolled away (towards the footer, clear of the 3D habitat) the drawing waits where it is.
+  await page.evaluate(()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'}));await page.clock.runFor(100);
+  await expect(map).toHaveAttribute('data-flow-state','paused');
+  const stage=await map.getAttribute('data-flow-stage');await page.clock.runFor(3000);
+  await expect(map).toHaveAttribute('data-flow-stage',stage!);
+  const tabs=page.getByRole('tablist',{name:'Explore a system pathway'}).getByRole('tab');
+  await tabs.nth(0).focus();await page.keyboard.press('ArrowRight');
+  await expect(page.locator('#architecture-panel-respond')).toBeVisible();await expect(map).toHaveAttribute('data-map-route','respond');
+  await page.keyboard.press('End');
+  await expect(page.locator('#architecture-panel-record')).toBeVisible();await expect(map).toHaveAttribute('data-map-route','record');
+  if(info.project.name==='mobile')await expect(drawingOf(page)).toHaveAttribute('data-map-layout','narrow-record');
+  await page.keyboard.press('Home');
+  await centre(page);
+  await page.clock.runFor(450);
+  expect((await states(drawingOf(page))).sht31).toBe('ink');
+  expect((await written(drawingOf(page),'observe')).every(value=>value===0)).toBe(true);
+  await page.clock.runFor(3000);
+  await map.locator('[data-pathway-replay]').evaluate((button:HTMLButtonElement)=>button.click());
+  expect((await states(drawingOf(page))).sht31).toBe('pencil');
+  await page.clock.runFor(450);
+  expect((await states(drawingOf(page))).sht31).toBe('ink');
+});
+
+test('reduced motion shows the complete map without travelling drops',async({page},info)=>{
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#architecture');
-  const flow=page.locator('[data-system-flow="observe"]');
-  await expect(flow.locator('[data-pathway-status]')).toHaveText(/shown with motion reduced/);
-  await expect(flow).toHaveAttribute('data-flow-state','static');
-  await expect(flow.locator('[data-pathway-controls]')).toBeHidden();
-  await expect(flow.getByRole('button',{name:/These readings also feed the controllers/})).toBeVisible();
-  const diagram=flow.locator('.ink-diagram:visible');
-  expect((await trailOffsets(diagram)).every(offset=>offset===0)).toBe(true);
-  for(const value of await written(diagram))expect(value).toBeCloseTo(1,3);
-  expect(Object.values(await states(diagram)).every(state=>state==='ink')).toBe(true);
-  expect(await diagram.locator('[data-ink-drop]').evaluateAll(drops=>drops.every(drop=>getComputedStyle(drop).visibility==='hidden'))).toBe(true);
-  for(const [id,expected] of Object.entries({readings:'send readings',published:'carries published measurements',stored:'stores measurements',visualized:'visualizes stored measurements'})) {
-    expect((await diagram.locator(`[data-ink-note="${id}"] text`).allTextContents()).join(' ')).toBe(expected);
+  const map=mapOf(page),drawing=drawingOf(page);
+  await expect(map.locator('[data-pathway-status]')).toHaveText(/shown with motion reduced/);
+  await expect(map).toHaveAttribute('data-flow-state','static');
+  await expect(map.locator('[data-pathway-controls]')).toBeHidden();
+  const routes=info.project.name==='desktop'?['observe','respond','record']:['observe'];
+  for(const route of routes){
+    expect((await trails(drawing,route)).every(offset=>offset===0)).toBe(true);
+    for(const value of await written(drawing,route))expect(value).toBeCloseTo(1,3);
   }
-  await expect(diagram.locator('[data-ink-node="writer"] .ink-name')).toHaveText('Database writer');
-  // The handwritten cross-link hands the reader to the Respond pathway.
-  await flow.getByRole('button',{name:/These readings also feed the controllers/}).click();
+  expect(Object.values(await states(drawing)).every(state=>state==='ink')).toBe(true);
+  expect(await drawing.locator('[data-map-drop]').evaluateAll(drops=>drops.every(drop=>getComputedStyle(drop).visibility==='hidden'))).toBe(true);
+  await map.getByRole('button',{name:/These readings also feed the controllers/}).click();
   const respondTab=page.getByRole('tab',{name:/Respond/});
   await expect(respondTab).toHaveAttribute('aria-selected','true');await expect(respondTab).toBeFocused();
   await expect(page.locator('#architecture-panel-respond')).toBeVisible();
-  for(const [route,count] of [['respond',5],['record',4]] as const) {
-    await page.locator(`[data-route="${route}"]`).click();
-    const pathway=page.locator(`[data-system-flow="${route}"]`);
-    await expect(pathway).toHaveAttribute('data-flow-state','static');
-    await expect(pathway.locator('[data-pathway-controls]')).toBeHidden();
-    await expect(pathway.locator('.pathway-diagram:visible [data-flow-node]')).toHaveCount(count);
-    expect(await pathway.locator('[data-flow-letter]').evaluateAll(items=>items.every(item=>getComputedStyle(item).opacity==='1'))).toBe(true);
-    expect(await pathway.locator('[data-flow-title]').evaluateAll(items=>items.every(item=>item.textContent===(item as SVGElement).dataset.flowTitle&&getComputedStyle(item).opacity==='1'))).toBe(true);
-  }
-});
-
-for(const pathway of [
-  {id:'respond',nodes:['inputs','controllers','mqtt','actuators','devices'],captions:['evaluate','commands','route','drive']},
-  {id:'record',nodes:['schedule','cameras','storage','preparation'],captions:['capture','save','prepare']},
-])test(`${pathway.id} follows the routed sequence and suspends when another tab opens`,async({page})=>{
-  const flow=await openClocked(page,pathway.id);
-  const diagram=flow.locator('.pathway-diagram:visible');
-  await expectGreyPaths(diagram);
-  await expect(diagram.locator('[data-flow-node]')).toHaveCount(pathway.nodes.length);
-  expect(await diagram.locator('[data-flow-title]').evaluateAll(items=>items.every(item=>getComputedStyle(item).opacity==='0'))).toBe(true);
-  expect(await diagram.locator('.pathway-aura').evaluateAll(items=>items.every(item=>getComputedStyle(item).opacity==='0'))).toBe(true);
-  await page.clock.runFor(400);
-  expect(await diagram.locator(`[data-flow-node="${pathway.nodes[0]}"] [data-flow-title]`).evaluateAll(items=>items.some(item=>item.textContent!==(item as SVGElement).dataset.flowTitle))).toBe(true);
-  for(let index=0;index<pathway.captions.length;index++) {
-    const destination=pathway.nodes[index+1],caption=pathway.captions[index];
-    await reachStage(page,`to-${destination}`,pathway.id);
-    await page.clock.runFor(80);
-    await expectGreyPaths(diagram);
-    await expect(diagram.locator(`[data-flow-pulse="${caption}"].pathway-pulse-core`)).toHaveCSS('opacity','1');
-    await expect(diagram.locator(`[data-flow-pulse="${caption}"].pathway-pulse-glow`)).toHaveCSS('opacity','1');
-    expect((await opacities(page,caption)).some(value=>value>0)).toBe(true);
-    if(index>0)expect((await opacities(page,pathway.captions[index-1])).some(value=>value<1)).toBe(true);
-    await reachStage(page,destination,pathway.id);
-    expect((await opacities(page,caption)).every(value=>value===1)).toBe(true);
-  }
-  await page.clock.runFor(900);
-  await expectGreyPaths(diagram);
-  expect(await diagram.locator('.pathway-pulse').evaluateAll(items=>items.every(item=>getComputedStyle(item).opacity==='0'))).toBe(true);
-  await expect(flow).toHaveAttribute('data-flow-state','complete');
-  const finalNode=pathway.nodes.at(-1)!;
-  await expect(diagram.locator(`[data-flow-node="${finalNode}"] .pathway-glyph`)).toHaveCSS('color','rgb(78, 155, 120)');
-  for(const caption of pathway.captions.slice(0,-1))expect((await opacities(page,caption)).every(value=>value===0)).toBe(true);
-  expect(await diagram.locator('[data-flow-title]').evaluateAll(items=>items.every(item=>item.textContent===(item as SVGElement).dataset.flowTitle))).toBe(true);
-  if(pathway.id==='record')await expect(flow).not.toContainText('Research Website');
-  await flow.locator('[data-pathway-replay]').evaluate((button:HTMLButtonElement)=>button.click());
-  await page.clock.runFor(400);
-  await page.locator('[data-route="observe"]').evaluate((button:HTMLButtonElement)=>button.click());
-  const before=await flow.locator('[data-flow-title]').allTextContents();
-  await page.clock.runFor(1000);
-  expect(await flow.locator('[data-flow-title]').allTextContents()).toEqual(before);
-  await page.locator(`[data-route="${pathway.id}"]`).evaluate((button:HTMLButtonElement)=>button.click());
-  expect(await flow.locator('[data-flow-title]').evaluateAll(items=>items.every(item=>getComputedStyle(item).opacity==='0'))).toBe(true);
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  expect((await trails(drawingOf(page),'respond')).every(offset=>offset===0)).toBe(true);
+  await expect(drawingOf(page).locator('[data-map-part="ha"] .map-name')).toHaveText('Home Assistant');
 });
 
 test.describe('without JavaScript',()=>{
   test.use({javaScriptEnabled:false});
-  test('all three sections and the complete Observe diagram remain readable',async({page})=>{
+  test('every section and the complete map remain readable',async({page},info)=>{
     await page.goto('/#architecture');
     for(const id of ['observe','respond','record'])await expect(page.locator(`#architecture-panel-${id}`)).toBeVisible();
-    const diagram=page.locator('[data-system-flow="observe"] .ink-diagram:visible');
-    await expect(diagram.locator('[data-ink-node]')).toHaveCount(6);
-    for(const text of ['SHT31','SCD41','Mosquitto','Database writer','TimescaleDB','Grafana'])await expect(diagram.locator('.ink-name').filter({hasText:text})).toBeVisible();
-    for(const note of await diagram.locator('[data-ink-note] text').all())await expect(note).toBeVisible();
-    await expect(page.locator('[data-flow-goto]')).toBeHidden();
-    for(const [route,count] of [['respond',5],['record',4]] as const) {
-      const pathway=page.locator(`[data-system-flow="${route}"]`);
-      await expect(pathway.locator('.pathway-diagram:visible [data-flow-node]')).toHaveCount(count);
-      for(const title of await pathway.locator('.pathway-diagram:visible [data-flow-title]').all())await expect(title).toBeVisible();
-    }
-    for(const control of await page.locator('[data-pathway-controls]').all())await expect(control).toBeHidden();
+    const drawings=drawingOf(page);
+    // Desktop shows the one map; phones show each path's chain in turn.
+    await expect(drawings).toHaveCount(info.project.name==='desktop'?1:3);
+    for(const text of ['SHT31','Mosquitto','Database writer','Grafana','Controllers','Home Assistant','Capture schedule','Media preparation'])await expect(drawings.locator('.map-name').filter({hasText:text}).first()).toBeVisible();
+    for(const note of await drawings.locator('[data-map-note] text').all())await expect(note).toBeVisible();
+    await expect(page.locator('[data-pathway-controls]')).toBeHidden();
+    for(const link of await page.locator('[data-flow-goto]').all())await expect(link).toBeHidden();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   });
 });

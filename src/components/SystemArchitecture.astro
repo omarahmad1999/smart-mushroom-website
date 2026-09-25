@@ -1,6 +1,5 @@
 ---
-import SystemFlow from './SystemFlow.astro';
-import InkFlow from './InkFlow.astro';
+import SystemMap from './SystemMap.astro';
 
 const routes = [
   {
@@ -9,13 +8,26 @@ const routes = [
     verb: 'From the tent to the record.',
     description: 'Python services collect readings from the tent and the surrounding room. MQTT carries the measurements to a writer, which saves their history. Grafana queries that history and displays the experiment data.',
     eyebrow: 'THE MEASUREMENT PATH',
+    steps: [
+      'The SHT31 and SCD41 sensors send their readings together. The two paths merge before Mosquitto, the MQTT broker.',
+      'Mosquitto carries the published measurements to the database writer.',
+      'The database writer stores the measurements in TimescaleDB.',
+      'Grafana visualizes the stored measurements from TimescaleDB.',
+    ],
   },
   {
     id: 'respond',
     name: 'Respond',
     verb: 'A condition becomes a decision.',
-    description: 'The controllers consider environmental readings alongside the settings for the cultivation phase. They send commands through MQTT to the services responsible for ventilation, moisture and lighting.',
+    description: 'The controllers consider environmental readings alongside the settings for the cultivation phase. They send commands through MQTT to the services responsible for ventilation, moisture and lighting. Home Assistant adds manual control.',
     eyebrow: 'THE CONTROL PATH',
+    steps: [
+      'The controllers receive the readings through Mosquitto, together with the settings for the cultivation phase.',
+      'They publish commands through Mosquitto. Home Assistant can send manual commands the same way.',
+      'Mosquitto routes the commands to the actuator services.',
+      'The actuator services drive the fan, humidifier and LEDs.',
+      'The air in the tent changes, and the sensors notice.',
+    ],
   },
   {
     id: 'record',
@@ -23,6 +35,12 @@ const routes = [
     verb: 'Make the slow changes visible.',
     description: 'A phase-aware scheduler captures still photographs. Selected images and completed timelapses can then be prepared and published with the research, preserving the context of what the cameras observed.',
     eyebrow: 'THE VISUAL RECORD',
+    steps: [
+      'The capture schedule uses a systemd timer, with timing following the cultivation phase.',
+      'Two cameras photograph the tent and ambient view using Camera Module 3 Wide cameras.',
+      'Image storage keeps the captured still photographs as local media files.',
+      'Media preparation selects images and produces completed timelapses.',
+    ],
   },
 ] as const;
 
@@ -76,14 +94,10 @@ const routes = [
             </div>
             <p class="route-description">{route.description}</p>
           </div>
-
-          {route.id === 'observe' ? <InkFlow pathway="observe" /> : <SystemFlow pathway={route.id} />}
-
-
+          <ol class="sr-only">{route.steps.map(step => <li>{step}</li>)}</ol>
         </div>
       ))}
-
-
+      <div class="architecture-map"><SystemMap /></div>
     </div>
 
 
@@ -113,7 +127,8 @@ const routes = [
   .flow-tabs button[aria-selected="true"] .tab-number { color: #d45b36; }
   .schematic-label { display: flex; align-items: center; gap: 8px; color: #737b6b; letter-spacing: .025em; margin: 0; white-space: nowrap; }
   .schematic-mark { font-size: 23px; color: #6f7957; line-height: 1; }
-  .route-panel { padding: 37px 30px 25px; background: #fdfefc; }
+  .route-panel { padding: 37px 30px 4px; background: #fdfefc; }
+  .architecture-map { padding: 0 30px 25px; background: #fdfefc; }
   .route-panel[hidden] { display: none; }
   .route-panel + .route-panel { border-top: 1px solid #d5d9ca; }
   [data-enhanced] .route-panel { border-top: 0; }
@@ -134,7 +149,8 @@ const routes = [
     .schematic-toolbar { flex-wrap: wrap; gap: 0; padding: 0 20px; }
     .flow-tabs { min-height: 64px; gap: 25px; flex: 1; }
     .schematic-label { font-size: 9px; padding: 10px 0; }
-    .route-panel { padding: 27px 20px 22px; }
+    .route-panel { padding: 27px 20px 4px; }
+    .architecture-map { padding: 0 20px 22px; }
     .route-introduction { grid-template-columns: 1fr; gap: 16px; margin-bottom: 25px; }
     .route-description { max-width: 550px; }
   }
@@ -144,6 +160,7 @@ const routes = [
     .flow-tabs button { gap: 7px; font-size: 12px; }
     .schematic-label { padding-top: 12px; padding-bottom: 12px; border-top: 1px solid #d5d9ca; }
     .route-panel { padding-inline: 16px; }
+    .architecture-map { padding-inline: 16px; }
     .route-introduction h3 { font-size: 25px; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -153,8 +170,7 @@ const routes = [
 
 <script>
   import { createFlowSounds } from '../scripts/flow-sounds';
-  import { mountSystemFlow } from '../scripts/system-flow';
-  import { mountInkFlow } from '../scripts/ink-flow';
+  import { mountSystemMap } from '../scripts/system-map';
   const architecture = document.querySelector<HTMLElement>('[data-system-architecture]');
 
   if (architecture) {
@@ -170,7 +186,8 @@ const routes = [
     }
     const tabs = [...architecture.querySelectorAll<HTMLButtonElement>('[data-route]')];
     const panels = [...architecture.querySelectorAll<HTMLElement>('[data-panel]')];
-    const flows = new Map<string, ReturnType<typeof mountSystemFlow>>();
+    const map = mountSystemMap(architecture.querySelector<HTMLElement>('[data-system-map]')!, sounds);
+    type Route = Parameters<typeof map.select>[0];
 
     const selectRoute = (selected: HTMLButtonElement, animate = true) => {
       const route = selected.dataset.route;
@@ -183,17 +200,12 @@ const routes = [
         const active = panel.dataset.panel === route;
         panel.hidden = !active;
       });
-      flows.forEach((flow,id)=>flow.setActive(id===route,animate));
+      map.select(route as Route, animate);
       if(animate&&!motion.matches)sounds.play('click','controls');
     };
 
     architecture.dataset.enhanced = 'true';
     selectRoute(tabs[0], false);
-    architecture.querySelectorAll<HTMLElement>('[data-system-flow]').forEach(root=>{
-      const flow=root.dataset.flowStyle==='ink'?mountInkFlow(root,sounds):mountSystemFlow(root,sounds);
-      flows.set(root.dataset.systemFlow!,flow);
-      flow.setActive(root.dataset.systemFlow===tabs[0].dataset.route);
-    });
     // Handwritten cross-links hand the reader to the pathway they mention.
     architecture.querySelectorAll<HTMLButtonElement>('[data-flow-goto]').forEach(button=>{
       button.hidden=false;
@@ -207,7 +219,7 @@ const routes = [
       const ready=await sounds.enable();unlocking=false;
       if(motion.matches)sounds.disable();
       syncSound();
-      if(ready&&!motion.matches)flows.get(tabs.find(tab=>tab.getAttribute('aria-selected')==='true')!.dataset.route!)?.restart();
+      if(ready&&!motion.matches)map.restart();
     };
     document.addEventListener('pointerdown',unlockDefault,{capture:true});
     document.addEventListener('keydown',unlockDefault,{capture:true});
@@ -218,7 +230,7 @@ const routes = [
       const ready=await sounds.enable();
       if(motion.matches){sounds.disable();syncSound();return;}
       syncSound();
-      if(ready){sounds.play('click','controls');flows.get(tabs.find(tab=>tab.getAttribute('aria-selected')==='true')!.dataset.route!)?.restart();}
+      if(ready){sounds.play('click','controls');map.restart();}
       else soundLabel.textContent='Sound unavailable';
     });
     motion.addEventListener('change',()=>{if(motion.matches)sounds.disable();syncSound();});

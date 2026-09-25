@@ -1,0 +1,334 @@
+---
+import '@fontsource/caveat/400.css';
+import thermometer from '@phosphor-icons/core/duotone/thermometer-duotone.svg?raw';
+import cloud from '@phosphor-icons/core/duotone/cloud-duotone.svg?raw';
+import broadcast from '@phosphor-icons/core/duotone/broadcast-duotone.svg?raw';
+import pencil from '@phosphor-icons/core/duotone/pencil-line-duotone.svg?raw';
+import database from '@phosphor-icons/core/duotone/database-duotone.svg?raw';
+import chart from '@phosphor-icons/core/duotone/chart-line-duotone.svg?raw';
+import scales from '@phosphor-icons/core/duotone/scales-duotone.svg?raw';
+import sliders from '@phosphor-icons/core/duotone/sliders-horizontal-duotone.svg?raw';
+import toggle from '@phosphor-icons/core/duotone/toggle-right-duotone.svg?raw';
+import fan from '@phosphor-icons/core/duotone/fan-duotone.svg?raw';
+import house from '@phosphor-icons/core/duotone/house-duotone.svg?raw';
+import timer from '@phosphor-icons/core/duotone/timer-duotone.svg?raw';
+import camera from '@phosphor-icons/core/duotone/camera-duotone.svg?raw';
+import images from '@phosphor-icons/core/duotone/images-duotone.svg?raw';
+import film from '@phosphor-icons/core/duotone/film-strip-duotone.svg?raw';
+import plant from '@phosphor-icons/core/duotone/plant-duotone.svg?raw';
+import circuitry from '@phosphor-icons/core/duotone/circuitry-duotone.svg?raw';
+
+type Route = 'observe' | 'respond' | 'record';
+type Point = [number, number];
+type Side = 'below' | 'right' | 'left' | 'above';
+
+// Phosphor duotone icons: the translucent layer becomes a watercolour wash, the rest is the ink line.
+function glyph(raw: string) {
+  const paths = [...raw.matchAll(/<path d="([^"]+)"( opacity="[^"]+")?\s*\/>/g)];
+  return { wash: paths.filter(path => path[2]).map(path => path[1]), line: paths.filter(path => !path[2]).map(path => path[1]) };
+}
+// A slightly uneven wash behind each part: a closed Catmull-Rom curve through jittered points, seeded per part.
+function blob(seed: number, radius: number) {
+  let n = seed; const rand = () => (n = n * 16807 % 2147483647) / 2147483647;
+  const points = Array.from({ length: 9 }, (_, i) => { const angle = i / 9 * Math.PI * 2, reach = radius * (.9 + rand() * .2); return [Math.cos(angle) * reach, Math.sin(angle) * reach]; });
+  const at = (i: number) => points[(i + points.length) % points.length], f = (v: number) => v.toFixed(1);
+  let d = `M${f(points[0][0])} ${f(points[0][1])}`;
+  for (let i = 0; i < points.length; i++) {
+    const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
+    d += `C${f(p1[0] + (p2[0] - p0[0]) / 6)} ${f(p1[1] + (p2[1] - p0[1]) / 6)} ${f(p2[0] - (p3[0] - p1[0]) / 6)} ${f(p2[1] - (p3[1] - p1[1]) / 6)} ${f(p2[0])} ${f(p2[1])}`;
+  }
+  return `${d}Z`;
+}
+
+// Every part, the paths it belongs to (for highlighting), and the small action it performs when a message arrives.
+const parts: Record<string, { name: string; detail: string; icon: ReturnType<typeof glyph>; home: Route | 'shared'; member: Route[]; verb?: string; badge?: string }> = {
+  sht31: { name: 'SHT31', detail: 'temperature, humidity', icon: glyph(thermometer), home: 'observe', member: ['observe', 'respond'], verb: 'ripple' },
+  scd41: { name: 'SCD41', detail: 'CO₂', icon: glyph(cloud), home: 'observe', member: ['observe', 'respond'], verb: 'ripple', badge: 'CO₂' },
+  mqtt: { name: 'Mosquitto', detail: 'MQTT broker', icon: glyph(broadcast), home: 'shared', member: ['observe', 'respond'], verb: 'stamp' },
+  writer: { name: 'Database writer', detail: 'Python service', icon: glyph(pencil), home: 'observe', member: ['observe'], verb: 'scribble' },
+  timescale: { name: 'TimescaleDB', detail: 'experiment history', icon: glyph(database), home: 'observe', member: ['observe'], verb: 'layer' },
+  grafana: { name: 'Grafana', detail: 'dashboards', icon: glyph(chart), home: 'observe', member: ['observe'], verb: 'chart' },
+  settings: { name: 'Phase settings', detail: 'targets & schedules', icon: glyph(sliders), home: 'respond', member: ['respond'], verb: 'ripple' },
+  controllers: { name: 'Controllers', detail: 'environment & lighting', icon: glyph(scales), home: 'respond', member: ['respond'], verb: 'tilt' },
+  ha: { name: 'Home Assistant', detail: 'manual control', icon: glyph(house), home: 'respond', member: ['respond'], verb: 'ripple' },
+  actuators: { name: 'Actuator services', detail: 'Python services', icon: glyph(toggle), home: 'respond', member: ['respond'], verb: 'toggle' },
+  devices: { name: 'Fan, humidifier & LEDs', detail: 'in the tent', icon: glyph(fan), home: 'respond', member: ['respond'], verb: 'spin' },
+  tent: { name: 'The tent', detail: 'the air inside', icon: glyph(plant), home: 'respond', member: ['respond'], verb: 'ripple' },
+  schedule: { name: 'Capture schedule', detail: 'systemd timer', icon: glyph(timer), home: 'record', member: ['record'], verb: 'tick' },
+  cameras: { name: 'Two cameras', detail: 'Camera Module 3 Wide', icon: glyph(camera), home: 'record', member: ['record'], verb: 'flash' },
+  storage: { name: 'Image storage', detail: 'local media files', icon: glyph(images), home: 'record', member: ['record'], verb: 'stack' },
+  media: { name: 'Media preparation', detail: 'timelapses', icon: glyph(film), home: 'record', member: ['record'], verb: 'film' },
+};
+// Each stretch between parts: which path it belongs to, what kind of message travels it, and where it arrives.
+const links: Record<string, { route: Route; kind: 'reading' | 'command' | 'photo'; to: string; lines: string[]; dashed?: boolean }> = {
+  sht31: { route: 'observe', kind: 'reading', to: 'junction', lines: [] },
+  scd41: { route: 'observe', kind: 'reading', to: 'junction', lines: [] },
+  merged: { route: 'observe', kind: 'reading', to: 'mqtt', lines: ['send readings'] },
+  published: { route: 'observe', kind: 'reading', to: 'writer', lines: ['carries published', 'measurements'] },
+  stored: { route: 'observe', kind: 'reading', to: 'timescale', lines: ['stores', 'measurements'] },
+  visualized: { route: 'observe', kind: 'reading', to: 'grafana', lines: ['visualizes stored', 'measurements'] },
+  feed: { route: 'respond', kind: 'reading', to: 'controllers', lines: ['readings'] },
+  settings: { route: 'respond', kind: 'reading', to: 'controllers', lines: ['phase settings'] },
+  commands: { route: 'respond', kind: 'command', to: 'mqtt', lines: ['publish commands'] },
+  manual: { route: 'respond', kind: 'command', to: 'mqtt', lines: ['manual control'], dashed: true },
+  route: { route: 'respond', kind: 'command', to: 'actuators', lines: ['route', 'commands'] },
+  drive: { route: 'respond', kind: 'command', to: 'devices', lines: ['drive devices'] },
+  air: { route: 'respond', kind: 'reading', to: 'sht31', lines: ['the air changes,', 'and the sensors notice'] },
+  trigger: { route: 'record', kind: 'command', to: 'cameras', lines: ['trigger capture'] },
+  save: { route: 'record', kind: 'photo', to: 'storage', lines: ['save images'] },
+  prepare: { route: 'record', kind: 'photo', to: 'media', lines: ['produce timelapses'] },
+};
+
+type Layout = {
+  id: string; viewBox: string; nameSize: number; noteSize: number; route?: Route;
+  parts: Record<string, [number, number, Side]>; junction?: Point;
+  links: Record<string, { d: string; note?: [number, number, 'start' | 'middle' | 'end']; to?: string }>;
+  marks: Record<string, string>; loops: Record<string, number>; tent?: Point; region?: [number, number, number, number];
+};
+// Desktop: one map. The tent sits on the left with its sensors, devices and cameras; the Raspberry Pi holds the software on
+// the right, with Mosquitto as the hub. Phones: one compact chain for the chosen path.
+const layouts: Layout[] = [
+  {
+    id: 'wide', viewBox: '0 0 1200 660', nameSize: 13, noteSize: 19, tent: [100, 170], region: [452, 22, 730, 620],
+    parts: {
+      cameras: [190, 92, 'below'], sht31: [340, 232, 'below'], scd41: [340, 342, 'below'], devices: [340, 452, 'below'],
+      mqtt: [590, 300, 'below'], writer: [760, 214, 'below'], timescale: [925, 300, 'below'], grafana: [1090, 214, 'below'],
+      schedule: [590, 172, 'below'], storage: [820, 92, 'below'], media: [1060, 92, 'below'],
+      actuators: [500, 480, 'below'], controllers: [850, 480, 'below'], settings: [1050, 480, 'below'], ha: [620, 560, 'below'],
+    },
+    junction: [414, 287],
+    links: {
+      sht31: { d: 'M370 232C396 232 398 287 414 287' },
+      scd41: { d: 'M370 342C396 342 398 287 414 287' },
+      merged: { d: 'M414 287C470 287 500 300 548 300', note: [486, 276, 'middle'] },
+      published: { d: 'M632 300C680 300 672 214 718 214', note: [680, 322, 'start'] },
+      stored: { d: 'M802 214C852 214 832 300 883 300', note: [880, 228, 'start'] },
+      visualized: { d: 'M967 300C1015 300 1000 214 1048 214', note: [1064, 306, 'middle'] },
+      feed: { d: 'M622 330C700 350 800 396 838 448', note: [740, 402, 'middle'] },
+      settings: { d: 'M1008 480H892', note: [950, 466, 'middle'] },
+      commands: { d: 'M808 486C716 490 640 420 610 340', note: [748, 512, 'middle'] },
+      manual: { d: 'M620 526C616 460 604 400 596 342', note: [656, 566, 'start'] },
+      route: { d: 'M568 332C540 370 510 410 500 446', note: [524, 384, 'end'] },
+      drive: { d: 'M474 480C430 480 404 452 372 452', note: [425, 440, 'middle'] },
+      air: { d: 'M312 452C262 452 236 420 236 342S262 236 312 234', note: [190, 530, 'middle'] },
+      trigger: { d: 'M548 172C450 172 330 104 232 102', note: [380, 128, 'middle'] },
+      save: { d: 'M230 78C360 60 640 62 778 90', note: [520, 52, 'middle'] },
+      prepare: { d: 'M862 92C920 92 960 92 1018 92', note: [940, 76, 'middle'] },
+    },
+    marks: { writer: 'M-32 82c5-6 9 3 14-2s8-6 13 0 7 4 12-1 7-5 12 1 6 3 10-1', timescale: 'M-22 32Q0 42 22 32', grafana: 'M52 4L60-4L66 1L74-10L80-6L88-16', storage: 'M-14-20h30v22' },
+    loops: { grafana: 1, media: 1 },
+  },
+  {
+    id: 'narrow-observe', route: 'observe', viewBox: '0 0 384 690', nameSize: 14, noteSize: 17,
+    parts: { sht31: [68, 56, 'below'], scd41: [252, 56, 'below'], mqtt: [160, 236, 'right'], writer: [160, 366, 'right'], timescale: [160, 496, 'right'], grafana: [160, 626, 'right'] },
+    junction: [160, 150],
+    links: {
+      sht31: { d: 'M104 56C150 56 160 100 160 150' },
+      scd41: { d: 'M216 56C170 56 160 100 160 150' },
+      merged: { d: 'M160 150V194', note: [136, 178, 'end'] },
+      published: { d: 'M160 278C182 296 138 306 160 324', note: [132, 297, 'end'] },
+      stored: { d: 'M160 408C182 426 138 436 160 454', note: [132, 427, 'end'] },
+      visualized: { d: 'M160 538C182 556 138 566 160 584', note: [132, 557, 'end'] },
+    },
+    marks: { writer: 'M50 30c5-6 9 3 14-2s8-6 13 0 7 4 12-1 7-5 12 1 6 3 10-1', timescale: 'M-22 32Q0 42 22 32', grafana: 'M50 40L60 32L68 37L78 26L88 31L100 20' },
+    loops: { grafana: .86 },
+  },
+  {
+    id: 'narrow-respond', route: 'respond', viewBox: '0 0 384 720', nameSize: 14, noteSize: 17,
+    parts: { controllers: [150, 120, 'above'], settings: [310, 120, 'above'], mqtt: [150, 270, 'left'], ha: [310, 270, 'below'], actuators: [150, 410, 'right'], devices: [150, 540, 'right'], tent: [150, 666, 'right'] },
+    links: {
+      settings: { d: 'M268 120H192', note: [230, 150, 'middle'] },
+      feed: { d: 'M136 232C118 200 118 180 134 156', note: [112, 198, 'end'] },
+      commands: { d: 'M166 156C182 180 182 200 166 232', note: [192, 198, 'start'] },
+      manual: { d: 'M268 270H192', note: [230, 300, 'middle'] },
+      route: { d: 'M150 312V368', note: [126, 344, 'end'] },
+      drive: { d: 'M150 452V498', note: [126, 480, 'end'] },
+      air: { d: 'M150 582V624', to: 'tent', note: [174, 598, 'start'] },
+    },
+    marks: {},
+    loops: { tent: .86 },
+  },
+  {
+    id: 'narrow-record', route: 'record', viewBox: '0 0 384 530', nameSize: 14, noteSize: 17,
+    parts: { schedule: [160, 60, 'right'], cameras: [160, 190, 'right'], storage: [160, 320, 'right'], media: [160, 450, 'right'] },
+    links: {
+      trigger: { d: 'M160 102C182 120 138 130 160 148', note: [132, 129, 'end'] },
+      save: { d: 'M160 232C182 250 138 260 160 278', note: [132, 259, 'end'] },
+      prepare: { d: 'M160 362C182 380 138 390 160 408', note: [132, 389, 'end'] },
+    },
+    marks: { storage: 'M-14-20h30v22' },
+    loops: { media: .86 },
+  },
+];
+const loop = 'M-40-4C-42-34-6-44 22-36C46-28 48 8 30 28C10 46-30 42-40 14C-44 2-40-12-30-20';
+const label = (side: Side, size: number) => ({
+  below: { x: 0, y: 51, anchor: 'middle' }, above: { x: 0, y: -46 - size, anchor: 'middle' },
+  right: { x: 48, y: -1, anchor: 'start' }, left: { x: -48, y: -1, anchor: 'end' },
+})[side];
+const noteLines = (id: string) => links[id].lines;
+---
+<div class="system-map" data-system-map data-flow-name="system" data-flow-state="static" data-flow-stage="all">
+  <div class="map-canvas" data-pathway-canvas>
+    {layouts.map(layout => {
+      const id = (name: string) => `map-${layout.id}-${name}`;
+      return (
+        <svg class:list={['map-drawing', layout.id === 'wide' ? 'map-wide' : 'map-narrow']} data-map-layout={layout.id} data-map-for={layout.route} viewBox={layout.viewBox} aria-hidden="true">
+          <defs>
+            <radialGradient id={id('soft')}><stop offset=".6" stop-color="#fff" /><stop offset="1" stop-color="#fff" stop-opacity="0" /></radialGradient>
+            <linearGradient id={id('feather')}><stop offset="0" stop-color="#fff" /><stop offset=".8" stop-color="#fff" /><stop offset="1" stop-color="#fff" stop-opacity="0" /></linearGradient>
+            {Object.keys(layout.parts).map(part => <mask id={id(`reveal-${part}`)}><circle class="map-reveal" data-map-reveal={part} r="72" fill={`url(#${id('soft')})`} /></mask>)}
+            {Object.entries(layout.links).flatMap(([link, spec]) => spec.note ? noteLines(link).map((_, row) => <mask id={id(`note-${link}-${row}`)}><rect class="map-note-reveal" data-map-note-reveal={`${link}-${row}`} x="-4000" y="-4000" width="8000" height="8000" fill={`url(#${id('feather')})`} /></mask>) : [])}
+          </defs>
+          {layout.region && <g class="map-region" data-map-region>
+            <rect x={layout.region[0]} y={layout.region[1]} width={layout.region[2]} height={layout.region[3]} rx="22" />
+            <g transform={`translate(${layout.region[0] + layout.region[2] - 20} ${layout.region[1] + layout.region[3] - 18})`}>
+              <text class="map-region-label" text-anchor="end" x="-26">Raspberry Pi 5</text>
+              <g class="map-region-icon" transform="translate(-20 -17) scale(.078125)">{glyph(circuitry).line.map(d => <path d={d} />)}</g>
+            </g>
+          </g>}
+          {layout.tent && <g class="map-tent" transform={`translate(${layout.tent[0]} ${layout.tent[1]})`}>
+            <path class="map-tent-cover" d="M8 26Q90 6 172 26L176 306H4Z" />
+            <path class="map-tent-frame" d="M26 32V300M154 32V300M26 32H154M26 104H154M26 176H154M26 248H154M26 300H154" />
+            {[32, 104, 176, 248, 300].flatMap(y => [26, 154].map(x => <circle class="map-tent-joint" cx={x} cy={y} r="3.2" />))}
+            <path class="map-tent-hook" d="M88 104V114M88 176V186" />
+            <rect class="map-tent-bag" x="66" y="114" width="44" height="54" rx="14" /><rect class="map-tent-bag" x="66" y="186" width="44" height="54" rx="14" />
+            <path class="map-tent-caps" d="M108 128q7-8 14 0M109 139q6-7 12 0M107 150q7-7 13 1M108 200q7-8 14 0M109 211q6-7 12 0M107 222q7-7 13 1" />
+            <path class="map-tent-floor" d="M-6 306H186" />
+            <path class="map-tent-mount" d="M176 62H214M176 172H214M176 282H214" />
+          </g>}
+          <g class="map-links">
+            {Object.entries(layout.links).map(([link, spec]) => <g class:list={['map-link', `map-link-${links[link].route}`, { 'map-link-dashed': links[link].dashed, 'map-link-air': link === 'air' }]} data-member={links[link].route} data-map-link-group={link}>
+              <path class="map-route" d={spec.d} data-map-link={link} data-map-to={spec.to ?? links[link].to} />
+              <path class="map-trail" d={spec.d} pathLength="1" data-map-trail={link} />
+            </g>)}
+            {layout.junction && <circle class="map-junction" data-map-junction data-member="observe" cx={layout.junction[0]} cy={layout.junction[1]} r="3.2" />}
+          </g>
+          {Object.entries(layout.parts).map(([part, [x, y, side]], index) => {
+            const spec = parts[part], name = label(side, layout.nameSize), finalLoop = layout.loops[part];
+            return (
+              <g class:list={['map-part', `map-home-${spec.home}`]} data-map-part={part} data-member={spec.member.join(' ')} data-verb={spec.verb} data-state="ink" transform={`translate(${x} ${y})`}>
+                <path class="map-wash" data-map-wash d={blob(31 + index * 17, 36)} />
+                {spec.verb === 'ripple' && [0, 1].map(() => <circle class="map-ripple" data-map-ripple r="30" />)}
+                <circle class="map-splash" data-map-splash r="11" />
+                <g class="map-icon" data-map-icon>
+                  <g class="map-glyph-pencil" transform="translate(-26 -26) scale(.203125)">{spec.icon.line.map(d => <path d={d} />)}</g>
+                  <g mask={`url(#${id(`reveal-${part}`)})`}>
+                    <g class="map-glyph-ink" transform="translate(-26 -26) scale(.203125)">{spec.icon.wash.map(d => <path class="map-glyph-wash" d={d} />)}{spec.icon.line.map(d => <path class="map-glyph-line" d={d} />)}</g>
+                  </g>
+                  {spec.badge && <text class="map-badge" x="0" y="9" text-anchor="middle">{spec.badge}</text>}
+                </g>
+                <text class="map-name" x={name.x} y={name.y} text-anchor={name.anchor} font-size={layout.nameSize}>{spec.name}</text>
+                <text class="map-detail" x={name.x} y={name.y + layout.nameSize + 3} text-anchor={name.anchor} font-size={layout.nameSize - 2}>{spec.detail}</text>
+                {spec.verb === 'stamp' && <g class="map-stamp" transform="translate(-31 -31)"><g class="map-stamp-body" data-map-stamp><circle r="15" /><circle class="map-stamp-inner" r="11.5" /><text y="2.6" text-anchor="middle">MQTT</text></g></g>}
+                {spec.verb === 'flash' && <circle class="map-flash" data-map-flash r="14" />}
+                {layout.marks[part] && <path class="map-mark" data-map-mark d={layout.marks[part]} pathLength="1" />}
+                {finalLoop && <path class="map-loop" data-map-loop d={loop} pathLength="1" transform={finalLoop === 1 ? undefined : `scale(${finalLoop})`} />}
+              </g>
+            );
+          })}
+          <g class="map-notes">
+            {Object.entries(layout.links).filter(([, spec]) => spec.note).map(([link, spec]) => <g class={`map-note map-note-${links[link].route}`} data-member={links[link].route} data-map-note={link}>
+              {noteLines(link).map((line, row) => <text x={spec.note![0]} y={spec.note![1] + row * (layout.noteSize + 1)} text-anchor={spec.note![2]} font-size={layout.noteSize} mask={`url(#${id(`note-${link}-${row}`)})`} data-map-note-line={`${link}-${row}`}>{line}</text>)}
+            </g>)}
+          </g>
+          <g class="map-drops">
+            {Object.keys(layout.links).map(link => <g class={`map-drop map-drop-${links[link].route}`} data-map-drop={link}>
+              {links[link].kind === 'command' ? <><path class="map-drop-halo" d="M-11-8L9 0L-11 8Z" /><path class="map-drop-body" d="M-6-4.6L6 0L-6 4.6L-3.4 0Z" /></>
+                : links[link].kind === 'photo' ? <><rect class="map-drop-halo" x="-10" y="-8" width="20" height="16" rx="3" /><rect class="map-drop-body" x="-6" y="-4.5" width="12" height="9" rx="1.5" /><rect class="map-drop-shine" x="-3.6" y="-2.2" width="7.2" height="4.4" rx=".8" /></>
+                : <><circle class="map-drop-halo" r="9.5" /><circle class="map-drop-body" r="4.8" /><circle class="map-drop-shine" cx="-1.5" cy="-1.6" r="1.4" /></>}
+            </g>)}
+          </g>
+        </svg>
+      );
+    })}
+  </div>
+  <div class="map-bar">
+    <button type="button" class="map-crosslink" data-flow-goto="respond" data-member="observe" hidden>These readings also feed the controllers <span aria-hidden="true">→</span> Respond</button>
+    <button type="button" class="map-crosslink" data-flow-goto="observe" data-member="respond" hidden>The sensors notice the change <span aria-hidden="true">→</span> Observe</button>
+    <div class="map-playback" data-pathway-controls hidden>
+      <button type="button" data-pathway-pause aria-label="Pause the pathway animation"><span data-pathway-pause-icon aria-hidden="true">Ⅱ</span><span data-pathway-pause-label>Pause</span></button>
+      <button type="button" data-pathway-replay aria-label="Replay the pathway animation"><span aria-hidden="true">↺</span>Replay</button>
+    </div>
+  </div>
+  <p class="sr-only" data-pathway-status role="status" aria-live="polite"></p>
+</div>
+
+<style>
+  /* Ink on paper: pencil routes wait, an ink drop carries each message and inks the route behind it.
+     Readings travel as round drops, commands as small arrows and photographs as small frames. */
+  .system-map{--ink:#24332f;--pencil:#c3beae;--observe:#c8602a;--observe-wash:#eea77c;--respond:#2e8784;--respond-wash:#8fcfc9;--record:#a0722c;--record-wash:#e2bf82;--final:#6f7957;--final-wash:#b6c29a;--note:#8f5836;position:relative;min-width:0;margin:8px -10px 0}
+  .map-canvas{position:relative;border-radius:4px;background-color:#fbf9f2;background-image:radial-gradient(circle,#dcd6c2 .85px,transparent 1.15px);background-size:22px 22px;background-position:11px 11px}
+  .map-drawing{display:block;width:100%;height:auto;overflow:visible}
+  .map-narrow{display:none}
+  .map-region rect{fill:#f3efe2;fill-opacity:.5;stroke:#bdb6a1;stroke-width:1.3;stroke-dasharray:7 6}
+  .map-region-label{font:20px 'Caveat',cursive;fill:#7d7663}
+  .map-region-icon{fill:#9c9480}
+  .map-tent-cover{fill:#fffdf6;fill-opacity:.75;stroke:#c9c1ab;stroke-width:1.3}
+  .map-tent-frame,.map-tent-hook{fill:none;stroke:#5b5e52;stroke-width:1.7;stroke-linecap:round}
+  .map-tent-joint{fill:#fbf9f2;stroke:#5b5e52;stroke-width:1.3}
+  .map-tent-bag{fill:#ead7b0;stroke:#6d6250;stroke-width:1.4}
+  .map-tent-caps{fill:none;stroke:#8a6f52;stroke-width:1.6;stroke-linecap:round}
+  .map-tent-floor{fill:none;stroke:#c9c1ab;stroke-width:1.3;stroke-linecap:round}
+  .map-route{fill:none;stroke:var(--pencil);stroke-width:1.4;stroke-linecap:round}
+  .map-link-dashed .map-route{stroke-dasharray:5 5}
+  .map-trail{fill:none;stroke:var(--ink);stroke-width:2.1;stroke-linecap:round;stroke-dasharray:1 1.05}
+  .map-link-dashed .map-trail{stroke-width:1.7}
+  /* The air changing is not a message: it loops through the tent as a dashed teal breath. */
+  .map-link-air .map-route{stroke-dasharray:3 6}.map-link-air .map-trail{stroke:var(--respond);stroke-width:1.8;stroke-dasharray:1 1.05}
+  .map-tent-mount{fill:none;stroke:#b9b29c;stroke-width:1.3;stroke-linecap:round;stroke-dasharray:2 3}
+  .map-junction{fill:var(--ink)}
+  .map-wash{fill:var(--observe-wash);fill-opacity:.24}
+  .map-home-respond .map-wash{fill:var(--respond-wash);fill-opacity:.3}
+  .map-home-record .map-wash{fill:var(--record-wash);fill-opacity:.32}
+  .map-home-shared .map-wash{fill:#d9cdb7;fill-opacity:.42}
+  .map-glyph-pencil{fill:var(--pencil)}
+  .map-glyph-line{fill:var(--ink)}
+  .map-glyph-wash{fill:var(--observe);fill-opacity:.32}
+  .map-home-respond .map-glyph-wash{fill:var(--respond)}
+  .map-home-record .map-glyph-wash{fill:var(--record)}
+  .map-home-shared .map-glyph-wash{fill:#8d7a5a}
+  .map-badge{font:600 8px var(--font-body,sans-serif);fill:var(--ink)}
+  .map-name{font-family:var(--font-body,sans-serif);font-weight:500;fill:var(--ink);letter-spacing:.01em}
+  .map-detail{font-family:var(--font-body,sans-serif);fill:#7c8276}
+  .map-ripple,.map-splash{fill:none;stroke:var(--observe);stroke-width:1.2;opacity:0}
+  .map-home-respond .map-ripple,.map-home-respond .map-splash{stroke:var(--respond)}
+  .map-home-record .map-ripple,.map-home-record .map-splash{stroke:var(--record)}
+  .map-flash{fill:#fffdf2;stroke:var(--record);stroke-width:1;opacity:0}
+  .map-stamp-body circle{fill:none;stroke:#b4521f;stroke-width:1.5}
+  .map-stamp-body .map-stamp-inner{stroke-width:.8;stroke-dasharray:2 2.4}
+  .map-stamp-body text{font:700 6.6px var(--font-body,sans-serif);letter-spacing:.08em;fill:#b4521f}
+  .map-stamp-body{opacity:.8}
+  .map-mark{fill:none;stroke:var(--ink);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1 1.05}
+  .map-loop{fill:none;stroke:var(--final);stroke-width:1.7;stroke-linecap:round;stroke-dasharray:1 1.05}
+  .map-notes text{font-family:'Caveat',cursive;fill:var(--note)}
+  .map-note-respond text{fill:#2f6f6b}
+  .map-note-record text{fill:#86602a}
+  .map-drop{visibility:hidden}
+  .map-drop-halo{fill:var(--observe);fill-opacity:.16}
+  .map-drop-body{fill:var(--observe)}
+  .map-drop-respond .map-drop-halo,.map-drop-respond .map-drop-body{fill:var(--respond)}
+  .map-drop-record .map-drop-halo,.map-drop-record .map-drop-body{fill:var(--record)}
+  .map-drop-shine{fill:#fff;fill-opacity:.75}
+  /* While one path plays, the rest of the map steps back. */
+  [data-member]{transition:opacity .45s ease}
+  .system-map[data-map-playing=observe] [data-member]:not([data-member~=observe]),.system-map[data-map-playing=respond] [data-member]:not([data-member~=respond]),.system-map[data-map-playing=record] [data-member]:not([data-member~=record]){opacity:.28}
+  .map-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 14px 2px;min-height:48px}
+  .map-crosslink{display:inline-block;min-height:44px;padding:9px 4px;border:0;background:none;color:var(--note);font:20px/1.1 'Caveat',cursive;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:#8f583640;text-underline-offset:4px;transition:color .2s,text-decoration-color .2s}
+  .map-crosslink:hover{color:#6f3f22;text-decoration-color:currentColor}
+  .system-map[data-map-route=observe] .map-crosslink:not([data-member=observe]),.system-map[data-map-route=respond] .map-crosslink:not([data-member=respond]),.system-map[data-map-route=record] .map-crosslink{display:none}
+  .map-crosslink:focus-visible,.map-playback button:focus-visible{outline:2px solid #d45b36;outline-offset:3px}
+  .map-playback{display:flex;align-items:center;gap:9px;flex:none;margin-left:auto}
+  .map-playback button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;border:0;border-radius:3px;background:transparent;color:#69785f;padding:0 10px;font:11px var(--font-body,sans-serif);cursor:pointer}
+  .map-playback button>span[aria-hidden]{font-size:16px;line-height:1}
+  .map-playback button:hover{color:var(--note)}
+  .map-playback button:disabled{opacity:.45;cursor:default}
+  @media(max-width:760px){
+    .system-map{margin:0 -5px}.map-wide{display:none}
+    /* Phones show the chosen path's chain; without JavaScript every chain is shown in turn. */
+    .map-narrow{display:block;max-width:430px;margin:auto}
+    .system-map[data-map-route] .map-narrow{display:none}
+    .system-map[data-map-route=observe] [data-map-for=observe],.system-map[data-map-route=respond] [data-map-for=respond],.system-map[data-map-route=record] [data-map-for=record]{display:block}
+    .map-bar{flex-wrap:wrap;padding:6px 8px 0;gap:0 8px}.map-crosslink{flex:1 1 100%;font-size:19px}.map-playback{gap:4px}.map-playback button{padding-inline:8px;font-size:10px}
+  }
+  @media(prefers-reduced-motion:reduce){.map-playback{display:none}.map-crosslink,[data-member]{transition:none}}
+</style>
