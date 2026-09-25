@@ -85,12 +85,13 @@ if(page){
   document.addEventListener('pointermove',active);document.addEventListener('pointerdown',active);document.addEventListener('keydown',()=>active());
   // Hovering, tapping or focusing a glance spot (the photo, a journey stop, the Contact bubble) makes Myko look over and comment,
   // once per spot every 20 seconds. A glance can replace another glance, but never interrupts a wake-up, a click line or a nap.
+  // Chapter reactions come from choosing a tab, so a stray hover (say, content shifting under a resting cursor) cannot replace them.
   const glanced=new WeakMap<HTMLElement,number>();
-  function glance(spot:HTMLElement){
+  function glance(spot:HTMLElement,face=spot.dataset.mykoMood||'curious',line=spot.dataset.mykoGlance,type='glance'){
     const now=performance.now();
-    if(!visible||document.hidden||(glanced.get(spot)??-Infinity)>now-20000||(locked?kind!=='glance':myko.dataset.mood!=='neutral'))return;
+    if(!visible||document.hidden||(glanced.get(spot)??-Infinity)>now-20000||(locked?kind!=='glance'&&kind!==type:myko.dataset.mood!=='neutral'))return;
     glanced.set(spot,now);const rect=spot.getBoundingClientRect();if(motion)aim(rect.left+rect.width/2,rect.top+rect.height/2);
-    react(spot.dataset.mykoMood||'curious',{line:spot.dataset.mykoGlance,duration:2600,type:'glance'});
+    react(face,{line,duration:2600,type});
   }
   page.querySelectorAll<HTMLElement>('[data-myko-glance]').forEach(spot=>{spot.addEventListener('pointerenter',()=>glance(spot));spot.addEventListener('focus',()=>glance(spot));});
   stage.addEventListener('click',event=>{
@@ -103,7 +104,12 @@ if(page){
   function scheduleBlink(){if(!motion||!visible||document.hidden)return;blink=window.setTimeout(()=>{if(myko.dataset.mood==='neutral'){myko.setAttribute('data-blinking','');blinkEnd=window.setTimeout(()=>myko.removeAttribute('data-blinking'),120);}scheduleBlink();},3300);}
   reduced.addEventListener('change',()=>{motion=!reduced.matches;sync();});document.addEventListener('visibilitychange',()=>{sync();});
   new IntersectionObserver(entries=>{const next=entries[0].isIntersecting;if(next!==visible){visible=next;if(visible&&locked){myko.toggleAttribute('data-animate',motion);scheduleBlink();}else sync();}},{threshold:.1}).observe(myko);
-  const tabs=[...page.querySelectorAll<HTMLButtonElement>('[data-story]')],panels=[...page.querySelectorAll<HTMLElement>('[data-story-page]')];let animation:Animation|undefined;
-  function select(index:number,interact=true){tabs.forEach((tab,i)=>{tab.setAttribute('aria-selected',String(i===index));tab.tabIndex=i===index?0:-1;});panels.forEach((panel,i)=>panel.hidden=i!==index);animation?.cancel();if(interact&&motion)animation=panels[index].animate([{opacity:.3},{opacity:1}],{duration:200});}
+  const tabs=[...page.querySelectorAll<HTMLButtonElement>('[data-story]')],panels=[...page.querySelectorAll<HTMLElement>('[data-story-page]')],growth=page.querySelector<SVGElement>('[data-growth]');let animation:Animation|undefined;
+  // Chapters are growth stages: spore, mycelium, fruiting. Choosing one grows the drawing and Myko reacts to it.
+  function select(index:number,interact=true){
+    tabs.forEach((tab,i)=>{tab.setAttribute('aria-selected',String(i===index));tab.tabIndex=i===index?0:-1;});panels.forEach((panel,i)=>panel.hidden=i!==index);growth?.setAttribute('data-grow',String(index));
+    animation?.cancel();if(interact&&motion)animation=panels[index].animate([{opacity:.3},{opacity:1}],{duration:200});
+    if(interact)glance(tabs[index],tabs[index].dataset.expression,tabs[index].dataset.mykoLine,'chapter');
+  }
   tabs.forEach((tab,index)=>{tab.addEventListener('click',()=>select(index));tab.addEventListener('keydown',event=>{let next=index;if(event.key==='ArrowRight')next=(index+1)%tabs.length;else if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else return;event.preventDefault();select(next);tabs[next].focus();});});panels.forEach((panel,i)=>{panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby',tabs[i].id);});page.querySelector<HTMLElement>('.story-tabs')!.hidden=false;select(0,false);page.dataset.aboutReady='true';sync();
 }

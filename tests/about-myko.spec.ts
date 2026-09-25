@@ -111,6 +111,17 @@ test('Myko glances at the photo and journey stops and comments on them',async({p
   await page.getByRole('button',{name:'Say hello to Myko'}).press('Enter');await expect(hint).toHaveText('Hi! I’m Myko.');
   await stop('Riyadh').hover({position:{x:20,y:8}});await expect(hint).toHaveText('Hi! I’m Myko.');
 });
+test('story chapters grow through the mushroom life cycle and Myko reacts to each',async({page})=>{
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));await page.goto('/about/');
+  const myko=page.locator('[data-myko]'),hint=page.locator('[data-myko-hint]'),growth=page.locator('[data-growth]'),tab=(name:string)=>page.getByRole('tab',{name,exact:true});
+  const offset=(part:string)=>growth.locator(part).first().evaluate(el=>parseFloat(getComputedStyle(el).strokeDashoffset));
+  await expect(page.locator('.stage-note')).toHaveText(['spore','mycelium','fruiting']);await expect(growth).toHaveAttribute('data-grow','0');expect(await offset('.hypha')).toBeGreaterThan(1);
+  await tab('What I build').click();await expect(growth).toHaveAttribute('data-grow','1');await expect(myko).toHaveAttribute('data-mood','curious');await expect(hint).toHaveText('PVC, sensors and patience.');
+  await expect.poll(()=>offset('.hypha')).toBe(0);expect(await offset('.cap')).toBeGreaterThan(1);
+  await page.clock.runFor(2600);await tab('What I’m exploring').click();await expect(growth).toHaveAttribute('data-grow','2');await expect(hint).toHaveText('So many questions. Good ones.');
+  await expect.poll(()=>offset('.gills'),{timeout:5000}).toBe(0);
+  await page.clock.runFor(2600);await tab('My story').click();await expect(growth).toHaveAttribute('data-grow','0');await expect(myko).toHaveAttribute('data-mood','happy');await expect(hint).toHaveText('That’s where it all started.');
+});
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
   const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width);await expect(page.locator('canvas')).toHaveCount(0);
