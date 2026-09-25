@@ -18,4 +18,6 @@ if (section) {
     }
   }, { rootMargin: '350px' });
   observer.observe(section);
+  // A link such as /#study-fan opens the habitat with that part selected.
+  if (/^#study-[\w-]+$/.test(location.hash)) section.scrollIntoView({ block: 'start' });
 }

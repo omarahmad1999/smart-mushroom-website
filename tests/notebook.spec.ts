@@ -224,6 +224,15 @@ test('The Journey is fifth with twelve independent paper notes and persistent li
   for(const key of ['x','width','height'] as const)expect(journeyBox![key]).toBeCloseTo(otherBox![key],1);
 });
 
+test('the Build table names open each part in the 3D habitat',async({page},info)=>{
+  // Phones show one page at a time; the table is on The Build's writing page.
+  await page.goto(info.project.name==='mobile'?'/documentation/#notebook-build--notes':'/documentation/#notebook-build');
+  const table=page.locator('[data-nb-page="3"] .hardware-notebook');
+  for(const [name,part] of [['Frame','frame'],['Computing','pi'],['Ventilation','fan'],['Power','ups']] as const)
+    await expect(table.getByRole('link',{name:`${name}: see it in the 3D habitat`})).toHaveAttribute('href',`/#study-${part}`);
+  await expect(table.locator('th a')).toHaveCount(9);
+});
+
 test('handwriting writes itself once as a page settles and stays still with reduced motion',async({page,browser},info)=>{
   await page.goto('/documentation/#notebook-idea');
   const book=page.locator('[data-notebook]');

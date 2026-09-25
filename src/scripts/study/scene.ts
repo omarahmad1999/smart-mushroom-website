@@ -10,7 +10,7 @@ import { createPeripherals } from './peripherals';
 import { createWiring } from './wiring';
 import { positions, add } from './layout';
 import { createStudySounds } from './sounds';
-import { components, componentById, categories, tours, type Component, type TourRoute, type VisualAction } from './content';
+import { components, componentById, categories, journeyNotes, tours, type Component, type TourRoute, type VisualAction } from './content';
 
 type Region = 'overview' | 'tent' | 'workbench';
 type Category = typeof categories[number];
@@ -731,6 +731,9 @@ export function mountMaterialStudy(section: HTMLElement) {
     detailNote.textContent = item.note; detailNote.hidden = !item.note;
     const link = section.querySelector<HTMLAnchorElement>('[data-study-detail-link]')!;
     link.href = item.link; link.textContent = `${item.linkLabel} ↗`;
+    const story = journeyNotes[id], storyLink = section.querySelector<HTMLAnchorElement>('[data-study-journey-link]')!;
+    storyLink.hidden = !story;
+    if (story) { storyLink.href = `/documentation/#journey-${story.slug}`; storyLink.textContent = `Read the build story: ${story.title} ↗`; }
     detail.hidden = false;
     screenPreview.hidden=id!=='monitor'||!screenOn;
     if(id==='monitor'&&!screenOn)setScreen(true);
@@ -974,6 +977,12 @@ export function mountMaterialStudy(section: HTMLElement) {
   studyButtons.forEach(button => button.disabled=false); syncAction(); syncLayerCount();
   syncDemos();
   status.textContent='Interactive habitat ready. Select any component to explore.';
+  const openFromHash = () => {
+    const part = location.hash.match(/^#study-([\w-]+)$/)?.[1] as Component | undefined;
+    if (part && componentById[part]) { introduced = true; finishAssembly(); select(part, true); }
+  };
+  openFromHash();
+  window.addEventListener('hashchange', openFromHash, eventOptions);
   window.addEventListener('pageshow',()=>sounds.suspend(!inView||document.hidden),eventOptions);
   window.addEventListener('pagehide', event => {
     sounds.suspend(true);

@@ -45,6 +45,25 @@ export const components:ComponentInfo[] = [
   item('adapter12','12 V fan adapter','Power & wiring','A supply for the fan circuit.','The adapter’s black cable splits into black and red wires. Black goes to the first upper-right hole of the fan MOSFET; red goes to the second.',{zoom:4.8,note:'The left upper pair on that MOSFET is reserved for the fan leads.'}),
   item('adapter24','24 V LED adapter','Power & wiring','A supply for the lighting circuit.','The adapter’s black cable splits into black and red wires. Black goes to the first upper-right hole of the LED MOSFET; red goes to the second.',{zoom:4.8,note:'The left upper pair on that MOSFET is reserved for the LED leads.'}),
 ].map((component,index)=>({...component,number:String(index+1).padStart(2,'0')}));
+/** The Journey note in the field notebook that tells each part's build story. */
+export const journeyNotes: Partial<Record<Component, { slug: string; title: string }>> = {
+  frame: { slug: 'pvc-pipes', title: 'PVC Pipes' }, cover: { slug: 'transparent-plastic', title: 'Transparent Plastic' },
+  pi: { slug: 'raspberry-pi', title: 'Raspberry Pi' }, ai: { slug: 'raspberry-pi', title: 'Raspberry Pi' },
+  camera: { slug: 'raspberry-pi', title: 'Raspberry Pi' }, camera2: { slug: 'raspberry-pi', title: 'Raspberry Pi' },
+  monitor: { slug: 'raspberry-pi', title: 'Raspberry Pi' }, keyboard: { slug: 'raspberry-pi', title: 'Raspberry Pi' },
+  mouse: { slug: 'raspberry-pi', title: 'Raspberry Pi' }, ssd: { slug: 'raspberry-pi', title: 'Raspberry Pi' },
+  fan: { slug: 'fan', title: 'Fan' }, vent: { slug: 'fan', title: 'Fan' },
+  humidity: { slug: 'humidifier', title: 'Humidifier' }, duct: { slug: 'humidifier', title: 'Humidifier' },
+  light: { slug: 'led', title: 'LED' },
+  sensor: { slug: 'sensors', title: 'Sensors' }, sht: { slug: 'sensors', title: 'Sensors' },
+  'wago-red': { slug: 'sensors', title: 'Sensors' }, 'wago-black': { slug: 'sensors', title: 'Sensors' },
+  'wago-yellow': { slug: 'sensors', title: 'Sensors' }, 'wago-green': { slug: 'sensors', title: 'Sensors' },
+  ups: { slug: 'ups', title: 'UPS' }, 'pi-power': { slug: 'ups', title: 'UPS' }, 'power-strip': { slug: 'ups', title: 'UPS' },
+  mosfets: { slug: 'mosfets-wiring', title: 'MOSFETs and Wiring' }, 'mosfet-led': { slug: 'mosfets-wiring', title: 'MOSFETs and Wiring' },
+  adapter12: { slug: 'mosfets-wiring', title: 'MOSFETs and Wiring' }, adapter24: { slug: 'mosfets-wiring', title: 'MOSFETs and Wiring' },
+  breadboard: { slug: 'mosfets-wiring', title: 'MOSFETs and Wiring' }, cobbler: { slug: 'mosfets-wiring', title: 'MOSFETs and Wiring' },
+  bag: { slug: 'mushroom-cultivation', title: 'Mushroom Cultivation' }, bag2: { slug: 'mushroom-cultivation', title: 'Mushroom Cultivation' },
+};
 export const componentById=Object.fromEntries(components.map(component=>[component.id,component])) as Record<Component,ComponentInfo>;
 
 // Guided tours follow the three paths described in the system architecture. Captions

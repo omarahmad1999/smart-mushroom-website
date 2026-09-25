@@ -278,6 +278,21 @@ test('sketch style draws the habitat in ink on paper and switches back', async (
   expect(await shell.evaluate(element => getComputedStyle(element).backgroundImage)).toBe(plain);
 });
 
+test('each part links to its build story, and a study link opens that part', async ({ page }) => {
+  const { section } = await openStudy(page);
+  const story = section.locator('[data-study-journey-link]');
+  await section.locator('[data-study-select="fan"]').click();
+  await expect(story).toBeVisible();
+  await expect(story).toHaveAttribute('href', '/documentation/#journey-fan');
+  await expect(story).toContainText('Read the build story: Fan');
+  await section.locator('[data-study-select="cooler"]').click();
+  await expect(story).toBeHidden();
+  await page.goto('/#study-humidity');
+  await expect(section).toHaveAttribute('data-study-state', 'ready', { timeout: 40_000 });
+  await expect(section).toHaveAttribute('data-study-selected', 'humidity');
+  await expect(section.locator('[data-study-detail-title]')).toHaveText('Bring moisture into the habitat.');
+});
+
 test('keyboard controls turn and zoom the scene while wheel scrolling remains native', async ({ page }) => {
   // This sequence includes several animated camera moves on software WebGL.
   test.setTimeout(150_000);
