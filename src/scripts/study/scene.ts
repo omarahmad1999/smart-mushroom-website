@@ -660,7 +660,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     section.dataset.studyRegion = region;
     section.querySelectorAll<HTMLElement>('button[data-study-region]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.studyRegion === region)));
   }
-  function regionView(region: Region) {
+  function regionView(region: Region, scroll = true) {
     if (tour && !touring) endTour(false);
     finishAssembly(); stopRotation(); detail.hidden = true; setRegionState(region);
     markers=region==='overview'?{mode:'groups'}:{mode:'some',show:new Set(regionGroups[region])};
@@ -671,7 +671,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     status.textContent = region === 'overview' ? 'View reset. The whole setup is shown.' : region === 'tent' ? 'A closer view inside the tent.' : 'A closer view of the computing workbench.';
     // On mobile the inspector sits below the model. Restore its visibility so
     // the camera transition can resume when Reset is used from below the card.
-    viewport.scrollIntoView({ block: 'center', behavior: reduceMotion.matches ? 'instant' : 'smooth' });
+    if (scroll) viewport.scrollIntoView({ block: 'center', behavior: reduceMotion.matches ? 'instant' : 'smooth' });
   }
   function setScreen(on:boolean, audible=true) {
     screenOn=on;
@@ -711,7 +711,10 @@ export function mountMaterialStudy(section: HTMLElement) {
       focus.addScaledVector(right, 0.38);
     }
     const overhead=['mosfets','mosfet-led','breadboard','cobbler','keyboard','mouse','ssd','adapter12','adapter24','power-strip'].includes(id)||id.startsWith('wago-');
-    moveTo(focus,item.zoom*(viewport.clientWidth<700?1.20:1),id==='cooler'?focus.clone().add(V(-4,2.4,8)):id==='monitor'?focus.clone().add(V(.15,.65,5.5)):overhead?focus.clone().add(V(0,5.2,2.8)):undefined);
+    const zoomTo=item.zoom*(viewport.clientWidth<700?1.20:1);
+    // On phones the explanation rises as a sheet over the lower scene; lift the part above it.
+    if (viewport.clientWidth <= 700) focus.addScaledVector(V(0,1,0).applyQuaternion(camera.quaternion), -.34*(camera.top-camera.bottom)/zoomTo);
+    moveTo(focus,zoomTo,id==='cooler'?focus.clone().add(V(-4,2.4,8)):id==='monitor'?focus.clone().add(V(.15,.65,5.5)):overhead?focus.clone().add(V(0,5.2,2.8)):undefined);
   }
   function select(id: Component, fromList = false) {
     if (!alive || !componentById[id]) return;
@@ -824,18 +827,19 @@ export function mountMaterialStudy(section: HTMLElement) {
     camera.zoom = THREE.MathUtils.clamp(camera.zoom * (direction === 'in' ? 1.18 : 1 / 1.18), 0.85, 8);
     camera.updateProjectionMatrix(); draw(); status.textContent = `View zoom ${Math.round(camera.zoom * 100)} percent.`;
   }
-  function replayBuild() {
+  function replayBuild(scroll = true) {
     if (tour) endTour(false);
     settleLayers();
     stopDemo();
-    regionView('overview');
+    regionView('overview', scroll);
     if (reduceMotion.matches) { section.dataset.studyBuild = 'idle'; draw(); status.textContent = 'The assembled habitat is shown. Motion is reduced.'; return; }
     assembly = { start: performance.now(), saved: buildOrder.map(object => ({ object, position: object.position.clone(), visible: object.visible })) };
     assembly.saved.forEach(saved => saved.object.visible = false);
     section.dataset.studyBuild = 'running';
     section.querySelector('[data-study-build]')?.setAttribute('aria-pressed', 'true');
     status.textContent = 'Assembling the illustrated habitat.';
-    viewport.scrollIntoView({ block: 'center', behavior: 'smooth' }); wake(buildOrder.length*80+750);
+    if (scroll) viewport.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    wake(buildOrder.length*80+750);
   }
 
   section.querySelectorAll<HTMLElement>('[data-study-select]').forEach(button => button.addEventListener('click', () => select(button.dataset.studySelect as Component, true), eventOptions));
@@ -848,7 +852,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     (event.currentTarget as HTMLElement).setAttribute('aria-pressed',String(soundEnabled));
     section.dataset.studySound=String(soundEnabled);status.textContent=soundEnabled?'Sound effects on.':'Sound effects muted.';
   },eventOptions);
-  section.querySelector('[data-study-build]')?.addEventListener('click', replayBuild, eventOptions);
+  section.querySelector('[data-study-build]')?.addEventListener('click', () => replayBuild(), eventOptions);
   const tourCard = section.querySelector<HTMLElement>('[data-study-tour-card]')!;
   section.querySelectorAll<HTMLButtonElement>('[data-study-tour]').forEach(button => button.addEventListener('click', () => startTour(button.dataset.studyTour as TourRoute), eventOptions));
   tourCard.querySelector('[data-study-tour-next]')!.addEventListener('click', nextStep, eventOptions);
@@ -945,8 +949,11 @@ export function mountMaterialStudy(section: HTMLElement) {
     camera.updateProjectionMatrix(); renderer.setSize(width,height,false); draw();
   });
   resize.observe(viewport);
+  let introduced = false;
   const visibility = new IntersectionObserver(entries => {
     inView = entries[0].isIntersecting;
+    // The first time the habitat comes into view, it assembles itself once.
+    if (inView && !introduced) { introduced = true; if (!reduceMotion.matches) replayBuild(false); }
     sounds.suspend(!inView||document.hidden);
     if (inView) wake(); else { cancelAnimationFrame(animationFrame); animationFrame=0; lastFrame=0; }
   });
@@ -959,7 +966,10 @@ export function mountMaterialStudy(section: HTMLElement) {
     hotspots.forEach(({button}) => button.hidden=true); leaderLayer.style.display="none"; studyButtons.forEach(button => button.disabled=true);
     status.textContent='The browser paused 3D rendering. The still view is shown; reload to try again.';
   },eventOptions);
-  renderer.shadowMap.needsUpdate=true; draw(); fallback.hidden=true; detail.hidden=true;
+  renderer.shadowMap.needsUpdate=true; draw(); detail.hidden=true;
+  // The still poster fades into the live scene rather than switching.
+  if (reduceMotion.matches) fallback.hidden=true;
+  else { fallback.dataset.leaving=''; window.setTimeout(()=>{fallback.hidden=true;delete fallback.dataset.leaving;},480); }
   Object.assign(section.dataset,{studySketch:'false',studyTour:'none',studyFocus:'none',studyEvery:'false',studyState:'ready',studySelected:'bag',studyMushrooms:'true',studyCover:'false',studyWiring:'false',studyLabels:'true',studyDemo:'none',studyBuild:'idle',studyRegion:'overview',studyLighting:'day',studyScreen:'off',studySound:'true'});
   studyButtons.forEach(button => button.disabled=false); syncAction(); syncLayerCount();
   syncDemos();
