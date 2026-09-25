@@ -133,6 +133,18 @@ test('the journey is a mycelium thread that grows into view and ends at the habi
   await page.mouse.move(2,200);await journey.locator('.journey-today').hover({position:{x:30,y:8}});await expect(page.locator('[data-myko-hint]')).toHaveText('That’s where I live!');
   await expect(journey.locator('.journey-today .journey-mushroom')).toHaveCSS('stroke','rgb(70, 174, 189)');
 });
+test('social cards carry spore prints that stay inside the card and darken on hover',async({page})=>{
+  await page.goto('/about/');
+  const cards=page.locator('.social-paper'),marks=page.locator('.social-mark');await cards.first().scrollIntoViewIfNeeded();
+  for(let i=0;i<3;i++){
+    const print=await marks.nth(i).evaluate(el=>{const style=getComputedStyle(el,'::before');return{image:style.backgroundImage,size:-parseFloat(getComputedStyle(el).getPropertyValue('--print-size'))};});
+    expect(print.image).toContain('repeating-conic-gradient');
+    const mark=(await marks.nth(i).boundingBox())!,card=(await cards.nth(i).boundingBox())!;
+    expect(mark.x-print.size).toBeGreaterThanOrEqual(card.x-2);expect(mark.y-print.size).toBeGreaterThanOrEqual(card.y-2);expect(mark.y+mark.height+print.size).toBeLessThanOrEqual(card.y+card.height+2);
+  }
+  const opacity=()=>marks.nth(1).evaluate(el=>parseFloat(getComputedStyle(el,'::before').opacity));const rest=await opacity();
+  await cards.nth(1).hover();await expect.poll(opacity).toBeGreaterThan(rest+.1);
+});
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
   const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width);await expect(page.locator('canvas')).toHaveCount(0);
