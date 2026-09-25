@@ -43,10 +43,19 @@ function compact(source: THREE.Group, preserveOysters = false) {
   const oysters = new THREE.Group();
   oysters.name = 'oyster-clusters';
   oysters.userData.mushrooms = true;
+  // Each oyster cluster keeps its own merged meshes in a group pivoted where the cluster
+  // attaches, so the scene can grow or remove clusters individually.
+  const clusterOf = (object: THREE.Object3D) => {
+    let node: THREE.Object3D | null = object;
+    while (node?.parent && !(node.parent.name === 'oyster-clusters' || node.parent.userData.mushrooms)) node = node.parent;
+    return node?.parent ? node : null;
+  };
+  const clusters = new Map<string, THREE.Group>();
   const buckets = new Map<string, {
     geometries: THREE.BufferGeometry[];
     material: THREE.Material;
     mushrooms: boolean;
+    cluster: THREE.Object3D | null;
     castShadow: boolean;
     receiveShadow: boolean;
   }>();
@@ -71,10 +80,11 @@ function compact(source: THREE.Group, preserveOysters = false) {
     }
     // Attribute lists matter: the vertex-coloured bag surfaces have no UVs.
     const attributes = Object.keys(object.geometry.attributes).sort().join(',');
-    const key = `${isOyster}|${object.castShadow}|${object.receiveShadow}|${attributes}|${materialKey(object.material)}`;
+    const cluster = isOyster ? clusterOf(object) : null;
+    const key = `${isOyster}|${cluster?.uuid ?? ''}|${object.castShadow}|${object.receiveShadow}|${attributes}|${materialKey(object.material)}`;
     let bucket = buckets.get(key);
     if (!bucket) {
-      bucket = { geometries: [], material: object.material, mushrooms: isOyster, castShadow: object.castShadow, receiveShadow: object.receiveShadow };
+      bucket = { geometries: [], material: object.material, mushrooms: isOyster, cluster, castShadow: object.castShadow, receiveShadow: object.receiveShadow };
       buckets.set(key, bucket);
     }
     const geometry = object.geometry.index ? object.geometry.toNonIndexed() : object.geometry.clone();
@@ -88,7 +98,16 @@ function compact(source: THREE.Group, preserveOysters = false) {
     mesh.castShadow = bucket.castShadow;
     mesh.receiveShadow = bucket.receiveShadow;
     keepMaterial.add(bucket.material);
-    (bucket.mushrooms ? oysters : output).add(mesh);
+    if (bucket.mushrooms && bucket.cluster) {
+      let group = clusters.get(bucket.cluster.uuid);
+      if (!group) {
+        group = new THREE.Group(); group.name = 'oyster-cluster';
+        group.position.setFromMatrixPosition(bucket.cluster.matrixWorld);
+        clusters.set(bucket.cluster.uuid, group); oysters.add(group);
+      }
+      geometry.translate(-group.position.x, -group.position.y, -group.position.z);
+      group.add(mesh);
+    } else (bucket.mushrooms ? oysters : output).add(mesh);
   }
   if (preserveOysters) output.add(oysters);
   oldGeometry.forEach(geometry => { if (!keepGeometry.has(geometry)) geometry.dispose(); });

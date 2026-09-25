@@ -176,12 +176,13 @@ export function mountMaterialStudy(section: HTMLElement) {
   world.add(ledGlow);
   const litFloor=new THREE.Mesh(new THREE.PlaneGeometry(1.68,1.12),new THREE.MeshStandardMaterial({color:'#dddfca',roughness:.93}));
   litFloor.rotation.x=-Math.PI/2;litFloor.position.set(.55,.144,-.12);litFloor.layers.set(1);litFloor.visible=false;world.add(litFloor);
-  const caps:{object:THREE.Object3D;scale:THREE.Vector3;delay:number}[]=[];
+  const caps:{object:THREE.Object3D;scale:THREE.Vector3;delay:number;growth:number}[]=[];
   const emitterIntensities=devices.lightEmitters.map(mesh=>(mesh.material as THREE.MeshStandardMaterial).emissiveIntensity);
   const mushroomGroups:THREE.Object3D[]=[];
   for(const bag of [tent.bags,tent.bag2]) bag.traverse(object=>{if(object.userData.mushrooms||object.name==='oyster-clusters')mushroomGroups.push(object);});
-  for(const group of mushroomGroups)for(const cluster of group.children)for(const cap of cluster.children)caps.push({object:cap,scale:cap.scale.clone(),delay:0});
-  caps.forEach((cap,index)=>cap.delay=(index%7)/7*.45+Math.floor(index/7)*.06);
+  // Each oyster cluster grows as one piece from where it attaches to the bag.
+  let clusterIndex=0;
+  for(const group of mushroomGroups)for(const cluster of group.children){caps.push({object:cluster,scale:cluster.scale.clone(),delay:(clusterIndex%3)/3*.4+Math.floor(clusterIndex/3)*.08,growth:1});clusterIndex++;}
   [devices.mist,devices.cameraField,devices.cameraField2,fanAirflow,lightBeam].forEach(object=>{if(object)object.userData.ignorePicking=true;});
 
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.ShadowMaterial({ color: '#8e8061', opacity: 0.20 }));
@@ -214,6 +215,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   let hovered: Component | null = null;
   let fading = false;
   let mushroomsVisible = true;
+  let growthOpen = false;
   let tour: { route: TourRoute; index: number; playing: boolean; timer: number; wiringBefore: boolean } | null = null;
   let touring = false;
   const pulses: { mesh: THREE.Mesh; curve: THREE.CatmullRomCurve3; offset: number; reverse: boolean }[] = [];
@@ -273,7 +275,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     const width=viewport.clientWidth,height=viewport.clientHeight;
     leaderLayer.setAttribute('viewBox',`0 0 ${width} ${height}`);
     // Markers step aside while the tent is lit, so the light itself is the subject.
-    const lit=demos.has('light');
+    const lit=demos.has('light')||growthOpen;
     const groupsShown=labelsVisible&&!assembly&&!lit&&!everyPart&&markers.mode==='groups';
     for(const {button,anchor} of groupMarkers) {
       const p=anchor.clone().project(camera);
@@ -479,7 +481,7 @@ export function mountMaterialStudy(section: HTMLElement) {
       mushroomGroups.forEach(object => object.visible = on || t < 1);
       for (const cap of caps) {
         const local = THREE.MathUtils.clamp((shown - cap.delay) / .55, 0, 1);
-        cap.object.scale.copy(cap.scale).multiplyScalar(on ? (local >= 1 ? 1 : Math.max(.0001, overshoot(local))) : Math.max(.0001, local));
+        cap.object.scale.copy(cap.scale).multiplyScalar(Math.max(.0001, cap.growth * (on ? (local >= 1 ? 1 : overshoot(local)) : local)));
       }
     }
   }
@@ -566,6 +568,46 @@ export function mountMaterialStudy(section: HTMLElement) {
     if (!finished.wiringBefore && wiringOn) setLayer('wiring');
     tourCard.hidden = true; section.dataset.studyTour = 'none'; delete section.dataset.studyTourStep;
     if (reset) { regionView('overview'); status.textContent = `${tours[finished.route].name} tour finished.`; }
+  }
+  // Growth stages: an illustration of incubation, pinning, fruiting and harvest. The straw
+  // substrate whitens as mycelium spreads, pins appear, clusters grow, then are harvested.
+  const stageNames = ['Incubation', 'Pinning', 'Fruiting', 'Harvest'] as const;
+  let substrates: THREE.MeshStandardMaterial[] | null = null;
+  const straw = new THREE.Color('#c29a55'), colonised = new THREE.Color('#ffffff'), spent = new THREE.Color('#d8cfbb');
+  function capGrowth(stage: number, delay: number) {
+    const t = stage - delay * .35;
+    if (t < .62) return 0;
+    if (t < 1) return (t - .62) / .38 * .32;
+    if (t < 2) return .32 + (t - 1) * .68;
+    if (stage < 2.55) return 1;
+    return Math.max(0, 1 - (stage - 2.55) / .4);
+  }
+  function applyGrowth(stage: number) {
+    substrates ??= [tent.bags, tent.bag2].flatMap(bag => { const found: THREE.MeshStandardMaterial[] = []; bag.traverse(object => { if (object instanceof THREE.Mesh && object.name === 'colonized-substrate') found.push(object.material as THREE.MeshStandardMaterial); }); return found; });
+    const colour = straw.clone().lerp(colonised, THREE.MathUtils.clamp(stage, 0, 1));
+    if (stage > 2.55) colour.lerp(spent, Math.min(1, (stage - 2.55) / .45));
+    substrates.forEach(material => material.color.copy(colour));
+    for (const cap of caps) {
+      cap.growth = capGrowth(stage, cap.delay);
+      cap.object.scale.copy(cap.scale).multiplyScalar(Math.max(.0001, cap.growth * (mushroomsVisible ? 1 : 0)));
+    }
+    const nearest = stageNames[Math.round(THREE.MathUtils.clamp(stage, 0, 3))];
+    growthRange.setAttribute('aria-valuetext', nearest);
+    growthPanel.querySelectorAll<HTMLElement>('[data-study-growth-mark]').forEach(mark => mark.toggleAttribute('data-current', mark.dataset.studyGrowthMark === nearest));
+    section.dataset.studyGrowth = nearest.toLowerCase();
+    renderer.shadowMap.needsUpdate = true; draw();
+  }
+  function openGrowth() {
+    closeMenus(); if (tour) endTour(false);
+    growthPanel.hidden = false; growthOpen = true; growthRange.value = '2'; applyGrowth(2);
+    const bags = [tent.bags, tent.bag2]; frame(bags, 1.6); setFocus(['bag', 'bag2']);
+    status.textContent = 'Growth stages shown. Slide from incubation to harvest.';
+    growthRange.focus({ preventScroll: true });
+  }
+  function closeGrowth() {
+    if (growthPanel.hidden) return;
+    growthPanel.hidden = true; growthOpen = false; applyGrowth(2); setFocus(null); delete section.dataset.studyGrowth;
+    status.textContent = 'Growth stages closed. The fruiting illustration is shown.';
   }
   function stopRotation() { controls.autoRotate = false; section.querySelector('[data-study-rotate]')?.setAttribute('aria-pressed', 'false'); }
   function setRegionState(region: string) {
@@ -767,6 +809,14 @@ export function mountMaterialStudy(section: HTMLElement) {
   tourCard.querySelector('[data-study-tour-prev]')!.addEventListener('click', () => { if (tour) showStep(tour.index - 1); }, eventOptions);
   tourCard.querySelector('[data-study-tour-play]')!.addEventListener('click', () => { if (tour) { tour.playing = !tour.playing; scheduleStep(); } }, eventOptions);
   tourCard.querySelector('[data-study-tour-exit]')!.addEventListener('click', () => endTour(true), eventOptions);
+  const growthPanel = section.querySelector<HTMLElement>('[data-study-growth-panel]')!;
+  const growthRange = growthPanel.querySelector<HTMLInputElement>('[data-study-growth-range]')!;
+  section.querySelector('[data-study-growth]')?.addEventListener('click', openGrowth, eventOptions);
+  growthRange.addEventListener('input', () => applyGrowth(Number(growthRange.value)), eventOptions);
+  growthRange.addEventListener('change', () => { status.textContent = `${growthRange.getAttribute('aria-valuetext')} illustrated.`; }, eventOptions);
+  growthPanel.querySelectorAll<HTMLButtonElement>('[data-study-growth-mark]').forEach((mark, index) => mark.addEventListener('click', () => { growthRange.value = String(index); applyGrowth(index); }, eventOptions));
+  growthPanel.querySelector('[data-study-growth-close]')!.addEventListener('click', closeGrowth, eventOptions);
+  growthPanel.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); closeGrowth(); canvas.focus({ preventScroll: true }); } }, eventOptions);
   tourCard.addEventListener('keydown', event => {
     if (!tour) return;
     if (event.key === 'ArrowRight') { event.preventDefault(); nextStep(); }

@@ -242,6 +242,26 @@ test.describe('guided tours', () => {
   });
 });
 
+test('growth stages illustrate incubation to harvest and restore the fruiting view', async ({ page }) => {
+  const { section } = await openStudy(page);
+  await section.locator('[data-study-menu="play"] [data-study-menu-toggle]').click();
+  await section.locator('[data-study-growth]').click();
+  const panel = section.locator('[data-study-growth-panel]'), range = panel.getByRole('slider', { name: 'Cultivation stage' });
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText('Illustrated stages, not measurements');
+  await expect(range).toHaveAttribute('aria-valuetext', 'Fruiting');
+  await expect(section).toHaveAttribute('data-study-focus', 'bag bag2');
+  await expect(section.locator('.ms-group-marker').filter({ visible: true })).toHaveCount(0);
+  await panel.getByRole('button', { name: 'Incubation' }).click();
+  await expect(section).toHaveAttribute('data-study-growth', 'incubation');
+  await range.focus(); await page.keyboard.press('End');
+  await expect(range).toHaveAttribute('aria-valuetext', 'Harvest');
+  await panel.getByRole('button', { name: 'Close growth stages' }).click();
+  await expect(panel).toBeHidden();
+  await expect(section).not.toHaveAttribute('data-study-growth');
+  await expect(section).toHaveAttribute('data-study-focus', 'none');
+});
+
 test('keyboard controls turn and zoom the scene while wheel scrolling remains native', async ({ page }) => {
   // This sequence includes several animated camera moves on software WebGL.
   test.setTimeout(150_000);
