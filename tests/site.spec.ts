@@ -78,7 +78,9 @@ test('research page and all illustration assets load without a data dashboard', 
   expect(failedImages, 'All published media must decode successfully').toEqual([]);
   await expectNoHorizontalOverflow(page);
   // The isolated 3D illustration may render a canvas; experiment charts may not.
-  await expect(page.locator('canvas:not([data-study-canvas]), input[type="range"], input[type="date"], input[type="datetime-local"]')).toHaveCount(0);
+  // The only permitted slider is the habitat's growth-stage illustration, labelled as not measurements.
+  await expect(page.locator('canvas:not([data-study-canvas]), input[type="range"]:not([data-study-growth-range]), input[type="date"], input[type="datetime-local"]')).toHaveCount(0);
+  await expect(page.locator('[data-study-growth-panel]')).toContainText('Illustrated stages, not measurements');
   await expect(page.getByRole('combobox')).toHaveCount(0);
 });
 
