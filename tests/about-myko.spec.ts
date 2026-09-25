@@ -122,6 +122,17 @@ test('story chapters grow through the mushroom life cycle and Myko reacts to eac
   await expect.poll(()=>offset('.gills'),{timeout:5000}).toBe(0);
   await page.clock.runFor(2600);await tab('My story').click();await expect(growth).toHaveAttribute('data-grow','0');await expect(myko).toHaveAttribute('data-mood','happy');await expect(hint).toHaveText('That’s where it all started.');
 });
+test('the journey is a mycelium thread that grows into view and ends at the habitat',async({page})=>{
+  // The thread grows with CSS transitions; a paused clock only keeps Myko awake while it does.
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));await page.goto('/about/');
+  const journey=page.locator('[data-journey]'),offset=(part:string)=>journey.locator(part).last().evaluate(el=>parseFloat(getComputedStyle(el).strokeDashoffset));
+  await expect(journey.locator('li')).toHaveCount(4);await expect(journey.locator('.thread')).toHaveCount(3);
+  await journey.scrollIntoViewIfNeeded();await expect(journey).toHaveAttribute('data-thread','grown');
+  await expect.poll(()=>offset('.thread .main'),{timeout:8000}).toBe(0);await expect.poll(()=>offset('.thread .branch'),{timeout:8000}).toBe(0);
+  await expect(journey.getByRole('link',{name:'The habitat'})).toHaveAttribute('href','/documentation/');
+  await page.mouse.move(2,200);await journey.locator('.journey-today').hover({position:{x:30,y:8}});await expect(page.locator('[data-myko-hint]')).toHaveText('That’s where I live!');
+  await expect(journey.locator('.journey-today .journey-mushroom')).toHaveCSS('stroke','rgb(70, 174, 189)');
+});
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
   const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width);await expect(page.locator('canvas')).toHaveCount(0);
@@ -165,4 +176,5 @@ test('the Contact bubble reads on one line and Myko looks at it on hover or focu
 test('reduced motion keeps expressions but stops movement',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/about/');await expect(page.locator('[data-myko-motion]')).toHaveCount(0);await page.getByRole('button',{name:'Say hello to Myko'}).click();await expect(page.locator('[data-myko]')).toHaveAttribute('data-mood','happy');await expect(page.locator('[data-myko]')).not.toHaveAttribute('data-animate');
   const box=(await page.locator('.myko-stage').boundingBox())!;await page.mouse.click(box.x+box.width*616/1254,box.y+box.height*70/1254);await expect(page.locator('[data-myko-hint]')).toHaveText('Ooh, spores!');await expect(page.locator('[data-myko-spores] i')).toHaveCount(0);
+  await expect(page.locator('[data-journey]')).toHaveAttribute('data-thread','grown');expect(await page.locator('[data-journey] .thread .main').first().evaluate(el=>parseFloat(getComputedStyle(el).strokeDashoffset))).toBe(0);
 });

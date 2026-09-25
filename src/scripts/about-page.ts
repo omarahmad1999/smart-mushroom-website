@@ -104,6 +104,12 @@ if(page){
   function scheduleBlink(){if(!motion||!visible||document.hidden)return;blink=window.setTimeout(()=>{if(myko.dataset.mood==='neutral'){myko.setAttribute('data-blinking','');blinkEnd=window.setTimeout(()=>myko.removeAttribute('data-blinking'),120);}scheduleBlink();},3300);}
   reduced.addEventListener('change',()=>{motion=!reduced.matches;sync();});document.addEventListener('visibilitychange',()=>{sync();});
   new IntersectionObserver(entries=>{const next=entries[0].isIntersecting;if(next!==visible){visible=next;if(visible&&locked){myko.toggleAttribute('data-animate',motion);scheduleBlink();}else sync();}},{threshold:.1}).observe(myko);
+  // The journey thread draws itself the first time the list scrolls into view; reduced motion shows it grown.
+  const journey=page.querySelector<HTMLElement>('[data-journey]');
+  if(journey){
+    journey.dataset.thread=motion?'waiting':'grown';
+    if(motion)new IntersectionObserver((entries,observer)=>{if(!entries.some(entry=>entry.isIntersecting))return;journey.dataset.thread='grown';observer.disconnect();},{threshold:.35}).observe(journey);
+  }
   const tabs=[...page.querySelectorAll<HTMLButtonElement>('[data-story]')],panels=[...page.querySelectorAll<HTMLElement>('[data-story-page]')],growth=page.querySelector<SVGElement>('[data-growth]');let animation:Animation|undefined;
   // Chapters are growth stages: spore, mycelium, fruiting. Choosing one grows the drawing and Myko reacts to it.
   function select(index:number,interact=true){
