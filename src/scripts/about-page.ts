@@ -83,15 +83,16 @@ if(page){
     else if(current==='melancholic')react('curious');else{gaze();cross();idle();}
   }
   document.addEventListener('pointermove',active);document.addEventListener('pointerdown',active);document.addEventListener('keydown',()=>active());
-  // Hovering or tapping the photo or a journey stop makes Myko look over and comment, once per spot every 20 seconds.
-  // A glance can replace another glance, but never interrupts a wake-up, a click line or a nap.
+  // Hovering, tapping or focusing a glance spot (the photo, a journey stop, the Contact bubble) makes Myko look over and comment,
+  // once per spot every 20 seconds. A glance can replace another glance, but never interrupts a wake-up, a click line or a nap.
   const glanced=new WeakMap<HTMLElement,number>();
-  page.querySelectorAll<HTMLElement>('[data-myko-glance]').forEach(spot=>spot.addEventListener('pointerenter',()=>{
+  function glance(spot:HTMLElement){
     const now=performance.now();
     if(!visible||document.hidden||(glanced.get(spot)??-Infinity)>now-20000||(locked?kind!=='glance':myko.dataset.mood!=='neutral'))return;
     glanced.set(spot,now);const rect=spot.getBoundingClientRect();if(motion)aim(rect.left+rect.width/2,rect.top+rect.height/2);
     react(spot.dataset.mykoMood||'curious',{line:spot.dataset.mykoGlance,duration:2600,type:'glance'});
-  }));
+  }
+  page.querySelectorAll<HTMLElement>('[data-myko-glance]').forEach(spot=>{spot.addEventListener('pointerenter',()=>glance(spot));spot.addEventListener('focus',()=>glance(spot));});
   stage.addEventListener('click',event=>{
     if(kind==='dizzy'||spin())return;
     // Keyboard clicks have no position, so they tell the running sequence.

@@ -138,6 +138,19 @@ test('social notes use the published profiles and Myko offers contact',async({pa
   expect(sent).toEqual({name:'Test Visitor',email:'visitor@example.com',subject:'Hello from Smart Mushroom Hub',message:'A test message from the contact form.',website:''});
   await dialog.getByRole('button',{name:'Close contact form'}).click();await expect(dialog).toBeHidden();
 });
+test('the Contact bubble reads on one line and Myko looks at it on hover or focus',async({page})=>{
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));
+  for(const reach of ['hover','focus'] as const){
+    await page.goto('/about/');
+    const myko=page.locator('[data-myko]'),hint=page.locator('[data-myko-hint]'),contact=page.locator('[data-myko-contact]');
+    expect(await contact.evaluate(el=>(el as HTMLElement).offsetHeight)).toBeLessThan(50);
+    if(reach==='hover')await contact.hover();else await contact.focus();
+    await expect(myko).toHaveAttribute('data-mood','happy');await expect(hint).toHaveText('I’ll carry your note to Omar.');
+    const eyes=await myko.evaluate(el=>({x:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-x')),y:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-y'))}));
+    expect(eyes.x).toBeLessThan(0);expect(eyes.y).toBeLessThan(0);
+    await page.clock.runFor(2600);await expect(myko).toHaveAttribute('data-mood','neutral');
+  }
+});
 test('reduced motion keeps expressions but stops movement',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/about/');await expect(page.locator('[data-myko-motion]')).toHaveCount(0);await page.getByRole('button',{name:'Say hello to Myko'}).click();await expect(page.locator('[data-myko]')).toHaveAttribute('data-mood','happy');await expect(page.locator('[data-myko]')).not.toHaveAttribute('data-animate');
   const box=(await page.locator('.myko-stage').boundingBox())!;await page.mouse.click(box.x+box.width*616/1254,box.y+box.height*70/1254);await expect(page.locator('[data-myko-hint]')).toHaveText('Ooh, spores!');await expect(page.locator('[data-myko-spores] i')).toHaveCount(0);

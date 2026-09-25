@@ -16,3 +16,7 @@ Sneak-up game: while he sleeps, pointer movement slower than 120px a second (the
 Dreams: 1.4 seconds into sleep a thought cloud appears above his cap and cycles ink doodles (mushroom, Raspberry Pi, peacock) every 3.4 seconds, continuing from the last doodle on the next nap. Waking clears it. With reduced motion the doodles swap without drifting.
 Cross-eyed: while he is awake and neutral, a mouse or pen resting on the visor ellipse pulls both eyes toward his nose ("That's… very close."). Touch never hovers, so it skips this. The idle countdown still runs, so he turns melancholic and sleepy as usual.
 Glances: elements marked `data-myko-glance` (the profile photo and each journey stop in `about.astro`) make Myko look at them and say their line with `data-myko-mood` when hovered or tapped, at most once per element every 20 seconds. A glance can replace another glance but never interrupts a wake-up, a click line or a nap.
+
+## Contact bubble
+
+"Contact me" is a one-line speech bubble in the same organic oval as the dialog's status bubble, with a tail (a skewed, rotated square sharing the bubble's fill and ring) pointing down at Myko's visor. It pops out from the tail once on load, lifts on hover or keyboard focus, and presses in when clicked. Hovering or focusing it is a glance spot: Myko looks at it and says "I'll carry your note to Omar." Reduced motion drops the pop, lift and gaze but keeps the line.
