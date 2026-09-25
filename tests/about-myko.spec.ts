@@ -62,6 +62,19 @@ test('tapping the caps, visor and backpack gets different reactions',async({page
   await tap(950,560);await expect(myko).toHaveAttribute('data-mood','happy');await expect(hint).toHaveText('My field kit!');
   await tap(560,800);await expect(hint).toHaveText('Hi! I’m Myko.');
 });
+test('creeping up on sleeping Myko wakes one eye, while a normal move wakes him',async({page})=>{
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));await page.goto('/about/');
+  const myko=page.locator('[data-myko]'),hint=page.locator('[data-myko-hint]'),box=(await page.locator('.myko-stage').boundingBox())!;
+  const visorX=box.x+box.width*502/1254,y=box.y+box.height*442/1254;let x=visorX-80;
+  await page.mouse.move(x,y);await page.clock.runFor(4000);await expect(myko).toHaveAttribute('data-mood','sleepy');
+  for(let i=0;i<10;i++){x+=2;await page.mouse.move(x,y);await page.clock.runFor(40);}
+  await expect(myko).toHaveAttribute('data-mood','sleepy');
+  while(x<visorX&&await myko.getAttribute('data-mood')==='sleepy'){x+=2;await page.mouse.move(x,y);await page.clock.runFor(40);}
+  await expect(myko).toHaveAttribute('data-mood','peek');await expect(hint).toHaveText('…you’re sneaky.');await expect(myko.locator('.peek')).toBeVisible();
+  await page.clock.runFor(2600);await expect(myko).toHaveAttribute('data-mood','neutral');
+  await page.clock.runFor(4000);await expect(myko).toHaveAttribute('data-mood','sleepy');
+  await page.mouse.move(x+30,y);await expect(myko).toHaveAttribute('data-mood','surprised');
+});
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
   const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width);await expect(page.locator('canvas')).toHaveCount(0);

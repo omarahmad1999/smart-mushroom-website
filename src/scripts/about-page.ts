@@ -5,11 +5,11 @@ if(page){
   const reduced=matchMedia('(prefers-reduced-motion:reduce)');let motion=!reduced.matches,visible=true,locked=false,kind='';
   let idleTwo:number|undefined,idleFour:number|undefined,reaction:number|undefined,blink:number|undefined,blinkEnd:number|undefined;
   let pointer:{x:number;y:number}|undefined;
-  const symbols:Record<string,string>={neutral:'',happy:'〃',curious:'?',melancholic:'…',sleepy:'Zzz',surprised:'!!',dizzy:'@',squint:'!'};
-  const labels:Record<string,string>={neutral:'Myko · say hello',happy:'A little hello back.',curious:'Oh? What’s that?',melancholic:'Still there…?',sleepy:'Just resting my eyes.',surprised:'Oh! You’re back!',dizzy:'Whoa… it’s all spinning.',squint:'Hey!'};
+  const symbols:Record<string,string>={neutral:'',happy:'〃',curious:'?',melancholic:'…',sleepy:'Zzz',surprised:'!!',dizzy:'@',squint:'!',peek:''};
+  const labels:Record<string,string>={neutral:'Myko · say hello',happy:'A little hello back.',curious:'Oh? What’s that?',melancholic:'Still there…?',sleepy:'Just resting my eyes.',surprised:'Oh! You’re back!',dizzy:'Whoa… it’s all spinning.',squint:'Hey!',peek:'…you’re sneaky.'};
   // Each click says the next line; after the first hello the rest loop.
   const sequence:[string,string][]=[['happy','Hi! I’m Myko.'],['happy','Hehe, that tickles!'],['curious','The mushrooms grew on me.'],['happy','Small explorer, big world.'],['curious','Fungi connect worlds.']];
-  let told=0;const clicks:number[]=[],pending:number[]=[];
+  let told=0,movedAt=0,sneaked=0,approached=false;const clicks:number[]=[],pending:number[]=[];
   // Tap spots in the 1254px image: centre x, centre y, radius x, radius y.
   const caps=[[616,88,160,72],[478,205,58,36],[812,205,84,50],[876,305,66,44]],visor=[502,442,136,140],pack=[945,630,68,180];
   const spots:Record<string,[string,string][]>={cap:[['curious','Ooh, spores!'],['happy','Make a wish!'],['curious','They’ll grow somewhere nice.']],visor:[['squint','Hey! That’s my visor.'],['squint','Now it’s all smudgy.']],pack:[['happy','My field kit!'],['curious','Sample jars and a notebook.'],['happy','No snacks in there. Sadly.']]};
@@ -30,7 +30,7 @@ if(page){
   }
   function mood(value:string,line=labels[value],mark=symbols[value]){myko.dataset.mood=value;myko.dataset.tracking=String(value==='neutral'&&motion&&!locked);symbol.textContent=mark;hint.textContent=line;if(value==='neutral')gaze();}
   function clearIdle(){clearTimeout(idleTwo);clearTimeout(idleFour);}
-  function idle(){clearIdle();if(!visible||document.hidden)return;idleTwo=window.setTimeout(()=>{if(!locked)mood('melancholic');},2000);idleFour=window.setTimeout(()=>{if(!locked)mood('sleepy');},4000);}
+  function idle(){clearIdle();if(!visible||document.hidden)return;idleTwo=window.setTimeout(()=>{if(!locked)mood('melancholic');},2000);idleFour=window.setTimeout(()=>{if(!locked){sneaked=0;approached=false;mood('sleepy');}},4000);}
 
   type Reaction={line?:string;mark?:string;duration?:number;type?:string;then?:()=>void};
   // A reaction holds the face for its duration; `then` chains the next reaction instead of returning to neutral.
@@ -54,7 +54,21 @@ if(page){
       dot.animate([{transform:'translate(-50%,-50%) scale(.3)',opacity:0},{transform:`translate(calc(-50% + ${dx*.3}px),calc(-50% - ${rise*.25}px)) scale(1)`,opacity:1,offset:.2},{transform:`translate(calc(-50% + ${dx}px),calc(-50% - ${rise}px)) scale(.7)`,opacity:0}],{duration:1500+Math.random()*900,delay:Math.random()*250,easing:'ease-out',fill:'both'}).finished.then(done,done);
     }
   }
-  function active(event?:PointerEvent){if(event)pointer={x:event.clientX,y:event.clientY};if(!visible||document.hidden)return;if(locked)return;const current=myko.dataset.mood;if(current==='sleepy')react('surprised');else if(current==='melancholic')react('curious');else{gaze();idle();}}
+  // Creeping slower than 120px a second keeps Myko asleep; the first move after a pause counts as one short frame.
+  // A creep that starts off his visor, covers 30px and ends on it wakes one eye.
+  function creep(from:{x:number;y:number},to:{x:number;y:number},elapsed:number){
+    const step=Math.hypot(to.x-from.x,to.y-from.y);if(step/Math.min(Math.max(elapsed,8),40)*1000>120)return false;
+    if(!within(visor,toImage(from.x,from.y)))approached=true;
+    sneaked+=step;if(approached&&sneaked>=30&&within(visor,toImage(to.x,to.y))){if(motion)aim(to.x,to.y);say.textContent=labels.peek;react('peek',{duration:2600});}
+    return true;
+  }
+  function active(event?:PointerEvent){
+    const from=pointer,now=performance.now(),elapsed=now-movedAt;
+    if(event){pointer={x:event.clientX,y:event.clientY};if(event.type==='pointermove')movedAt=now;}
+    if(!visible||document.hidden)return;if(locked)return;const current=myko.dataset.mood;
+    if(current==='sleepy'){if(event?.type==='pointermove'&&from&&creep(from,pointer!,elapsed))return;react('surprised');}
+    else if(current==='melancholic')react('curious');else{gaze();idle();}
+  }
   document.addEventListener('pointermove',active);document.addEventListener('pointerdown',active);document.addEventListener('keydown',()=>active());
   stage.addEventListener('click',event=>{
     if(kind==='dizzy'||spin())return;
