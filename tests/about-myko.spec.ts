@@ -30,12 +30,12 @@ test('Myko stays planted at the screen edge and tracks every direction',async({p
 test('Myko follows the idle and wake sequence without extending reactions',async({page})=>{
   await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));await page.goto('/about/');
   const myko=page.locator('[data-myko]');await myko.scrollIntoViewIfNeeded();await page.getByRole('button',{name:'Say hello to Myko'}).focus();
-  await page.mouse.move(180,350);await expect(myko).toHaveAttribute('data-mood','neutral');
+  await page.mouse.move(180,130);await expect(myko).toHaveAttribute('data-mood','neutral');
   await page.clock.runFor(1999);await expect(myko).toHaveAttribute('data-mood','neutral');await page.clock.runFor(1);await expect(myko).toHaveAttribute('data-mood','melancholic');
-  await expect(myko.locator('[data-emotion-symbol]')).toHaveText('…');await page.mouse.move(190,355);await expect(myko).toHaveAttribute('data-mood','curious');await expect(myko).toHaveAttribute('data-tracking','false');
-  const gaze=await myko.getAttribute('style');await page.clock.runFor(1000);await page.mouse.move(200,360);expect(await myko.getAttribute('style')).toBe(gaze);await page.clock.runFor(1000);await expect(myko).toHaveAttribute('data-mood','neutral');await expect(myko).toHaveAttribute('data-tracking','true');
+  await expect(myko.locator('[data-emotion-symbol]')).toHaveText('…');await page.mouse.move(190,135);await expect(myko).toHaveAttribute('data-mood','curious');await expect(myko).toHaveAttribute('data-tracking','false');
+  const gaze=await myko.getAttribute('style');await page.clock.runFor(1000);await page.mouse.move(200,140);expect(await myko.getAttribute('style')).toBe(gaze);await page.clock.runFor(1000);await expect(myko).toHaveAttribute('data-mood','neutral');await expect(myko).toHaveAttribute('data-tracking','true');
   await page.clock.runFor(4000);await expect(myko).toHaveAttribute('data-mood','sleepy');await expect(myko.locator('[data-emotion-symbol]')).toHaveText('Zzz');
-  await page.mouse.move(210,365);await expect(myko).toHaveAttribute('data-mood','surprised');await expect(myko.locator('.surprised')).toHaveCSS('color','rgb(180, 247, 255)');await expect(myko.locator('[data-emotion-symbol]')).toHaveText('!!');
+  await page.mouse.move(210,145);await expect(myko).toHaveAttribute('data-mood','surprised');await expect(myko.locator('.surprised')).toHaveCSS('color','rgb(180, 247, 255)');await expect(myko.locator('[data-emotion-symbol]')).toHaveText('!!');
   await page.clock.runFor(2000);await expect(myko).toHaveAttribute('data-mood','neutral');await page.getByRole('button',{name:'Say hello to Myko'}).press('Enter');await expect(myko).toHaveAttribute('data-mood','happy');
 });
 test('clicking Myko tells a running sequence and too many clicks make him dizzy',async({page})=>{
@@ -78,7 +78,7 @@ test('creeping up on sleeping Myko wakes one eye, while a normal move wakes him'
 test('sleeping Myko dreams in little doodles until he wakes',async({page})=>{
   await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));await page.goto('/about/');
   const myko=page.locator('[data-myko]'),dream=myko.locator('[data-myko-dream]');
-  await page.mouse.move(40,300);await page.clock.runFor(4000);await expect(myko).toHaveAttribute('data-mood','sleepy');await expect(myko.locator('[data-emotion-symbol]')).toHaveText('Zzz');await expect(dream).not.toHaveAttribute('data-dream');
+  await page.mouse.move(40,130);await page.clock.runFor(4000);await expect(myko).toHaveAttribute('data-mood','sleepy');await expect(myko.locator('[data-emotion-symbol]')).toHaveText('Zzz');await expect(dream).not.toHaveAttribute('data-dream');
   await page.clock.runFor(1400);await expect(dream).toHaveAttribute('data-dream','mushroom');await expect(dream.locator('.doodle.mushroom')).toBeVisible();
   for(const doodle of ['pi','peacock','mushroom']){await page.clock.runFor(3400);await expect(dream).toHaveAttribute('data-dream',doodle);await expect(dream.locator(`.doodle.${doodle}`)).toBeVisible();}
   await expect(dream.locator('.doodle:visible')).toHaveCount(1);
@@ -93,6 +93,23 @@ test('a cursor resting on the visor makes Myko cross-eyed',async({page})=>{
   await page.mouse.move(box.x+20,box.y+box.height*.9);await expect(myko).not.toHaveAttribute('data-crossed');await expect(hint).toHaveText('Myko · say hello');
   await page.mouse.move(visorX+5,visorY);await expect(myko).toHaveAttribute('data-crossed','');
   await page.clock.runFor(2000);await expect(myko).toHaveAttribute('data-mood','melancholic');await expect(myko).not.toHaveAttribute('data-crossed');await expect(hint).toHaveText('Still there…?');
+});
+test('Myko glances at the photo and journey stops and comments on them',async({page})=>{
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));await page.goto('/about/');
+  const myko=page.locator('[data-myko]'),hint=page.locator('[data-myko-hint]'),stop=(place:string)=>page.locator('.personal-journey li').filter({hasText:place});
+  const eyes=()=>myko.evaluate(el=>({x:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-x')),y:parseFloat((el as HTMLElement).style.getPropertyValue('--eye-y'))}));
+  await page.locator('.profile-main').hover({position:{x:40,y:40}});await expect(myko).toHaveAttribute('data-mood','curious');await expect(hint).toHaveText('That peacock was taller than me.');
+  expect((await eyes()).x).toBeLessThan(-5);
+  await page.clock.runFor(2600);await expect(myko).toHaveAttribute('data-mood','neutral');
+  // Park the cursor in the page margin so scrolling does not slide a journey stop under it.
+  await page.mouse.move(2,200);await page.locator('.personal-journey').scrollIntoViewIfNeeded();await page.clock.runFor(100);
+  await stop('Kuala Lumpur').hover({position:{x:20,y:8}});await expect(myko).toHaveAttribute('data-mood','happy');await expect(hint).toHaveText('So humid. Mushrooms would love it.');
+  await stop('Riyadh').hover({position:{x:20,y:8}});await expect(myko).toHaveAttribute('data-mood','melancholic');await expect(hint).toHaveText('So dry! My moss would crisp.');
+  await page.clock.runFor(2600);await expect(myko).toHaveAttribute('data-mood','neutral');
+  await stop('Kuala Lumpur').hover({position:{x:20,y:8}});await expect(hint).toHaveText('Myko · say hello');
+  await stop('Cairo').hover({position:{x:20,y:8}});await expect(hint).toHaveText('Cairo! Sunny. Very sunny.');
+  await page.getByRole('button',{name:'Say hello to Myko'}).press('Enter');await expect(hint).toHaveText('Hi! I’m Myko.');
+  await stop('Riyadh').hover({position:{x:20,y:8}});await expect(hint).toHaveText('Hi! I’m Myko.');
 });
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
