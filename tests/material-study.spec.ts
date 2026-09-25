@@ -192,6 +192,56 @@ test('pointing at a part highlights and names it, and choosing one fades the res
   await expect(canvas).toBeVisible();
 });
 
+test.describe('guided tours', () => {
+  test.use({ reducedMotion: 'reduce' });
+
+  test('a tour steps through its path with wiring shown, then restores the scene', async ({ page }) => {
+    const { section } = await openStudy(page);
+    await section.locator('[data-study-menu="play"] [data-study-menu-toggle]').click();
+    await section.locator('[data-study-tour="observe"]').click();
+    const card = section.locator('[data-study-tour-card]');
+    await expect(card).toBeVisible();
+    await expect(section).toHaveAttribute('data-study-tour', 'observe');
+    await expect(card.locator('[data-study-tour-title]')).toHaveText('Reading the air');
+    await expect(card.locator('[data-study-tour-count]')).toHaveText('1 of 5');
+    await expect(section).toHaveAttribute('data-study-selected', 'sht');
+    await expect(section).toHaveAttribute('data-study-wiring', 'true');
+    await expect(section.locator('[data-study-detail]')).toBeHidden();
+    await card.locator('[data-study-tour-next]').click();
+    await expect(card.locator('[data-study-tour-title]')).toHaveText('Carbon dioxide');
+    await expect(section).toHaveAttribute('data-study-selected', 'sensor');
+    await card.locator('[data-study-tour-prev]').click();
+    await expect(section).toHaveAttribute('data-study-tour-step', '1');
+    for (let step = 2; step <= 5; step++) await card.locator('[data-study-tour-next]').click();
+    await expect(card.locator('[data-study-tour-title]')).toHaveText('Charted in Grafana');
+    await expect(section).toHaveAttribute('data-study-screen', 'on');
+    await expect(card.locator('[data-study-tour-next]')).toHaveText('Finish');
+    await card.locator('[data-study-tour-next]').click();
+    await expect(card).toBeHidden();
+    await expect(section).toHaveAttribute('data-study-tour', 'none');
+    await expect(section).toHaveAttribute('data-study-wiring', 'false');
+    await expect(section.locator('.ms-group-marker').filter({ visible: true })).toHaveCount(5);
+  });
+
+  test('the respond tour runs each device, and choosing a part ends the tour', async ({ page }) => {
+    const { section } = await openStudy(page);
+    await section.locator('[data-study-menu="play"] [data-study-menu-toggle]').click();
+    await section.locator('[data-study-tour="respond"]').click();
+    const card = section.locator('[data-study-tour-card]');
+    for (let step = 1; step < 3; step++) await card.locator('[data-study-tour-next]').click();
+    await expect(section).toHaveAttribute('data-study-demo', 'fan');
+    await card.locator('[data-study-tour-next]').click();
+    await expect(section).toHaveAttribute('data-study-demo', 'mist');
+    await card.locator('[data-study-tour-next]').click();
+    await expect(section).toHaveAttribute('data-study-lighting', 'tent');
+    await section.locator('[data-study-select="pi"]').click();
+    await expect(card).toBeHidden();
+    await expect(section).toHaveAttribute('data-study-tour', 'none');
+    await expect(section).toHaveAttribute('data-study-demo', 'none');
+    await expect(section.locator('[data-study-detail]')).toBeVisible();
+  });
+});
+
 test('keyboard controls turn and zoom the scene while wheel scrolling remains native', async ({ page }) => {
   // This sequence includes several animated camera moves on software WebGL.
   test.setTimeout(150_000);

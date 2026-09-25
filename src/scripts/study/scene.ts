@@ -10,7 +10,7 @@ import { createPeripherals } from './peripherals';
 import { createWiring } from './wiring';
 import { positions, add } from './layout';
 import { createStudySounds } from './sounds';
-import { components, componentById, categories, type Component, type VisualAction } from './content';
+import { components, componentById, categories, tours, type Component, type TourRoute, type VisualAction } from './content';
 
 type Region = 'overview' | 'tent' | 'workbench';
 type Category = typeof categories[number];
@@ -214,6 +214,9 @@ export function mountMaterialStudy(section: HTMLElement) {
   let hovered: Component | null = null;
   let fading = false;
   let mushroomsVisible = true;
+  let tour: { route: TourRoute; index: number; playing: boolean; timer: number; wiringBefore: boolean } | null = null;
+  let touring = false;
+  const pulses: { mesh: THREE.Mesh; curve: THREE.CatmullRomCurve3; offset: number; reverse: boolean }[] = [];
   let coverOn = tent.cover.visible, wiringOn = wiring.visible;
   let layerMotion: { layer: 'cover' | 'wiring' | 'mushrooms'; on: boolean; start: number; duration: number } | null = null;
   const demos=new Set<Demo>();
@@ -300,7 +303,7 @@ export function mountMaterialStudy(section: HTMLElement) {
       }
       const fits=(point:THREE.Vector2)=>point.x>=23&&point.x<=width-23&&point.y>=23&&point.y<=height-23
         && !used.some(other=>other.distanceTo(point)<43)
-        && !(width>700&&!detail.hidden&&point.x>width-306&&point.y<detail.offsetHeight+24);
+        && !(width>700&&(!detail.hidden||!tourCard.hidden)&&point.x>width-316&&point.y<Math.max(detail.offsetHeight,tourCard.offsetHeight)+24);
       const point=candidates.find(fits)??candidates[0];used.push(point);
       button.style.left=`${point.x}px`;button.style.top=`${point.y}px`;
       line.setAttribute('x1',String(x));line.setAttribute('y1',String(y));line.setAttribute('x2',String(point.x));line.setAttribute('y2',String(point.y));
@@ -393,12 +396,16 @@ export function mountMaterialStudy(section: HTMLElement) {
     }
     updateDemo(now, dt);
     if (fading) stepFade(now);
+    if (pulses.length && !reduceMotion.matches) for (const pulse of pulses) {
+      const u = (now / 1000 * .42 + pulse.offset) % 1;
+      pulse.mesh.position.copy(pulse.curve.getPointAt(pulse.reverse ? 1 - u : u));
+    }
     if (layerMotion) stepLayers(now);
     controls.update(dt);
     draw();
     renderingFrame = false;
     const animatedDemo = !reduceMotion.matches && (demos.has('fan') || demos.has('mist') || demos.has('cooling'));
-    if (tween || assembly || animatedDemo || fading || layerMotion || controls.autoRotate || now < keepMovingUntil) animationFrame = requestAnimationFrame(loop);
+    if (tween || assembly || animatedDemo || fading || (pulses.length > 0 && !reduceMotion.matches) || layerMotion || controls.autoRotate || now < keepMovingUntil) animationFrame = requestAnimationFrame(loop);
   }
   function wake(duration = 500) {
     keepMovingUntil = Math.max(keepMovingUntil, performance.now() + duration);
@@ -489,12 +496,84 @@ export function mountMaterialStudy(section: HTMLElement) {
     if (t >= 1) { layerMotion = null; renderer.shadowMap.needsUpdate = true; }
   }
   function settleLayers() { if (layerMotion) { showLayer(layerMotion.layer, layerMotion.on, 1); layerMotion = null; renderer.shadowMap.needsUpdate = true; } }
+  // Guided tours: each step frames a part, fades the rest, runs its demonstration and sends
+  // illustrative pulses along its wires in the direction the signal travels.
+  const connections = wiring.userData.connections as { owner: Component; points: [number, number, number][] }[];
+  const pulseMaterial = new THREE.MeshBasicMaterial({ color: '#ffd27a', toneMapped: false });
+  const pulseGeometry = new THREE.SphereGeometry(.022, 12, 8);
+  function clearPulses() { pulses.splice(0).forEach(pulse => world.remove(pulse.mesh)); }
+  function addPulses(owners: Component[], reverse: Component[]) {
+    for (const connection of connections) {
+      if (!owners.includes(connection.owner) || connection.points.length < 2) continue;
+      const curve = new THREE.CatmullRomCurve3(connection.points.map(point => V(...point)));
+      for (const offset of [0, .5]) {
+        const mesh = new THREE.Mesh(pulseGeometry, pulseMaterial); mesh.layers.enable(1); mesh.userData.ignorePicking = true;
+        mesh.position.copy(curve.getPointAt(offset)); world.add(mesh);
+        pulses.push({ mesh, curve, offset, reverse: reverse.includes(connection.owner) });
+      }
+    }
+    pulses.forEach(pulse => pulse.mesh.visible = !reduceMotion.matches);
+  }
+  function startTour(route: TourRoute) {
+    closeMenus(); finishAssembly(); stopRotation();
+    if (tour) endTour(false);
+    tour = { route, index: 0, playing: !reduceMotion.matches, timer: 0, wiringBefore: wiringOn };
+    if (!wiringOn) setLayer('wiring');
+    section.dataset.studyTour = route; tourCard.hidden = false;
+    showStep(0);
+    tourCard.querySelector<HTMLElement>('[data-study-tour-next]')?.focus({ preventScroll: true });
+  }
+  function showStep(index: number) {
+    if (!tour) return;
+    const steps = tours[tour.route].steps;
+    tour.index = THREE.MathUtils.clamp(index, 0, steps.length - 1);
+    const step = steps[tour.index];
+    clearTimeout(tour.timer); clearPulses(); stopDemo();
+    touring = true; select(step.component); touring = false;
+    detail.hidden = true;
+    if (step.demo) runAction();
+    if (step.demo !== 'light') setFocus([step.component, ...(step.also ?? [])]);
+    addPulses(step.wires ?? [], step.reverse ?? []);
+    tourCard.querySelector('[data-study-tour-route]')!.textContent = `${tours[tour.route].name} tour`;
+    tourCard.querySelector('[data-study-tour-count]')!.textContent = `${tour.index + 1} of ${steps.length}`;
+    tourCard.querySelector('[data-study-tour-title]')!.textContent = step.title;
+    tourCard.querySelector('[data-study-tour-text]')!.textContent = step.text;
+    const link = tourCard.querySelector<HTMLAnchorElement>('[data-study-tour-link]')!;
+    link.hidden = !step.link; if (step.link) { link.href = step.link; link.textContent = `${step.linkLabel} ↗`; }
+    tourCard.querySelectorAll('[data-study-tour-dot]').forEach((dot, i) => dot.toggleAttribute('data-current', i === tour!.index));
+    (tourCard.querySelector('[data-study-tour-prev]') as HTMLButtonElement).disabled = tour.index === 0;
+    (tourCard.querySelector('[data-study-tour-next]') as HTMLButtonElement).textContent = tour.index === steps.length - 1 ? 'Finish' : 'Next';
+    section.dataset.studyTourStep = String(tour.index + 1);
+    status.textContent = `${tours[tour.route].name} tour, step ${tour.index + 1} of ${steps.length}: ${step.title}.`;
+    scheduleStep();
+  }
+  function scheduleStep() {
+    if (!tour) return;
+    clearTimeout(tour.timer);
+    const play = tourCard.querySelector('[data-study-tour-play]')!;
+    play.setAttribute('aria-pressed', String(tour.playing)); play.textContent = tour.playing ? 'Pause' : 'Play';
+    if (tour.playing) tour.timer = window.setTimeout(() => nextStep(), 5200 + tours[tour!.route].steps[tour!.index].text.length * 28);
+  }
+  function nextStep() {
+    if (!tour) return;
+    if (tour.index >= tours[tour.route].steps.length - 1) { endTour(true); return; }
+    showStep(tour.index + 1);
+  }
+  function endTour(reset = true) {
+    if (!tour) return;
+    const finished = tour; tour = null;
+    clearTimeout(finished.timer); clearPulses(); stopDemo();
+    if (!finished.wiringBefore && wiringOn) setLayer('wiring');
+    tourCard.hidden = true; section.dataset.studyTour = 'none'; delete section.dataset.studyTourStep;
+    if (reset) { regionView('overview'); status.textContent = `${tours[finished.route].name} tour finished.`; }
+  }
   function stopRotation() { controls.autoRotate = false; section.querySelector('[data-study-rotate]')?.setAttribute('aria-pressed', 'false'); }
   function setRegionState(region: string) {
     section.dataset.studyRegion = region;
     section.querySelectorAll<HTMLElement>('button[data-study-region]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.studyRegion === region)));
   }
   function regionView(region: Region) {
+    if (tour && !touring) endTour(false);
     finishAssembly(); stopRotation(); detail.hidden = true; setRegionState(region);
     markers=region==='overview'?{mode:'groups'}:{mode:'some',show:new Set(regionGroups[region])};
     setFocus(null);
@@ -548,6 +627,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   }
   function select(id: Component, fromList = false) {
     if (!alive || !componentById[id]) return;
+    if (tour && !touring) endTour(false);
     finishAssembly(); stopRotation(); selected = id;
     const item = componentById[id];
     if(markers.mode!=='some'||!markers.show.has(item.category as Category))markers={mode:'some',show:new Set([item.category as Category])};
@@ -643,6 +723,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     moveTo(box.getCenter(V(0,0,0)),THREE.MathUtils.clamp(fit,1,4.5));
   }
   function openGroup(category: Category) {
+    if (tour) endTour(false);
     finishAssembly(); stopRotation(); detail.hidden = true;
     markers={mode:'some',show:new Set([category])};setRegionState('group');
     const ids=components.filter(item=>item.category===category).map(item=>item.id);
@@ -656,6 +737,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     camera.updateProjectionMatrix(); draw(); status.textContent = `View zoom ${Math.round(camera.zoom * 100)} percent.`;
   }
   function replayBuild() {
+    if (tour) endTour(false);
     settleLayers();
     stopDemo();
     regionView('overview');
@@ -679,6 +761,18 @@ export function mountMaterialStudy(section: HTMLElement) {
     section.dataset.studySound=String(soundEnabled);status.textContent=soundEnabled?'Sound effects on.':'Sound effects muted.';
   },eventOptions);
   section.querySelector('[data-study-build]')?.addEventListener('click', replayBuild, eventOptions);
+  const tourCard = section.querySelector<HTMLElement>('[data-study-tour-card]')!;
+  section.querySelectorAll<HTMLButtonElement>('[data-study-tour]').forEach(button => button.addEventListener('click', () => startTour(button.dataset.studyTour as TourRoute), eventOptions));
+  tourCard.querySelector('[data-study-tour-next]')!.addEventListener('click', nextStep, eventOptions);
+  tourCard.querySelector('[data-study-tour-prev]')!.addEventListener('click', () => { if (tour) showStep(tour.index - 1); }, eventOptions);
+  tourCard.querySelector('[data-study-tour-play]')!.addEventListener('click', () => { if (tour) { tour.playing = !tour.playing; scheduleStep(); } }, eventOptions);
+  tourCard.querySelector('[data-study-tour-exit]')!.addEventListener('click', () => endTour(true), eventOptions);
+  tourCard.addEventListener('keydown', event => {
+    if (!tour) return;
+    if (event.key === 'ArrowRight') { event.preventDefault(); nextStep(); }
+    if (event.key === 'ArrowLeft') { event.preventDefault(); showStep(tour.index - 1); }
+    if (event.key === 'Escape') { event.preventDefault(); endTour(true); canvas.focus({ preventScroll: true }); }
+  }, eventOptions);
   for (const layer of ['cover', 'wiring', 'mushrooms', 'labels'] as const) section.querySelector(`button[data-study-${layer}]`)?.addEventListener('click', () => setLayer(layer), eventOptions);
   section.querySelector('button[data-study-every]')?.addEventListener('click', event => {
     everyPart=!everyPart;(event.currentTarget as HTMLElement).setAttribute('aria-pressed',String(everyPart));
@@ -769,7 +863,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     status.textContent='The browser paused 3D rendering. The still view is shown; reload to try again.';
   },eventOptions);
   renderer.shadowMap.needsUpdate=true; draw(); fallback.hidden=true; detail.hidden=true;
-  Object.assign(section.dataset,{studyFocus:'none',studyEvery:'false',studyState:'ready',studySelected:'bag',studyMushrooms:'true',studyCover:'false',studyWiring:'false',studyLabels:'true',studyDemo:'none',studyBuild:'idle',studyRegion:'overview',studyLighting:'day',studyScreen:'off',studySound:'true'});
+  Object.assign(section.dataset,{studyTour:'none',studyFocus:'none',studyEvery:'false',studyState:'ready',studySelected:'bag',studyMushrooms:'true',studyCover:'false',studyWiring:'false',studyLabels:'true',studyDemo:'none',studyBuild:'idle',studyRegion:'overview',studyLighting:'day',studyScreen:'off',studySound:'true'});
   studyButtons.forEach(button => button.disabled=false); syncAction(); syncLayerCount();
   syncDemos();
   status.textContent='Interactive habitat ready. Select any component to explore.';

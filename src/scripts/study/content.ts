@@ -46,3 +46,35 @@ export const components:ComponentInfo[] = [
   item('adapter24','24 V LED adapter','Power & wiring','A supply for the lighting circuit.','The adapter’s black cable splits into black and red wires. Black goes to the first upper-right hole of the LED MOSFET; red goes to the second.',{zoom:4.8,note:'The left upper pair on that MOSFET is reserved for the LED leads.'}),
 ].map((component,index)=>({...component,number:String(index+1).padStart(2,'0')}));
 export const componentById=Object.fromEntries(components.map(component=>[component.id,component])) as Record<Component,ComponentInfo>;
+
+// Guided tours follow the three paths described in the system architecture. Captions
+// restate the documented setup; the pulses along the wires are illustrative only.
+export type TourRoute = 'observe' | 'respond' | 'record';
+export type TourStep = {
+  component: Component; title: string; text: string;
+  also?: Component[]; demo?: 'fan' | 'mist' | 'light' | 'camera'; wires?: Component[]; reverse?: Component[];
+  link?: string; linkLabel?: string;
+};
+export const tours: Record<TourRoute, { name: string; steps: TourStep[] }> = {
+  observe: { name: 'Observe', steps: [
+    { component: 'sht', title: 'Reading the air', text: 'Inside the tent, the black SHT31 probe measures temperature and humidity.', wires: ['sht'] },
+    { component: 'sensor', title: 'Carbon dioxide', text: 'The white SCD41 below it measures carbon dioxide. A matching pair of sensors records the room outside the tent.', wires: ['sensor'] },
+    { component: 'cobbler', title: 'Colour to colour', text: 'Their conductors join matching colours in Wago junctions, then continue to the T-cobbler on the breadboard.', also: ['wago-red', 'wago-black', 'wago-yellow', 'wago-green', 'breadboard'], wires: ['wago-red', 'wago-black', 'wago-yellow', 'wago-green'] },
+    { component: 'pi', title: 'Collected on the Pi', text: 'Python services on the Raspberry Pi collect the readings. MQTT carries them to a writer, which saves their history.', also: ['cobbler'], wires: ['cobbler'], reverse: ['cobbler'] },
+    { component: 'monitor', title: 'Charted in Grafana', text: 'Grafana queries that history and displays the experiment data. This screen shows a mock-up; the real dashboard lives in Grafana.', also: ['pi'], wires: ['monitor'], reverse: ['monitor'] },
+  ] },
+  respond: { name: 'Respond', steps: [
+    { component: 'pi', title: 'A condition becomes a decision', text: 'Controllers consider the readings alongside the settings for the cultivation phase, then send their commands.', also: ['cobbler'], wires: ['cobbler'] },
+    { component: 'mosfets', title: 'Switching the fan', text: 'A signal switches the fan’s MOSFET, closing the circuit from its 12 V adapter.', also: ['adapter12', 'cobbler'], wires: ['mosfets', 'adapter12'], reverse: ['mosfets'] },
+    { component: 'fan', title: 'Fresh air', text: 'The low exhaust fan moves air through the tent, with a passive vent on the opposite side.', also: ['vent', 'mosfets'], demo: 'fan', wires: ['fan'], reverse: ['fan'] },
+    { component: 'humidity', title: 'Moisture', text: 'The humidifier’s silver duct carries mist to a high inlet on the right side of the tent.', also: ['duct'], demo: 'mist' },
+    { component: 'light', title: 'Light, when it is needed', text: 'A separate MOSFET, supplied by the 24 V adapter, switches the LED strip at the top of the tent.', also: ['mosfet-led'], demo: 'light', wires: ['light'], reverse: ['light'] },
+  ] },
+  record: { name: 'Record', steps: [
+    { component: 'camera', title: 'Watching slowly', text: 'The upper camera looks into the growing space from the left side, through its own window in the cover.', demo: 'camera', wires: ['camera'] },
+    { component: 'camera2', title: 'A second angle', text: 'A lower camera adds another view. Each camera has its own ribbon cable back to the Pi.', demo: 'camera', wires: ['camera2'] },
+    { component: 'pi', title: 'On a schedule', text: 'A phase-aware scheduler captures still photographs. During incubation, each camera takes a full-resolution still every six hours.', also: ['camera', 'camera2'], wires: ['camera', 'camera2'] },
+    { component: 'ssd', title: 'Keeping the record', text: 'The SSD beside the Pi keeps a place for the record.', also: ['pi'], wires: ['ssd'], reverse: ['ssd'] },
+    { component: 'bag', title: 'Made visible', text: 'Selected stills and timelapses are prepared and published with the research, so slow changes can be seen.', also: ['bag2'], link: '#observations', linkLabel: 'View photographs & timelapse' },
+  ] },
+};
