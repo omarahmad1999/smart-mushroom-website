@@ -1,5 +1,5 @@
-type Cue = 'node' | 'scramble' | 'travel' | 'complete' | 'click';
-const levels:Record<Cue,number>={node:.19,scramble:.08,travel:.18,complete:.22,click:.15};
+type Cue = 'node' | 'travel' | 'complete' | 'click';
+const levels:Record<Cue,number>={node:.19,travel:.18,complete:.22,click:.15};
 
 /** Local illustration sound effects, unlocked only by the visitor's sound toggle. */
 export function createFlowSounds() {

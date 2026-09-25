@@ -6,10 +6,21 @@ import broadcast from '@phosphor-icons/core/duotone/broadcast-duotone.svg?raw';
 import pencil from '@phosphor-icons/core/duotone/pencil-line-duotone.svg?raw';
 import database from '@phosphor-icons/core/duotone/database-duotone.svg?raw';
 import chart from '@phosphor-icons/core/duotone/chart-line-duotone.svg?raw';
+import sliders from '@phosphor-icons/core/duotone/sliders-horizontal-duotone.svg?raw';
+import scales from '@phosphor-icons/core/duotone/scales-duotone.svg?raw';
+import house from '@phosphor-icons/core/duotone/house-duotone.svg?raw';
+import toggle from '@phosphor-icons/core/duotone/toggle-right-duotone.svg?raw';
+import fan from '@phosphor-icons/core/duotone/fan-duotone.svg?raw';
+import timer from '@phosphor-icons/core/duotone/timer-duotone.svg?raw';
+import camera from '@phosphor-icons/core/duotone/camera-duotone.svg?raw';
+import images from '@phosphor-icons/core/duotone/images-duotone.svg?raw';
+import film from '@phosphor-icons/core/duotone/film-strip-duotone.svg?raw';
 
-interface Props { pathway: 'observe' }
+type Pathway = 'observe' | 'respond' | 'record';
+interface Props { pathway: Pathway }
 const { pathway } = Astro.props;
 type Point = [number, number];
+type Side = 'below' | 'above' | 'right' | 'left';
 
 // Phosphor duotone icons: the translucent layer becomes a watercolour wash, the rest is the ink line.
 function glyph(raw: string) {
@@ -29,116 +40,224 @@ function blob(seed: number, radius: number) {
   return `${d}Z`;
 }
 
-const nodes = [
-  { id: 'sht31', name: 'SHT31', detail: 'temperature, humidity', icon: glyph(thermometer), sensor: true },
-  { id: 'scd41', name: 'SCD41', detail: 'CO₂', icon: glyph(cloud), sensor: true },
-  { id: 'mqtt', name: 'Mosquitto', detail: 'MQTT broker', icon: glyph(broadcast) },
-  { id: 'writer', name: 'Database writer', detail: 'Python service', icon: glyph(pencil) },
-  { id: 'timescale', name: 'TimescaleDB', detail: 'experiment history', icon: glyph(database) },
-  { id: 'grafana', name: 'Grafana', detail: 'dashboards', icon: glyph(chart) },
-];
-const lastId = nodes.at(-1)!.id;
-const steps = [
-  'The SHT31 and SCD41 sensors send their readings together. The two paths merge before Mosquitto, the MQTT broker.',
-  'Mosquitto carries the published measurements to the database writer.',
-  'The database writer stores the measurements in TimescaleDB.',
-  'Grafana visualizes the stored measurements from TimescaleDB.',
-];
+// Each part does one small thing when a message arrives (its verb); sources start the path, the final part is circled.
+type Part = { id: string; name: string; detail: string; icon: ReturnType<typeof glyph>; verb: string; source?: boolean; final?: boolean; badge?: string };
+type Link = { id: string; to: string; kind: 'reading' | 'command' | 'photo'; dashed?: boolean };
 type Layout = {
-  id: 'wide' | 'narrow'; viewBox: string; at: Record<string, Point>; junction: Point; entry: Point; nameSize: number; noteSize: number;
-  routes: { id: string; to: string; d: string }[];
-  notes: { id: string; x: number; y: number; anchor: 'middle' | 'end'; lines: string[] }[];
-  scribble: string; spark: string;
+  id: 'wide' | 'narrow'; viewBox: string; nameSize: number; noteSize: number;
+  at: Record<string, Point>; sides?: Record<string, Side>; junction?: Point; stamp?: Point;
+  routes: Record<string, string>; notes: { id: string; x: number; y: number; anchor: 'middle' | 'end' | 'start'; lines: string[] }[];
+  marks: Record<string, string>;
 };
-// Wide: a left-to-right zigzag with names under each part. Narrow: one column that fits a phone screen,
-// names to the right of each part and the handwritten notes to the left of the thread.
-const layouts: Layout[] = [
-  {
-    id: 'wide', viewBox: '0 0 1160 440', entry: [-34, 0], nameSize: 13, noteSize: 19,
-    at: { sht31: [110, 110], scd41: [110, 322], mqtt: [398, 216], writer: [624, 110], timescale: [842, 306], grafana: [1030, 188] },
-    junction: [238, 216],
-    routes: [
-      { id: 'sht31', to: 'junction', d: 'M146 110C200 110 200 216 238 216' },
-      { id: 'scd41', to: 'junction', d: 'M146 322C200 322 200 216 238 216' },
-      { id: 'merged', to: 'mqtt', d: 'M238 216H356' },
-      { id: 'published', to: 'writer', d: 'M440 216C520 216 500 110 582 110' },
-      { id: 'stored', to: 'timescale', d: 'M666 110C750 110 718 306 800 306' },
-      { id: 'visualized', to: 'grafana', d: 'M884 306C960 306 916 188 988 188' },
+const flows: Record<Pathway, { name: string; completion: string; steps: string[]; parts: Part[]; links: Link[]; layouts: Layout[]; crosslink?: { to: Pathway; text: string } }> = {
+  observe: {
+    name: 'Observe', completion: 'Grafana displays the stored measurements.',
+    steps: [
+      'The SHT31 and SCD41 sensors send their readings together. The two paths merge before Mosquitto, the MQTT broker.',
+      'Mosquitto carries the published measurements to the database writer.',
+      'The database writer stores the measurements in TimescaleDB.',
+      'Grafana visualizes the stored measurements from TimescaleDB.',
     ],
-    notes: [
-      { id: 'readings', x: 300, y: 196, anchor: 'middle', lines: ['send readings'] },
-      { id: 'published', x: 562, y: 250, anchor: 'middle', lines: ['carries published', 'measurements'] },
-      { id: 'stored', x: 802, y: 170, anchor: 'middle', lines: ['stores', 'measurements'] },
-      { id: 'visualized', x: 1002, y: 300, anchor: 'middle', lines: ['visualizes stored', 'measurements'] },
+    parts: [
+      { id: 'sht31', name: 'SHT31', detail: 'temperature, humidity', icon: glyph(thermometer), verb: 'ripple', source: true },
+      { id: 'scd41', name: 'SCD41', detail: 'CO₂', icon: glyph(cloud), verb: 'ripple', source: true, badge: 'CO₂' },
+      { id: 'mqtt', name: 'Mosquitto', detail: 'MQTT broker', icon: glyph(broadcast), verb: 'stamp' },
+      { id: 'writer', name: 'Database writer', detail: 'Python service', icon: glyph(pencil), verb: 'scribble' },
+      { id: 'timescale', name: 'TimescaleDB', detail: 'experiment history', icon: glyph(database), verb: 'layer' },
+      { id: 'grafana', name: 'Grafana', detail: 'dashboards', icon: glyph(chart), verb: 'chart', final: true },
     ],
-    scribble: 'M-32 82c5-6 9 3 14-2s8-6 13 0 7 4 12-1 7-5 12 1 6 3 10-1', spark: 'M58 8L68-2L76 4L86-10L96-4L108-16',
+    links: [
+      { id: 'sht31', to: 'junction', kind: 'reading' }, { id: 'scd41', to: 'junction', kind: 'reading' }, { id: 'merged', to: 'mqtt', kind: 'reading' },
+      { id: 'published', to: 'writer', kind: 'reading' }, { id: 'stored', to: 'timescale', kind: 'reading' }, { id: 'visualized', to: 'grafana', kind: 'reading' },
+    ],
+    // Wide: a left-to-right zigzag with names under each part. Narrow: one column that fits a phone screen,
+    // names to the right of each part and the handwritten notes to the left of the thread.
+    layouts: [
+      {
+        id: 'wide', viewBox: '0 0 1160 440', nameSize: 13, noteSize: 19,
+        at: { sht31: [110, 110], scd41: [110, 322], mqtt: [398, 216], writer: [624, 110], timescale: [842, 306], grafana: [1030, 188] },
+        junction: [238, 216],
+        routes: {
+          sht31: 'M146 110C200 110 200 216 238 216', scd41: 'M146 322C200 322 200 216 238 216', merged: 'M238 216H356',
+          published: 'M440 216C520 216 500 110 582 110', stored: 'M666 110C750 110 718 306 800 306', visualized: 'M884 306C960 306 916 188 988 188',
+        },
+        notes: [
+          { id: 'readings', x: 300, y: 196, anchor: 'middle', lines: ['send readings'] },
+          { id: 'published', x: 562, y: 250, anchor: 'middle', lines: ['carries published', 'measurements'] },
+          { id: 'stored', x: 802, y: 170, anchor: 'middle', lines: ['stores', 'measurements'] },
+          { id: 'visualized', x: 1002, y: 300, anchor: 'middle', lines: ['visualizes stored', 'measurements'] },
+        ],
+        marks: { writer: 'M-32 82c5-6 9 3 14-2s8-6 13 0 7 4 12-1 7-5 12 1 6 3 10-1', timescale: 'M-22 32Q0 42 22 32', grafana: 'M58 8L68-2L76 4L86-10L96-4L108-16' },
+      },
+      {
+        id: 'narrow', viewBox: '0 0 384 690', nameSize: 14, noteSize: 17,
+        at: { sht31: [68, 56], scd41: [252, 56], mqtt: [160, 236], writer: [160, 366], timescale: [160, 496], grafana: [160, 626] },
+        sides: { sht31: 'below', scd41: 'below' }, junction: [160, 150],
+        routes: {
+          sht31: 'M104 56C150 56 160 100 160 150', scd41: 'M216 56C170 56 160 100 160 150', merged: 'M160 150V194',
+          published: 'M160 278C182 296 138 306 160 324', stored: 'M160 408C182 426 138 436 160 454', visualized: 'M160 538C182 556 138 566 160 584',
+        },
+        notes: [
+          { id: 'readings', x: 136, y: 178, anchor: 'end', lines: ['send readings'] },
+          { id: 'published', x: 132, y: 297, anchor: 'end', lines: ['carries published', 'measurements'] },
+          { id: 'stored', x: 132, y: 427, anchor: 'end', lines: ['stores', 'measurements'] },
+          { id: 'visualized', x: 132, y: 557, anchor: 'end', lines: ['visualizes stored', 'measurements'] },
+        ],
+        marks: { writer: 'M42 30c5-6 9 3 14-2s8-6 13 0 7 4 12-1 7-5 12 1 6 3 10-1', timescale: 'M-22 32Q0 42 22 32', grafana: 'M50 40L60 32L68 37L78 26L88 31L100 20' },
+      },
+    ],
+    crosslink: { to: 'respond', text: 'These readings also feed the controllers' },
   },
-  {
-    id: 'narrow', viewBox: '0 0 384 690', entry: [0, -34], nameSize: 14, noteSize: 17,
-    at: { sht31: [68, 56], scd41: [252, 56], mqtt: [160, 236], writer: [160, 366], timescale: [160, 496], grafana: [160, 626] },
-    junction: [160, 150],
-    routes: [
-      { id: 'sht31', to: 'junction', d: 'M104 56C150 56 160 100 160 150' },
-      { id: 'scd41', to: 'junction', d: 'M216 56C170 56 160 100 160 150' },
-      { id: 'merged', to: 'mqtt', d: 'M160 150V194' },
-      { id: 'published', to: 'writer', d: 'M160 278C182 296 138 306 160 324' },
-      { id: 'stored', to: 'timescale', d: 'M160 408C182 426 138 436 160 454' },
-      { id: 'visualized', to: 'grafana', d: 'M160 538C182 556 138 566 160 584' },
+  respond: {
+    name: 'Respond', completion: 'The actuator services drive ventilation, moisture and lighting in the tent.',
+    steps: [
+      'Readings and phase settings provide the context for a decision.',
+      'The controllers, Python services, evaluate the configured conditions and publish commands through Mosquitto, the MQTT broker.',
+      'Home Assistant adds manual control, sending its commands the same way.',
+      'Mosquitto routes the commands to the actuator services.',
+      'The actuator services drive the fan, humidifier and LEDs.',
     ],
-    notes: [
-      { id: 'readings', x: 136, y: 178, anchor: 'end', lines: ['send readings'] },
-      { id: 'published', x: 132, y: 297, anchor: 'end', lines: ['carries published', 'measurements'] },
-      { id: 'stored', x: 132, y: 427, anchor: 'end', lines: ['stores', 'measurements'] },
-      { id: 'visualized', x: 132, y: 557, anchor: 'end', lines: ['visualizes stored', 'measurements'] },
+    parts: [
+      { id: 'inputs', name: 'Readings & phase settings', detail: 'the context for a decision', icon: glyph(sliders), verb: 'ripple', source: true },
+      { id: 'controllers', name: 'Controllers', detail: 'environment & lighting', icon: glyph(scales), verb: 'tilt' },
+      { id: 'mqtt', name: 'Mosquitto', detail: 'MQTT broker', icon: glyph(broadcast), verb: 'stamp' },
+      { id: 'ha', name: 'Home Assistant', detail: 'manual control', icon: glyph(house), verb: 'ripple', source: true },
+      { id: 'actuators', name: 'Actuator services', detail: 'Python services', icon: glyph(toggle), verb: 'toggle' },
+      { id: 'devices', name: 'Fan, humidifier & LEDs', detail: 'in the tent', icon: glyph(fan), verb: 'spin', final: true },
     ],
-    scribble: 'M42 30c5-6 9 3 14-2s8-6 13 0 7 4 12-1 7-5 12 1 6 3 10-1', spark: 'M50 40L60 32L68 37L78 26L88 31L100 20',
+    links: [
+      { id: 'evaluate', to: 'controllers', kind: 'reading' }, { id: 'commands', to: 'mqtt', kind: 'command' }, { id: 'manual', to: 'mqtt', kind: 'command', dashed: true },
+      { id: 'route', to: 'actuators', kind: 'command' }, { id: 'drive', to: 'devices', kind: 'command' },
+    ],
+    layouts: [
+      {
+        id: 'wide', viewBox: '0 0 1160 480', nameSize: 13, noteSize: 19,
+        at: { inputs: [110, 280], controllers: [330, 120], mqtt: [560, 250], ha: [560, 400], actuators: [790, 120], devices: [1030, 260] },
+        sides: { mqtt: 'above' }, stamp: [31, 31],
+        routes: {
+          evaluate: 'M152 280C230 280 210 120 288 120', commands: 'M372 120C450 120 440 250 518 250', manual: 'M560 358V292',
+          route: 'M602 250C680 250 670 120 748 120', drive: 'M832 120C910 120 900 260 988 260',
+        },
+        notes: [
+          { id: 'evaluate', x: 180, y: 162, anchor: 'middle', lines: ['evaluate', 'conditions'] },
+          { id: 'commands', x: 500, y: 150, anchor: 'middle', lines: ['publish commands'] },
+          { id: 'manual', x: 578, y: 330, anchor: 'start', lines: ['manual control'] },
+          { id: 'route', x: 716, y: 236, anchor: 'middle', lines: ['route', 'commands'] },
+          { id: 'drive', x: 962, y: 170, anchor: 'middle', lines: ['drive devices'] },
+        ],
+        marks: {},
+      },
+      {
+        id: 'narrow', viewBox: '0 0 384 660', nameSize: 14, noteSize: 17,
+        at: { inputs: [140, 60], controllers: [140, 190], mqtt: [140, 330], ha: [320, 330], actuators: [140, 470], devices: [140, 600] },
+        sides: { mqtt: 'left', ha: 'below' },
+        routes: {
+          evaluate: 'M140 102C162 120 118 130 140 148', commands: 'M140 232C162 256 118 270 140 288', manual: 'M278 330H182',
+          route: 'M140 372C162 396 118 410 140 428', drive: 'M140 512C162 530 118 540 140 558',
+        },
+        notes: [
+          { id: 'evaluate', x: 112, y: 121, anchor: 'end', lines: ['evaluate', 'conditions'] },
+          { id: 'commands', x: 112, y: 256, anchor: 'end', lines: ['publish', 'commands'] },
+          { id: 'manual', x: 230, y: 316, anchor: 'middle', lines: ['manual control'] },
+          { id: 'route', x: 112, y: 396, anchor: 'end', lines: ['route', 'commands'] },
+          { id: 'drive', x: 112, y: 533, anchor: 'end', lines: ['drive devices'] },
+        ],
+        marks: {},
+      },
+    ],
+    crosslink: { to: 'observe', text: 'The sensors notice the change' },
   },
-];
+  record: {
+    name: 'Record', completion: 'Selected photographs and completed timelapses form the visual record.',
+    steps: [
+      'The capture schedule uses a systemd timer, with timing following the cultivation phase.',
+      'Two cameras photograph the tent and ambient view using Camera Module 3 Wide cameras.',
+      'Image storage keeps the captured still photographs as local media files.',
+      'Media preparation selects images and produces completed timelapses.',
+    ],
+    parts: [
+      { id: 'schedule', name: 'Capture schedule', detail: 'systemd timer', icon: glyph(timer), verb: 'tick', source: true },
+      { id: 'cameras', name: 'Two cameras', detail: 'Camera Module 3 Wide', icon: glyph(camera), verb: 'flash' },
+      { id: 'storage', name: 'Image storage', detail: 'local media files', icon: glyph(images), verb: 'stack' },
+      { id: 'media', name: 'Media preparation', detail: 'timelapses', icon: glyph(film), verb: 'film', final: true },
+    ],
+    links: [{ id: 'trigger', to: 'cameras', kind: 'command' }, { id: 'save', to: 'storage', kind: 'photo' }, { id: 'prepare', to: 'media', kind: 'photo' }],
+    layouts: [
+      {
+        id: 'wide', viewBox: '0 0 1160 440', nameSize: 13, noteSize: 19,
+        at: { schedule: [130, 150], cameras: [430, 310], storage: [740, 110], media: [1030, 270] },
+        routes: { trigger: 'M172 150C280 150 280 310 388 310', save: 'M472 310C590 310 580 110 698 110', prepare: 'M782 110C890 110 880 270 988 270' },
+        notes: [
+          { id: 'trigger', x: 345, y: 196, anchor: 'middle', lines: ['trigger capture'] },
+          { id: 'save', x: 650, y: 250, anchor: 'middle', lines: ['save images'] },
+          { id: 'prepare', x: 950, y: 150, anchor: 'middle', lines: ['produce timelapses'] },
+        ],
+        marks: { storage: 'M-14-20h30v22' },
+      },
+      {
+        id: 'narrow', viewBox: '0 0 384 510', nameSize: 14, noteSize: 17,
+        at: { schedule: [160, 60], cameras: [160, 190], storage: [160, 320], media: [160, 450] },
+        routes: { trigger: 'M160 102C182 120 138 130 160 148', save: 'M160 232C182 250 138 260 160 278', prepare: 'M160 362C182 380 138 390 160 408' },
+        notes: [
+          { id: 'trigger', x: 132, y: 129, anchor: 'end', lines: ['trigger capture'] },
+          { id: 'save', x: 132, y: 259, anchor: 'end', lines: ['save images'] },
+          { id: 'prepare', x: 132, y: 389, anchor: 'end', lines: ['produce timelapses'] },
+        ],
+        marks: { storage: 'M-14-20h30v22' },
+      },
+    ],
+  },
+};
+const flow = flows[pathway];
 const prefix = `ink-${pathway}`;
 const loop = 'M-40-4C-42-34-6-44 22-36C46-28 48 8 30 28C10 46-30 42-40 14C-44 2-40-12-30-20';
+const label = (side: Side, size: number) => ({
+  below: { x: 0, y: 51, anchor: 'middle' }, above: { x: 0, y: -46 - size, anchor: 'middle' },
+  right: { x: 50, y: -1, anchor: 'start' }, left: { x: -50, y: -1, anchor: 'end' },
+})[side];
 ---
-<div class="ink-flow" data-system-flow={pathway} data-flow-style="ink" data-flow-name="Observe" data-flow-completion="Grafana displays the stored measurements." data-flow-state="static" data-flow-stage="all" role="group" aria-label="Observe Pathway Illustration">
-  <ol class="sr-only">{steps.map(step => <li>{step}</li>)}</ol>
+<div class="ink-flow" data-system-flow={pathway} data-flow-style="ink" data-flow-name={flow.name} data-flow-completion={flow.completion} data-flow-state="static" data-flow-stage="all" role="group" aria-label={`${flow.name} Pathway Illustration`}>
+  <ol class="sr-only">{flow.steps.map(step => <li>{step}</li>)}</ol>
   <div class="ink-canvas" data-pathway-canvas>
-    {layouts.map(layout => {
+    {flow.layouts.map(layout => {
       const id = (name: string) => `${prefix}-${layout.id}-${name}`;
-      const below = (node: typeof nodes[number]) => layout.id === 'wide' || node.sensor;
       return (
         <svg class={`ink-diagram ink-${layout.id}`} data-flow-layout={layout.id} viewBox={layout.viewBox} aria-hidden="true">
           <defs>
             <radialGradient id={id('soft')}><stop offset=".6" stop-color="#fff" /><stop offset="1" stop-color="#fff" stop-opacity="0" /></radialGradient>
             <linearGradient id={id('feather')}><stop offset="0" stop-color="#fff" /><stop offset=".8" stop-color="#fff" /><stop offset="1" stop-color="#fff" stop-opacity="0" /></linearGradient>
-            {nodes.map(node => { const [x, y] = node.sensor ? [0, 0] : layout.entry; return <mask id={id(`reveal-${node.id}`)}><circle class="ink-reveal" data-ink-reveal={node.id} data-origin={`${x} ${y}`} cx={x} cy={y} r="72" fill={`url(#${id('soft')})`} /></mask>; })}
+            {flow.parts.map(part => <mask id={id(`reveal-${part.id}`)}><circle class="ink-reveal" data-ink-reveal={part.id} r="72" fill={`url(#${id('soft')})`} /></mask>)}
             {layout.notes.flatMap(note => note.lines.map((_, row) => <mask id={id(`note-${note.id}-${row}`)}><rect class="ink-note-reveal" data-ink-note-reveal={`${note.id}-${row}`} x="-4000" y="-4000" width="8000" height="8000" fill={`url(#${id('feather')})`} /></mask>))}
           </defs>
           <g class="ink-routes">
-            {layout.routes.map(route => <g data-ink-route-group={route.id}>
-              <path class="ink-route" d={route.d} data-ink-route={route.id} data-ink-to={route.to} />
-              <path class="ink-trail" d={route.d} pathLength="1" data-ink-trail={route.id} />
+            {flow.links.map(link => <g class:list={{ 'ink-link-dashed': link.dashed }} data-ink-route-group={link.id}>
+              <path class="ink-route" d={layout.routes[link.id]} data-ink-route={link.id} data-ink-to={link.to} />
+              <path class="ink-trail" d={layout.routes[link.id]} pathLength="1" data-ink-trail={link.id} />
             </g>)}
-            <circle class="ink-junction" data-ink-junction cx={layout.junction[0]} cy={layout.junction[1]} r="3.2" />
+            {layout.junction && <circle class="ink-junction" data-ink-junction cx={layout.junction[0]} cy={layout.junction[1]} r="3.2" />}
           </g>
-          {nodes.map((node, index) => {
-            const [x, y] = layout.at[node.id], [ex, ey] = node.sensor ? [0, 0] : layout.entry;
-            const name = below(node) ? { x: 0, y: 51, anchor: 'middle' } : { x: 50, y: -1, anchor: 'start' };
+          {flow.parts.map((part, index) => {
+            const [x, y] = layout.at[part.id];
+            const name = label(layout.sides?.[part.id] ?? (layout.id === 'wide' ? 'below' : 'right'), layout.nameSize);
+            const stamp = layout.stamp ?? [-31, -31];
             return (
-              <g class:list={['ink-node', { 'ink-node-final': node.id === lastId }]} data-ink-node={node.id} data-state="ink" transform={`translate(${x} ${y})`}>
+              <g class:list={['ink-node', { 'ink-node-final': part.final }]} data-ink-node={part.id} data-verb={part.verb} data-source={part.source ? 'true' : undefined} data-final={part.final ? 'true' : undefined} data-state="ink" transform={`translate(${x} ${y})`}>
                 <path class="ink-wash" data-ink-wash d={blob(31 + index * 17, 36)} />
-                {node.sensor && [0, 1].map(() => <circle class="ink-ripple" data-ink-ripple r="30" />)}
-                {!node.sensor && <circle class="ink-splash" data-ink-splash data-origin={`${ex} ${ey}`} cx={ex} cy={ey} r="11" />}
+                {part.verb === 'ripple' && [0, 1].map(() => <circle class="ink-ripple" data-ink-ripple r="30" />)}
+                {!part.source && <circle class="ink-splash" data-ink-splash r="11" />}
                 <g class="ink-icon" data-ink-icon>
-                  <g class="ink-glyph-pencil" transform="translate(-26 -26) scale(.203125)">{node.icon.line.map(d => <path d={d} />)}</g>
-                  <g mask={`url(#${id(`reveal-${node.id}`)})`}>
-                    <g class="ink-glyph-ink" transform="translate(-26 -26) scale(.203125)">{node.icon.wash.map(d => <path class="ink-glyph-wash" d={d} />)}{node.icon.line.map(d => <path class="ink-glyph-line" d={d} />)}</g>
+                  <g class="ink-glyph-pencil" transform="translate(-26 -26) scale(.203125)">{part.icon.line.map(d => <path d={d} />)}</g>
+                  <g mask={`url(#${id(`reveal-${part.id}`)})`}>
+                    <g class="ink-glyph-ink" transform="translate(-26 -26) scale(.203125)">{part.icon.wash.map(d => <path class="ink-glyph-wash" d={d} />)}{part.icon.line.map(d => <path class="ink-glyph-line" d={d} />)}</g>
                   </g>
-                  {node.id === 'scd41' && <text class="ink-badge" x="0" y="9" text-anchor="middle">CO₂</text>}
+                  {part.badge && <text class="ink-badge" x="0" y="9" text-anchor="middle">{part.badge}</text>}
                 </g>
-                <text class="ink-name" data-ink-label x={name.x} y={name.y} text-anchor={name.anchor} font-size={layout.nameSize}>{node.name}</text>
-                <text class="ink-detail" data-ink-label x={name.x} y={name.y + layout.nameSize + 3} text-anchor={name.anchor} font-size={layout.nameSize - 2}>{node.detail}</text>
-                {node.id === 'mqtt' && <g class="ink-stamp" transform="translate(-31 -31)"><g class="ink-stamp-body" data-ink-stamp><circle r="15" /><circle class="ink-stamp-inner" r="11.5" /><text y="2.6" text-anchor="middle">MQTT</text></g></g>}
-                {node.id === 'writer' && <path class="ink-mark" data-ink-mark d={layout.scribble} pathLength="1" />}
-                {node.id === 'timescale' && <path class="ink-mark" data-ink-mark d="M-22 32Q0 42 22 32" pathLength="1" />}
-                {node.id === 'grafana' && <><path class="ink-mark" data-ink-mark d={layout.spark} pathLength="1" /><path class="ink-loop" data-ink-loop d={loop} pathLength="1" transform={layout.id === 'narrow' ? 'scale(.86)' : undefined} /></>}
+                <text class="ink-name" data-ink-label x={name.x} y={name.y} text-anchor={name.anchor} font-size={layout.nameSize}>{part.name}</text>
+                <text class="ink-detail" data-ink-label x={name.x} y={name.y + layout.nameSize + 3} text-anchor={name.anchor} font-size={layout.nameSize - 2}>{part.detail}</text>
+                {part.verb === 'stamp' && <g class="ink-stamp" transform={`translate(${stamp[0]} ${stamp[1]})`}><g class="ink-stamp-body" data-ink-stamp><circle r="15" /><circle class="ink-stamp-inner" r="11.5" /><text y="2.6" text-anchor="middle">MQTT</text></g></g>}
+                {part.verb === 'flash' && <circle class="ink-flash" data-ink-flash r="14" />}
+                {layout.marks[part.id] && <path class="ink-mark" data-ink-mark d={layout.marks[part.id]} pathLength="1" />}
+                {part.final && <path class="ink-loop" data-ink-loop d={loop} pathLength="1" transform={layout.id === 'narrow' ? 'scale(.86)' : undefined} />}
               </g>
             );
           })}
@@ -148,32 +267,41 @@ const loop = 'M-40-4C-42-34-6-44 22-36C46-28 48 8 30 28C10 46-30 42-40 14C-44 2-
             </g>)}
           </g>
           <g class="ink-drops">
-            {layout.routes.map(route => <g class="ink-drop" data-ink-drop={route.id}><circle class="ink-drop-halo" r="9.5" /><circle class="ink-drop-body" r="4.8" /><circle class="ink-drop-shine" cx="-1.5" cy="-1.6" r="1.4" /></g>)}
+            {flow.links.map(link => <g class="ink-drop" data-ink-drop={link.id}>
+              {link.kind === 'command' ? <><path class="ink-drop-halo" d="M-11-8L9 0L-11 8Z" /><path class="ink-drop-body" d="M-6-4.6L6 0L-6 4.6L-3.4 0Z" /></>
+                : link.kind === 'photo' ? <><rect class="ink-drop-halo" x="-10" y="-8" width="20" height="16" rx="3" /><rect class="ink-drop-body" x="-6" y="-4.5" width="12" height="9" rx="1.5" /><rect class="ink-drop-shine" x="-3.6" y="-2.2" width="7.2" height="4.4" rx=".8" /></>
+                : <><circle class="ink-drop-halo" r="9.5" /><circle class="ink-drop-body" r="4.8" /><circle class="ink-drop-shine" cx="-1.5" cy="-1.6" r="1.4" /></>}
+            </g>)}
           </g>
         </svg>
       );
     })}
   </div>
   <div class="ink-bar">
-    <button type="button" class="ink-crosslink" data-flow-goto="respond" hidden>These readings also feed the controllers <span aria-hidden="true">→</span> Respond</button>
+    {flow.crosslink && <button type="button" class="ink-crosslink" data-flow-goto={flow.crosslink.to} hidden>{flow.crosslink.text} <span aria-hidden="true">→</span> {flows[flow.crosslink.to].name}</button>}
     <div class="ink-playback" data-pathway-controls hidden>
-      <button type="button" data-pathway-pause aria-label="Pause Observe Animation"><span data-pathway-pause-icon aria-hidden="true">Ⅱ</span><span data-pathway-pause-label>Pause</span></button>
-      <button type="button" data-pathway-replay aria-label="Replay Observe Animation"><span aria-hidden="true">↺</span>Replay</button>
+      <button type="button" data-pathway-pause aria-label={`Pause ${flow.name} Animation`}><span data-pathway-pause-icon aria-hidden="true">Ⅱ</span><span data-pathway-pause-label>Pause</span></button>
+      <button type="button" data-pathway-replay aria-label={`Replay ${flow.name} Animation`}><span aria-hidden="true">↺</span>Replay</button>
     </div>
   </div>
   <p class="sr-only" data-pathway-status role="status" aria-live="polite"></p>
 </div>
 
 <style>
-  /* Ink on paper: pencil routes wait, an ink drop carries each message and inks the route behind it. */
-  .ink-flow{--ink:#24332f;--pencil:#c3beae;--accent:#c8602a;--wash:#eea77c;--final:#6f7957;--final-wash:#b6c29a;--note:#9a5b36;position:relative;min-width:0;margin:8px -10px 0}
+  /* Ink on paper: pencil routes wait, an ink drop carries each message and inks the route behind it.
+     Each path has its own ink: orange readings for Observe, teal commands for Respond, ochre photographs for Record. */
+  .ink-flow{--ink:#24332f;--pencil:#c3beae;--accent:#c8602a;--wash:#eea77c;--wash-strength:.24;--final:#6f7957;--final-wash:#b6c29a;--note:#9a5b36;position:relative;min-width:0;margin:8px -10px 0}
+  .ink-flow[data-system-flow=respond]{--accent:#2e8784;--wash:#8fcfc9;--wash-strength:.3;--note:#2f6f6b}
+  .ink-flow[data-system-flow=record]{--accent:#a0722c;--wash:#e2bf82;--wash-strength:.32;--note:#86602a}
   .ink-canvas{position:relative;border-radius:4px;background-color:#fbf9f2;background-image:radial-gradient(circle,#dcd6c2 .85px,transparent 1.15px);background-size:22px 22px;background-position:11px 11px}
   .ink-diagram{display:block;width:100%;height:auto;overflow:visible}
   .ink-narrow{display:none}
   .ink-route{fill:none;stroke:var(--pencil);stroke-width:1.4;stroke-linecap:round}
   .ink-trail{fill:none;stroke:var(--ink);stroke-width:2.1;stroke-linecap:round;stroke-dasharray:1 1.05}
+  .ink-link-dashed .ink-route{stroke-dasharray:5 5}
+  .ink-link-dashed .ink-trail{stroke-width:1.7}
   .ink-junction{fill:var(--ink)}
-  .ink-wash{fill:var(--wash);fill-opacity:.24}
+  .ink-wash{fill:var(--wash);fill-opacity:var(--wash-strength)}
   .ink-node-final .ink-wash{fill:var(--final-wash);fill-opacity:.38}
   .ink-glyph-pencil{fill:var(--pencil)}
   .ink-glyph-line{fill:var(--ink)}
@@ -184,6 +312,7 @@ const loop = 'M-40-4C-42-34-6-44 22-36C46-28 48 8 30 28C10 46-30 42-40 14C-44 2-
   .ink-detail{font-family:var(--font-body,sans-serif);fill:#7c8276}
   .ink-node-final .ink-name{fill:#4f5a3c}
   .ink-ripple,.ink-splash{fill:none;stroke:var(--accent);stroke-width:1.2;opacity:0}
+  .ink-flash{fill:#fffdf2;stroke:var(--accent);stroke-width:1;opacity:0}
   .ink-stamp-body circle{fill:none;stroke:#b4521f;stroke-width:1.5}
   .ink-stamp-body .ink-stamp-inner{stroke-width:.8;stroke-dasharray:2 2.4}
   .ink-stamp-body text{font:700 6.6px var(--font-body,sans-serif);letter-spacing:.08em;fill:#b4521f}
@@ -196,8 +325,8 @@ const loop = 'M-40-4C-42-34-6-44 22-36C46-28 48 8 30 28C10 46-30 42-40 14C-44 2-
   .ink-drop-body{fill:var(--accent)}
   .ink-drop-shine{fill:#fff;fill-opacity:.75}
   .ink-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 14px 2px;min-height:48px}
-  .ink-crosslink{display:inline-block;min-height:44px;padding:9px 4px;border:0;background:none;color:var(--note);font:20px/1.1 'Caveat',cursive;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:#9a5b3640;text-underline-offset:4px;transition:color .2s,text-decoration-color .2s}
-  .ink-crosslink:hover{color:#7a4424;text-decoration-color:currentColor}
+  .ink-crosslink{display:inline-block;min-height:44px;padding:9px 4px;border:0;background:none;color:var(--note);font:20px/1.1 'Caveat',cursive;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 25%,transparent);text-underline-offset:4px;transition:color .2s,text-decoration-color .2s}
+  .ink-crosslink:hover{color:var(--ink);text-decoration-color:currentColor}
   .ink-crosslink:focus-visible,.ink-playback button:focus-visible{outline:2px solid #d45b36;outline-offset:3px}
   .ink-playback{display:flex;align-items:center;gap:9px;flex:none;margin-left:auto}
   .ink-playback button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;border:0;border-radius:3px;background:transparent;color:#69785f;padding:0 10px;font:11px var(--font-body,sans-serif);cursor:pointer}
