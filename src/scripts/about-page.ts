@@ -14,7 +14,8 @@ if(page){
   const caps=[[616,88,160,72],[478,205,58,36],[812,205,84,50],[876,305,66,44]],visor=[502,442,136,140],pack=[945,630,68,180];
   const spots:Record<string,[string,string][]>={cap:[['curious','Ooh, spores!'],['happy','Make a wish!'],['curious','They’ll grow somewhere nice.']],visor:[['squint','Hey! That’s my visor.'],['squint','Now it’s all smudgy.']],pack:[['happy','My field kit!'],['curious','Sample jars and a notebook.'],['happy','No snacks in there. Sadly.']]};
   const said:Record<string,number>={cap:0,visor:0,pack:0};
-  const spores=stage.querySelector<HTMLElement>('[data-myko-spores]')!;
+  const spores=stage.querySelector<HTMLElement>('[data-myko-spores]')!,dream=stage.querySelector<HTMLElement>('[data-myko-dream]')!,dreams=['mushroom','pi','peacock'];
+  let dreamt=0,dreaming:number|undefined,drift:Animation|undefined;
   function toImage(x:number,y:number){const rect=stage.getBoundingClientRect();return{x:(x-rect.left)/rect.width*1254,y:(y-rect.top)/rect.height*1254};}
   const within=([cx,cy,rx,ry]:number[],point:{x:number;y:number})=>((point.x-cx)/rx)**2+((point.y-cy)/ry)**2<=1;
   function gaze(){if(!motion||!pointer||locked||myko.dataset.mood!=='neutral')return;aim(pointer.x,pointer.y);}
@@ -28,7 +29,17 @@ if(page){
     myko.style.setProperty('--eye-x',`${distance?dx/distance*reach*26:0}px`);
     myko.style.setProperty('--eye-y',`${distance?dy/distance*reach*45:0}px`);
   }
-  function mood(value:string,line=labels[value],mark=symbols[value]){myko.dataset.mood=value;myko.dataset.tracking=String(value==='neutral'&&motion&&!locked);symbol.textContent=mark;hint.textContent=line;if(value==='neutral')gaze();}
+  function mood(value:string,line=labels[value],mark=symbols[value]){myko.dataset.mood=value;myko.dataset.tracking=String(value==='neutral'&&motion&&!locked);symbol.textContent=mark;hint.textContent=line;if(value==='sleepy')dreamOn();else dreamOff();if(value==='neutral')gaze();}
+  // Dreams start once the Zzz has shown for a moment, then a new doodle drifts up every 3.4 seconds.
+  function dreamOn(){
+    clearTimeout(dreaming);
+    dreaming=window.setTimeout(function next(){
+      dream.dataset.dream=dreams[dreamt++%dreams.length];drift?.cancel();
+      if(motion)drift=dream.animate([{opacity:0,transform:'translateY(8px) scale(.9)'},{opacity:1,transform:'none',offset:.2},{opacity:1,transform:'translateY(-4px)',offset:.8},{opacity:0,transform:'translateY(-9px)'}],{duration:3200,easing:'ease-in-out',fill:'both'});
+      dreaming=window.setTimeout(next,3400);
+    },1400);
+  }
+  function dreamOff(){clearTimeout(dreaming);drift?.cancel();delete dream.dataset.dream;}
   function clearIdle(){clearTimeout(idleTwo);clearTimeout(idleFour);}
   function idle(){clearIdle();if(!visible||document.hidden)return;idleTwo=window.setTimeout(()=>{if(!locked)mood('melancholic');},2000);idleFour=window.setTimeout(()=>{if(!locked){sneaked=0;approached=false;mood('sleepy');}},4000);}
 

@@ -75,6 +75,15 @@ test('creeping up on sleeping Myko wakes one eye, while a normal move wakes him'
   await page.clock.runFor(4000);await expect(myko).toHaveAttribute('data-mood','sleepy');
   await page.mouse.move(x+30,y);await expect(myko).toHaveAttribute('data-mood','surprised');
 });
+test('sleeping Myko dreams in little doodles until he wakes',async({page})=>{
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));await page.goto('/about/');
+  const myko=page.locator('[data-myko]'),dream=myko.locator('[data-myko-dream]');
+  await page.mouse.move(40,300);await page.clock.runFor(4000);await expect(myko).toHaveAttribute('data-mood','sleepy');await expect(myko.locator('[data-emotion-symbol]')).toHaveText('Zzz');await expect(dream).not.toHaveAttribute('data-dream');
+  await page.clock.runFor(1400);await expect(dream).toHaveAttribute('data-dream','mushroom');await expect(dream.locator('.doodle.mushroom')).toBeVisible();
+  for(const doodle of ['pi','peacock','mushroom']){await page.clock.runFor(3400);await expect(dream).toHaveAttribute('data-dream',doodle);await expect(dream.locator(`.doodle.${doodle}`)).toBeVisible();}
+  await expect(dream.locator('.doodle:visible')).toHaveCount(1);
+  await page.mouse.move(300,500);await expect(myko).toHaveAttribute('data-mood','surprised');await expect(dream).not.toHaveAttribute('data-dream');await expect(dream.locator('.doodle:visible')).toHaveCount(0);
+});
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
   const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width);await expect(page.locator('canvas')).toHaveCount(0);
