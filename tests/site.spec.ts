@@ -113,11 +113,11 @@ test('architecture tabs trace the observation, control, and media pathways', asy
   await expect(tabs.nth(1)).toBeFocused();
   await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#architecture-panel-respond')).toBeVisible();
-  await expect(page.locator('#architecture-panel-respond')).toContainText('fan, humidifier and LEDs');
+  await expect(page.locator('#architecture-panel-respond')).toContainText('Fan, Humidifier & LEDs');
   await expect(page.locator('#architecture-panel-observe')).toBeHidden();
   await page.keyboard.press('End');
   await expect(tabs.nth(2)).toBeFocused();
-  await expect(page.locator('#architecture-panel-record')).toContainText('Media preparation');
+  await expect(page.locator('#architecture-panel-record')).toContainText('Media Preparation');
   await page.keyboard.press('Home');
   await expect(page.locator('#architecture-panel-observe')).toBeVisible();
   await expect(page.locator('#architecture-panel-observe')).toContainText('Grafana');
