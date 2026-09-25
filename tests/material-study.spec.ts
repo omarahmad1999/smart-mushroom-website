@@ -262,6 +262,22 @@ test('growth stages illustrate incubation to harvest and restore the fruiting vi
   await expect(section).toHaveAttribute('data-study-focus', 'none');
 });
 
+test('sketch style draws the habitat in ink on paper and switches back', async ({ page }) => {
+  const { section } = await openStudy(page);
+  const shell = section.locator('.ms-scene-shell');
+  const plain = await shell.evaluate(element => getComputedStyle(element).backgroundImage);
+  await section.locator('[data-study-menu="layers"] [data-study-menu-toggle]').click();
+  const sketch = section.locator('button[data-study-sketch]');
+  await sketch.click();
+  await expect(sketch).toHaveAttribute('aria-pressed', 'true');
+  await expect(section).toHaveAttribute('data-study-sketch', 'true');
+  await expect(section.locator('[data-study-layer-count]')).toHaveText('3 on');
+  expect(await shell.evaluate(element => getComputedStyle(element).backgroundImage)).not.toBe(plain);
+  await sketch.click();
+  await expect(section).toHaveAttribute('data-study-sketch', 'false');
+  expect(await shell.evaluate(element => getComputedStyle(element).backgroundImage)).toBe(plain);
+});
+
 test('keyboard controls turn and zoom the scene while wheel scrolling remains native', async ({ page }) => {
   // This sequence includes several animated camera moves on software WebGL.
   test.setTimeout(150_000);

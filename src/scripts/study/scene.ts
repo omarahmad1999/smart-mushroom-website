@@ -344,7 +344,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     if(stop('light')){
       if(lightBeam)lightBeam.visible=false;
       illustrativeLight.intensity=tentFill.intensity=0;litFloor.visible=false;ledGlow.visible=false;
-      ambient.intensity=1;key.intensity=2.5;fill.intensity=.4;scene.environmentIntensity=.25;
+      dayLight();
       renderer.setClearColor(0x000000,0);section.dataset.studyLighting='day';
       devices.lightEmitters.forEach((mesh,index)=>{(mesh.material as THREE.MeshStandardMaterial).emissiveIntensity=emitterIntensities[index];});
     }
@@ -609,6 +609,52 @@ export function mountMaterialStudy(section: HTMLElement) {
     growthPanel.hidden = true; growthOpen = false; applyGrowth(2); setFocus(null); delete section.dataset.studyGrowth;
     status.textContent = 'Growth stages closed. The fruiting illustration is shown.';
   }
+  // Sketch style: materials are tinted toward paper and flattened in place (so highlighting
+  // and fading keep working), and hard-edged parts gain ink edge lines.
+  let sketch = false, edgesBuilt = false;
+  const sketchStore = new Map<THREE.MeshStandardMaterial, { color: THREE.Color; roughness: number; metalness: number; envMapIntensity: number }>();
+  const edgeLines: THREE.LineSegments[] = [];
+  const ink = new THREE.LineBasicMaterial({ color: '#3b3a31', transparent: true, opacity: .72 });
+  const paperTone = new THREE.Color('#f5f1e4');
+  function dayLight() {
+    ambient.intensity = sketch ? 1.45 : 1; key.intensity = sketch ? 1.5 : 2.5; fill.intensity = sketch ? .2 : .4;
+    scene.environmentIntensity = sketch ? 0 : .25; key.shadow.intensity = sketch ? .28 : .65;
+  }
+  function setSketch(on: boolean) {
+    sketch = on;
+    world.traverse(object => {
+      if (!(object instanceof THREE.Mesh)) return;
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+        if (!(material instanceof THREE.MeshStandardMaterial)) continue;
+        if (!sketchStore.has(material)) sketchStore.set(material, { color: material.color.clone(), roughness: material.roughness, metalness: material.metalness, envMapIntensity: material.envMapIntensity });
+        const base = sketchStore.get(material)!;
+        if (on) { material.color.copy(paperTone).lerp(base.color, .22); material.roughness = 1; material.metalness = 0; material.envMapIntensity = 0; }
+        else { material.color.copy(base.color); material.roughness = base.roughness; material.metalness = base.metalness; material.envMapIntensity = base.envMapIntensity; }
+      }
+    });
+    if (on && !edgesBuilt) {
+      edgesBuilt = true;
+      const meshes: THREE.Mesh[] = [];
+      world.traverse(object => { if (object instanceof THREE.Mesh) meshes.push(object); });
+      for (const mesh of meshes) {
+        const geometry = mesh.geometry, material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+        const triangles = (geometry.index ? geometry.index.count : geometry.attributes.position.count) / 3;
+        // Cables, ducts and organic shapes would become noise; draw edges on hard parts only.
+        // See-through film and glass, and instanced straw (one shape drawn many times), would
+        // draw stray lines, so they stay plain.
+        if (mesh instanceof THREE.InstancedMesh || mesh.userData.ignorePicking || !(material instanceof THREE.MeshStandardMaterial) || (material.userData.base?.transparent ?? material.transparent) || geometry.type === 'TubeGeometry' || triangles > 9000) continue;
+        const lines = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 26), ink);
+        lines.raycast = () => {}; lines.layers.mask = mesh.layers.mask; lines.userData.ignorePicking = true;
+        mesh.add(lines); edgeLines.push(lines);
+      }
+    }
+    edgeLines.forEach(lines => lines.visible = on);
+    if (!demos.has('light')) dayLight();
+    section.dataset.studySketch = String(on);
+    section.querySelector('button[data-study-sketch]')?.setAttribute('aria-pressed', String(on));
+    syncLayerCount(); renderer.shadowMap.needsUpdate = true; draw();
+    status.textContent = on ? 'Sketch style: the habitat is drawn in ink on paper.' : 'Rendered style restored.';
+  }
   function stopRotation() { controls.autoRotate = false; section.querySelector('[data-study-rotate]')?.setAttribute('aria-pressed', 'false'); }
   function setRegionState(region: string) {
     section.dataset.studyRegion = region;
@@ -824,6 +870,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     if (event.key === 'Escape') { event.preventDefault(); endTour(true); canvas.focus({ preventScroll: true }); }
   }, eventOptions);
   for (const layer of ['cover', 'wiring', 'mushrooms', 'labels'] as const) section.querySelector(`button[data-study-${layer}]`)?.addEventListener('click', () => setLayer(layer), eventOptions);
+  section.querySelector('button[data-study-sketch]')?.addEventListener('click', () => setSketch(!sketch), eventOptions);
   section.querySelector('button[data-study-every]')?.addEventListener('click', event => {
     everyPart=!everyPart;(event.currentTarget as HTMLElement).setAttribute('aria-pressed',String(everyPart));
     section.dataset.studyEvery=String(everyPart);syncLayerCount();draw();
@@ -913,7 +960,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     status.textContent='The browser paused 3D rendering. The still view is shown; reload to try again.';
   },eventOptions);
   renderer.shadowMap.needsUpdate=true; draw(); fallback.hidden=true; detail.hidden=true;
-  Object.assign(section.dataset,{studyTour:'none',studyFocus:'none',studyEvery:'false',studyState:'ready',studySelected:'bag',studyMushrooms:'true',studyCover:'false',studyWiring:'false',studyLabels:'true',studyDemo:'none',studyBuild:'idle',studyRegion:'overview',studyLighting:'day',studyScreen:'off',studySound:'true'});
+  Object.assign(section.dataset,{studySketch:'false',studyTour:'none',studyFocus:'none',studyEvery:'false',studyState:'ready',studySelected:'bag',studyMushrooms:'true',studyCover:'false',studyWiring:'false',studyLabels:'true',studyDemo:'none',studyBuild:'idle',studyRegion:'overview',studyLighting:'day',studyScreen:'off',studySound:'true'});
   studyButtons.forEach(button => button.disabled=false); syncAction(); syncLayerCount();
   syncDemos();
   status.textContent='Interactive habitat ready. Select any component to explore.';
