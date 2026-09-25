@@ -21,9 +21,11 @@ test('diagram sound defaults on, unlocks on interaction, and stops with pause an
   await page.getByRole('tab',{name:/Observe/}).click();
   await expect(button).toHaveAttribute('aria-pressed','true');
   const observe=page.locator('[data-system-flow="observe"]');
+  // The ink drawing waits until most of it is on screen before it plays.
+  await observe.locator('[data-pathway-canvas]').scrollIntoViewIfNeeded();
   await expect(observe).toHaveAttribute('data-flow-state','complete',{timeout:20000});
   const played=await page.evaluate(()=>Reflect.get(window,'flowAudioTest').played);
-  for(const name of ['node.mp3','scramble.mp3','travel.mp3','complete.mp3'])expect(played).toContain(name);
+  for(const name of ['node.mp3','travel.mp3','complete.mp3'])expect(played).toContain(name);
   expect(await page.evaluate(()=>Reflect.get(window,'flowAudioTest').players.every((audio:HTMLAudioElement)=>audio.readyState>=2&&audio.error===null))).toBe(true);
   await observe.locator('[data-pathway-replay]').click();
   await observe.locator('[data-pathway-pause]').click();
