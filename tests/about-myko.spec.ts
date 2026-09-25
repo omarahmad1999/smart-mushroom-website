@@ -38,6 +38,18 @@ test('Myko follows the idle and wake sequence without extending reactions',async
   await page.mouse.move(210,365);await expect(myko).toHaveAttribute('data-mood','surprised');await expect(myko.locator('.surprised')).toHaveCSS('color','rgb(180, 247, 255)');await expect(myko.locator('[data-emotion-symbol]')).toHaveText('!!');
   await page.clock.runFor(2000);await expect(myko).toHaveAttribute('data-mood','neutral');await page.getByRole('button',{name:'Say hello to Myko'}).press('Enter');await expect(myko).toHaveAttribute('data-mood','happy');
 });
+test('clicking Myko tells a running sequence and too many clicks make him dizzy',async({page})=>{
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));await page.goto('/about/');
+  const myko=page.locator('[data-myko]'),hello=page.getByRole('button',{name:'Say hello to Myko'}),hint=page.locator('[data-myko-hint]');
+  for(const line of ['Hi! I’m Myko.','Hehe, that tickles!','The mushrooms grew on me.','Small explorer, big world.','Fungi connect worlds.','Hehe, that tickles!']){await hello.press('Enter');await expect(hint).toHaveText(line);await page.clock.runFor(3000);}
+  await expect(myko).toHaveAttribute('data-mood','neutral');await expect(myko.locator('[data-myko-say]')).toHaveText('Hehe, that tickles!');
+  for(let i=0;i<5;i++)await hello.press('Enter');
+  await expect(myko).toHaveAttribute('data-mood','dizzy');await expect(myko.locator('.dizzy')).toBeVisible();await expect(myko.locator('[data-emotion-symbol]')).toHaveText('@');
+  await hello.press('Enter');await expect(myko).toHaveAttribute('data-mood','dizzy');
+  await page.clock.runFor(2400);await expect(myko).toHaveAttribute('data-mood','melancholic');await expect(hint).toHaveText('Okay, okay…');
+  await hello.press('Enter');await expect(hint).toHaveText('Okay, okay…');
+  await page.clock.runFor(3000);await expect(myko).toHaveAttribute('data-mood','neutral');await hello.press('Enter');await expect(myko).toHaveAttribute('data-mood','curious');await expect(hint).toHaveText('The mushrooms grew on me.');
+});
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
   const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width);await expect(page.locator('canvas')).toHaveCount(0);

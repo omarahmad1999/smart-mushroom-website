@@ -7,3 +7,7 @@ Prompt: Change only the two amber eyes and their immediate glow in the full-body
 Eye artwork is drawn in SVG to fit the asymmetric visor perspective. Neutral, curious, gentle happy, melancholic and sleepy use amber; surprised wonder uses icy cyan (#b4f7ff) with cyan glow. Expression symbols follow the reference sheet.
 
 Timing: neutral tracks the pointer; 2 seconds without activity makes Myko melancholic, 4 seconds total makes him sleepy. Activity from melancholy triggers a 2-second curious reaction; activity from sleep triggers a 2-second surprise. Gaze remains frozen during either reaction, even if more movement arrives. Afterwards neutral tracking resumes and the idle countdown restarts. Clicking Myko gives a 2-second happy reaction. Timing pauses offscreen or in a hidden tab; reduced motion disables physical movement but retains expression changes.
+
+## Interactions
+
+Clicks (and Enter on Myko) say the next line of a running sequence; after the opening hello the other lines loop. Five clicks inside 2.5 seconds make him dizzy (spinning spiral eyes), then he recovers with "Okay, okay…"; he ignores clicks for both. Lines are announced through a polite live region.
