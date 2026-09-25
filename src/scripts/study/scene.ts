@@ -215,6 +215,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   let hovered: Component | null = null;
   let fading = false;
   let mushroomsVisible = true;
+  let resetPickBoxes = () => {};
   let growthOpen = false;
   let tour: { route: TourRoute; index: number; playing: boolean; timer: number; wiringBefore: boolean } | null = null;
   let touring = false;
@@ -225,7 +226,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   let demoStarted = 0;
   let tween: { start: number; from: THREE.Vector3; to: THREE.Vector3; fromTarget: THREE.Vector3; toTarget: THREE.Vector3; fromZoom: number; toZoom: number } | null = null;
   const buildOrder=[tent.frame,bench.furniture,...Object.values(groups).filter(group=>group!==tent.frame&&group!==bench.furniture&&group!==tent.cover),tent.cover,wiring];
-  let assembly: { start: number; saved: { object: THREE.Object3D; position: THREE.Vector3; visible: boolean }[] } | null = null;
+  let assembly: { start: number; shadowAt: number; saved: { object: THREE.Object3D; position: THREE.Vector3; visible: boolean }[] } | null = null;
   const cleanup = new AbortController();
   const eventOptions = { signal: cleanup.signal };
   const leaderLayer=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -254,7 +255,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     button.innerHTML=`<span></span><b aria-hidden="true">${members.length}</b>`;button.querySelector('span')!.textContent=category;
     button.setAttribute('aria-label',`${category}: ${members.length} parts. Show their markers`);
     button.addEventListener('click',()=>openGroup(category),eventOptions);viewport.append(button);
-    return {category,button,anchor,members};
+    return {category,button,anchor,members,half:0};
   });
 
   function draw() {
@@ -277,12 +278,17 @@ export function mountMaterialStudy(section: HTMLElement) {
     // Markers step aside while the tent is lit, so the light itself is the subject.
     const lit=demos.has('light')||growthOpen;
     const groupsShown=labelsVisible&&!assembly&&!lit&&!everyPart&&markers.mode==='groups';
-    for(const {button,anchor} of groupMarkers) {
-      const p=anchor.clone().project(camera);
+    // Sizes are read before any position is written, and each marker's width is measured
+    // only once, so drawing a frame never forces the page to lay itself out again.
+    const cardBottom=width>700&&(!detail.hidden||!tourCard.hidden)?Math.max(detail.offsetHeight,tourCard.offsetHeight)+24:-1;
+    const shownGroups=groupMarkers.flatMap(marker=>{
+      const p=marker.anchor.clone().project(camera);
       const x=(p.x*.5+.5)*width,y=(-p.y*.5+.5)*height;
-      button.hidden=!groupsShown||x<0||x>width||y<0||y>height;
-      if(button.hidden)continue;
-      const half=button.offsetWidth/2+6;
+      marker.button.hidden=!groupsShown||x<0||x>width||y<0||y>height;
+      return marker.button.hidden?[]:[{marker,x,y}];
+    });
+    for(const {marker} of shownGroups)marker.half||=marker.button.offsetWidth/2+6;
+    for(const {marker:{button,half},x,y} of shownGroups) {
       const candidates=[new THREE.Vector2(THREE.MathUtils.clamp(x,half,width-half),THREE.MathUtils.clamp(y,24,height-24))];
       for(let ring=1;ring<=6;ring++) for(let turn=0;turn<12;turn++) candidates.push(new THREE.Vector2(x+Math.cos(turn*Math.PI/6)*ring*28,y+Math.sin(turn*Math.PI/6)*ring*22));
       const fits=(point:THREE.Vector2)=>point.x>=half&&point.x<=width-half&&point.y>=24&&point.y<=height-24&&!used.some(other=>Math.abs(other.x-point.x)<half*1.6&&Math.abs(other.y-point.y)<38);
@@ -305,7 +311,7 @@ export function mountMaterialStudy(section: HTMLElement) {
       }
       const fits=(point:THREE.Vector2)=>point.x>=23&&point.x<=width-23&&point.y>=23&&point.y<=height-23
         && !used.some(other=>other.distanceTo(point)<43)
-        && !(width>700&&(!detail.hidden||!tourCard.hidden)&&point.x>width-316&&point.y<Math.max(detail.offsetHeight,tourCard.offsetHeight)+24);
+        && !(cardBottom>0&&point.x>width-316&&point.y<cardBottom);
       const point=candidates.find(fits)??candidates[0];used.push(point);
       button.style.left=`${point.x}px`;button.style.top=`${point.y}px`;
       line.setAttribute('x1',String(x));line.setAttribute('y1',String(y));line.setAttribute('x2',String(point.x));line.setAttribute('y2',String(point.y));
@@ -318,7 +324,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     if (!assembly) return;
     for (const saved of assembly.saved) { saved.object.position.copy(saved.position); saved.object.visible = saved.visible; }
     assembly = null;
-    renderer.shadowMap.needsUpdate = true;
+    renderer.shadowMap.needsUpdate = true; resetPickBoxes();
     section.dataset.studyBuild = 'idle';
     section.querySelector('[data-study-build]')?.setAttribute('aria-pressed', 'false');
   }
@@ -393,7 +399,8 @@ export function mountMaterialStudy(section: HTMLElement) {
         saved.object.position.copy(saved.position);
         saved.object.position.y += 0.40 * (1 - phase) ** 3;
       });
-      renderer.shadowMap.needsUpdate = true;
+      // Shadows follow the pieces a few times a second rather than on every frame.
+      if (now - assembly.shadowAt > 400) { assembly.shadowAt = now; renderer.shadowMap.needsUpdate = true; }
       if (elapsed > assembly.saved.length*80+650) { finishAssembly(); status.textContent = 'The habitat is assembled. Select any component to explore.'; }
     }
     updateDemo(now, dt);
@@ -587,6 +594,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     const colour = straw.clone().lerp(colonised, THREE.MathUtils.clamp(stage, 0, 1));
     if (stage > 2.55) colour.lerp(spent, Math.min(1, (stage - 2.55) / .45));
     substrates.forEach(material => material.color.copy(colour));
+    resetPickBoxes();
     for (const cap of caps) {
       cap.growth = capGrowth(stage, cap.delay);
       cap.object.scale.copy(cap.scale).multiplyScalar(Math.max(.0001, cap.growth * (mushroomsVisible ? 1 : 0)));
@@ -836,7 +844,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     stopDemo();
     regionView('overview', scroll);
     if (reduceMotion.matches) { section.dataset.studyBuild = 'idle'; draw(); status.textContent = 'The assembled habitat is shown. Motion is reduced.'; return; }
-    assembly = { start: performance.now(), saved: buildOrder.map(object => ({ object, position: object.position.clone(), visible: object.visible })) };
+    assembly = { start: performance.now(), shadowAt: 0, saved: buildOrder.map(object => ({ object, position: object.position.clone(), visible: object.visible })) };
     assembly.saved.forEach(saved => saved.object.visible = false);
     section.dataset.studyBuild = 'running';
     section.querySelector('[data-study-build]')?.setAttribute('aria-pressed', 'true');
@@ -916,26 +924,50 @@ export function mountMaterialStudy(section: HTMLElement) {
   section.querySelectorAll('.ms-play-item').forEach(item=>item.addEventListener('click',()=>closeMenus(),eventOptions));
   const raycaster = new THREE.Raycaster();raycaster.layers.enable(1);
   let down = new THREE.Vector2();
-  const pickables = [...Object.entries(groups).filter(([id]) => id !== 'cover').map(([, group]) => group),wiring];
+  // Picking tests a cheap box around each part first, then checks only the parts the ray
+  // reaches, nearest first. Hidden and effect objects, and the instanced straw, are skipped.
+  const pickTargets:{root:THREE.Object3D;box:THREE.Box3|null}[]=[
+    ...Object.entries(groups).filter(([id])=>id!=='cover').map(([,root])=>({root,box:null})),
+    ...wiring.children.map(root=>({root,box:null})),
+  ];
+  resetPickBoxes=()=>pickTargets.forEach(target=>target.box=null);
+  const collectHits=(object:THREE.Object3D,hits:THREE.Intersection[])=>{
+    if(!object.visible||object.userData.ignorePicking||object instanceof THREE.InstancedMesh)return;
+    if(object instanceof THREE.Mesh)object.raycast(raycaster,hits);
+    for(const child of object.children)collectHits(child,hits);
+  };
+  const boxEntry=V(0,0,0);
   const pickAt=(clientX:number,clientY:number)=>{
     const bounds = canvas.getBoundingClientRect();
     raycaster.setFromCamera(new THREE.Vector2((clientX-bounds.left)/bounds.width*2-1, -(clientY-bounds.top)/bounds.height*2+1),camera);
-    const hit = raycaster.intersectObjects(pickables,true).find(item => {
-      let object: THREE.Object3D | null = item.object;
-      while (object) { if (!object.visible || object.userData.ignorePicking) return false; object = object.parent; } return true;
-    });
+    const reachable:{target:typeof pickTargets[number];distance:number}[]=[];
+    for(const target of pickTargets){
+      if(!target.root.visible||!target.root.parent?.visible)continue;
+      target.box??=new THREE.Box3().setFromObject(target.root);
+      if(raycaster.ray.intersectBox(target.box,boxEntry))reachable.push({target,distance:boxEntry.distanceTo(raycaster.ray.origin)});
+    }
+    reachable.sort((a,b)=>a.distance-b.distance);
+    let hit:THREE.Intersection|null=null;
+    for(const {target,distance} of reachable){
+      if(hit&&hit.distance<distance)break;
+      const hits:THREE.Intersection[]=[];collectHits(target.root,hits);
+      for(const candidate of hits)if(!hit||candidate.distance<hit.distance)hit=candidate;
+    }
     let object: THREE.Object3D | null = hit?.object ?? null;
     while (object) { if (object.userData.component && componentById[object.userData.component as Component]) return object.userData.component as Component; object = object.parent; }
     return null;
   };
-  let hoverFrame=0;
+  // The name follows the cursor, but the part beneath it is only looked up once the
+  // pointer rests briefly, so moving across the model costs almost nothing.
+  let hoverTimer=0;
   canvas.addEventListener('pointermove', event => {
+    clearTimeout(hoverTimer);
     if (event.pointerType !== 'mouse' || event.buttons || assembly || demos.has('light')) { setHover(null); return; }
-    const {clientX,clientY}=event;
-    cancelAnimationFrame(hoverFrame);
-    hoverFrame=requestAnimationFrame(()=>{const bounds=viewport.getBoundingClientRect();setHover(pickAt(clientX,clientY),clientX-bounds.left,clientY-bounds.top);});
+    const {clientX,clientY}=event,bounds=viewport.getBoundingClientRect();
+    if (hovered) setHover(hovered,clientX-bounds.left,clientY-bounds.top);
+    hoverTimer=window.setTimeout(()=>setHover(pickAt(clientX,clientY),clientX-bounds.left,clientY-bounds.top),70);
   }, eventOptions);
-  canvas.addEventListener('pointerleave', () => { cancelAnimationFrame(hoverFrame); setHover(null); }, eventOptions);
+  canvas.addEventListener('pointerleave', () => { clearTimeout(hoverTimer); setHover(null); }, eventOptions);
   canvas.addEventListener('pointerdown', event => { down.set(event.clientX,event.clientY); finishAssembly(); tween = null; stopRotation(); setHover(null); wake(); }, eventOptions);
   canvas.addEventListener('pointerup', event => {
     if (down.distanceTo(new THREE.Vector2(event.clientX,event.clientY)) > 6) return;
@@ -949,9 +981,11 @@ export function mountMaterialStudy(section: HTMLElement) {
     const {width,height} = viewport.getBoundingClientRect(); if (!width || !height) return;
     const span = Math.max(6.5, 9.0 / (width/height));
     camera.left = -span*width/height/2; camera.right = -camera.left; camera.top = span/2; camera.bottom = -span/2;
+    groupMarkers.forEach(marker=>marker.half=0);
     camera.updateProjectionMatrix(); renderer.setSize(width,height,false); draw();
   });
   resize.observe(viewport);
+  void document.fonts?.ready.then(()=>{groupMarkers.forEach(marker=>marker.half=0);draw();});
   let introduced = false;
   const visibility = new IntersectionObserver(entries => {
     inView = entries[0].isIntersecting;
