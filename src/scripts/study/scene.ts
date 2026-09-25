@@ -139,6 +139,22 @@ export function mountMaterialStudy(section: HTMLElement) {
   };
   for(const [id,group] of Object.entries(groups) as [Component,THREE.Group][])ownMaterials(id,group);
   for(const owner of wiring.children)if(componentById[owner.userData.component as Component])ownMaterials(owner.userData.component as Component,owner);
+  // Layer switches animate. The cover is cut by a plane that sweeps down (removing) or up
+  // (replacing); wires draw along their own paths; mushroom caps grow from where they attach.
+  renderer.localClippingEnabled=true;
+  const coverCut=new THREE.Plane(V(0,-1,0),100);
+  const coverOwn=new Map<THREE.Material,THREE.Material>();
+  tent.cover.traverse(object=>{
+    if(!(object instanceof THREE.Mesh))return;
+    const cut=(material:THREE.Material)=>{
+      if(!coverOwn.has(material)){const copy=material instanceof THREE.MeshStandardMaterial?material:material.clone();copy.clippingPlanes=[coverCut];copy.needsUpdate=true;coverOwn.set(material,copy);}
+      return coverOwn.get(material)!;
+    };
+    object.material=Array.isArray(object.material)?object.material.map(cut):cut(object.material);
+  });
+  const wireParts:{mesh:THREE.Mesh;count:number;delay:number;drawn:boolean}[]=[];
+  wiring.traverse(object=>{if(object instanceof THREE.Mesh&&object.geometry.index)wireParts.push({mesh:object,count:object.geometry.index.count,delay:0,drawn:object.geometry.type==='TubeGeometry'||object.geometry.type==='BufferGeometry'});});
+  wireParts.forEach((part,index)=>part.delay=index/wireParts.length*.4);
   const tentParts=[tent.frame,tent.cover,tent.bags,tent.bag2,devices.fan,devices.vent,devices.duct,devices.light,devices.camera,devices.camera2,devices.sensor,devices.sht];
   tentParts.forEach(group=>group.traverse(object=>object.layers.set(1)));
   const fanAirflow=devices.fan.getObjectByName('fan-airflow');
@@ -160,9 +176,12 @@ export function mountMaterialStudy(section: HTMLElement) {
   world.add(ledGlow);
   const litFloor=new THREE.Mesh(new THREE.PlaneGeometry(1.68,1.12),new THREE.MeshStandardMaterial({color:'#dddfca',roughness:.93}));
   litFloor.rotation.x=-Math.PI/2;litFloor.position.set(.55,.144,-.12);litFloor.layers.set(1);litFloor.visible=false;world.add(litFloor);
+  const caps:{object:THREE.Object3D;scale:THREE.Vector3;delay:number}[]=[];
   const emitterIntensities=devices.lightEmitters.map(mesh=>(mesh.material as THREE.MeshStandardMaterial).emissiveIntensity);
   const mushroomGroups:THREE.Object3D[]=[];
   for(const bag of [tent.bags,tent.bag2]) bag.traverse(object=>{if(object.userData.mushrooms||object.name==='oyster-clusters')mushroomGroups.push(object);});
+  for(const group of mushroomGroups)for(const cluster of group.children)for(const cap of cluster.children)caps.push({object:cap,scale:cap.scale.clone(),delay:0});
+  caps.forEach((cap,index)=>cap.delay=(index%7)/7*.45+Math.floor(index/7)*.06);
   [devices.mist,devices.cameraField,devices.cameraField2,fanAirflow,lightBeam].forEach(object=>{if(object)object.userData.ignorePicking=true;});
 
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.ShadowMaterial({ color: '#8e8061', opacity: 0.20 }));
@@ -195,6 +214,8 @@ export function mountMaterialStudy(section: HTMLElement) {
   let hovered: Component | null = null;
   let fading = false;
   let mushroomsVisible = true;
+  let coverOn = tent.cover.visible, wiringOn = wiring.visible;
+  let layerMotion: { layer: 'cover' | 'wiring' | 'mushrooms'; on: boolean; start: number; duration: number } | null = null;
   const demos=new Set<Demo>();
   let demoStarted = 0;
   let tween: { start: number; from: THREE.Vector3; to: THREE.Vector3; fromTarget: THREE.Vector3; toTarget: THREE.Vector3; fromZoom: number; toZoom: number } | null = null;
@@ -372,11 +393,12 @@ export function mountMaterialStudy(section: HTMLElement) {
     }
     updateDemo(now, dt);
     if (fading) stepFade(now);
+    if (layerMotion) stepLayers(now);
     controls.update(dt);
     draw();
     renderingFrame = false;
     const animatedDemo = !reduceMotion.matches && (demos.has('fan') || demos.has('mist') || demos.has('cooling'));
-    if (tween || assembly || animatedDemo || fading || controls.autoRotate || now < keepMovingUntil) animationFrame = requestAnimationFrame(loop);
+    if (tween || assembly || animatedDemo || fading || layerMotion || controls.autoRotate || now < keepMovingUntil) animationFrame = requestAnimationFrame(loop);
   }
   function wake(duration = 500) {
     keepMovingUntil = Math.max(keepMovingUntil, performance.now() + duration);
@@ -430,6 +452,43 @@ export function mountMaterialStudy(section: HTMLElement) {
     }
     if (id) hoverLabel.style.translate = `${x + 14}px ${y + 16}px`;
   }
+  const ease = (t: number) => t < .5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+  const overshoot = (t: number) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
+  function showLayer(layer: 'cover' | 'wiring' | 'mushrooms', on: boolean, t: number) {
+    const shown = on ? t : 1 - t;
+    if (layer === 'cover') {
+      tent.cover.visible = on || t < 1;
+      coverCut.constant = shown >= 1 ? 100 : .08 + ease(shown) * 4.35;
+    }
+    if (layer === 'wiring') {
+      wiring.visible = on || t < 1;
+      for (const part of wireParts) {
+        const local = THREE.MathUtils.clamp((shown - part.delay) / .6, 0, 1);
+        if (part.drawn) part.mesh.geometry.setDrawRange(0, local >= 1 ? Infinity : Math.floor(part.count * ease(local) / 3) * 3);
+        else part.mesh.visible = local > .92;
+      }
+    }
+    if (layer === 'mushrooms') {
+      mushroomGroups.forEach(object => object.visible = on || t < 1);
+      for (const cap of caps) {
+        const local = THREE.MathUtils.clamp((shown - cap.delay) / .55, 0, 1);
+        cap.object.scale.copy(cap.scale).multiplyScalar(on ? (local >= 1 ? 1 : Math.max(.0001, overshoot(local))) : Math.max(.0001, local));
+      }
+    }
+  }
+  function animateLayer(layer: 'cover' | 'wiring' | 'mushrooms', on: boolean) {
+    settleLayers();
+    if (reduceMotion.matches) { showLayer(layer, on, 1); return; }
+    const duration = layer === 'cover' ? 850 : layer === 'wiring' ? (on ? 1500 : 450) : (on ? 1100 : 380);
+    layerMotion = { layer, on, start: performance.now(), duration };
+    showLayer(layer, on, 0); wake(duration + 60);
+  }
+  function stepLayers(now: number) {
+    const motion = layerMotion!, t = Math.min(1, (now - motion.start) / motion.duration);
+    showLayer(motion.layer, motion.on, t);
+    if (t >= 1) { layerMotion = null; renderer.shadowMap.needsUpdate = true; }
+  }
+  function settleLayers() { if (layerMotion) { showLayer(layerMotion.layer, layerMotion.on, 1); layerMotion = null; renderer.shadowMap.needsUpdate = true; } }
   function stopRotation() { controls.autoRotate = false; section.querySelector('[data-study-rotate]')?.setAttribute('aria-pressed', 'false'); }
   function setRegionState(region: string) {
     section.dataset.studyRegion = region;
@@ -466,7 +525,7 @@ export function mountMaterialStudy(section: HTMLElement) {
   }
   function syncAction() {
     const action = componentById[selected].action;
-    const active = action === 'mushrooms' ? mushroomsVisible : action === 'cover' ? tent.cover.visible : action === 'wiring' ? wiring.visible : action === 'screen' ? screenOn : demos.has(action as Demo);
+    const active = action === 'mushrooms' ? mushroomsVisible : action === 'cover' ? coverOn : action === 'wiring' ? wiringOn : action === 'screen' ? screenOn : demos.has(action as Demo);
     const labels: Record<VisualAction, [string, string]> = {
       mushrooms: ['Show illustrated mushrooms', 'Hide illustrated mushrooms'], cover: ['Show the covering', 'Remove the covering'], wiring: ['Show the connections', 'Hide the connections'],
       cooling: ['Turn cooler on', 'Turn cooler off'],
@@ -522,12 +581,13 @@ export function mountMaterialStudy(section: HTMLElement) {
   function syncLayerCount(){if(layerCount)layerCount.textContent=`${section.querySelectorAll('#ms-layers-panel [aria-pressed="true"]').length} on`;}
   function setLayer(layer: 'cover' | 'wiring' | 'mushrooms' | 'labels') {
     finishAssembly();
-    const current = layer === 'cover' ? tent.cover.visible : layer === 'wiring' ? wiring.visible : layer === 'mushrooms' ? mushroomsVisible : labelsVisible;
+    const current = layer === 'cover' ? coverOn : layer === 'wiring' ? wiringOn : layer === 'mushrooms' ? mushroomsVisible : labelsVisible;
     const visible = !current;
-    if (layer === 'cover') tent.cover.visible = visible;
-    if (layer === 'wiring') wiring.visible = visible;
-    if (layer === 'mushrooms') { mushroomsVisible = visible; mushroomGroups.forEach(object => object.visible = visible); }
+    if (layer === 'cover') coverOn = visible;
+    if (layer === 'wiring') wiringOn = visible;
+    if (layer === 'mushrooms') mushroomsVisible = visible;
     if (layer === 'labels') labelsVisible = visible;
+    else animateLayer(layer, visible);
     section.dataset[`study${layer[0].toUpperCase()}${layer.slice(1)}`] = String(visible);
     section.querySelector(`button[data-study-${layer}]`)?.setAttribute('aria-pressed', String(visible));
     syncLayerCount();
@@ -596,6 +656,7 @@ export function mountMaterialStudy(section: HTMLElement) {
     camera.updateProjectionMatrix(); draw(); status.textContent = `View zoom ${Math.round(camera.zoom * 100)} percent.`;
   }
   function replayBuild() {
+    settleLayers();
     stopDemo();
     regionView('overview');
     if (reduceMotion.matches) { section.dataset.studyBuild = 'idle'; draw(); status.textContent = 'The assembled habitat is shown. Motion is reduced.'; return; }
