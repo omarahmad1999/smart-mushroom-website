@@ -5,15 +5,24 @@ if(page){
   const reduced=matchMedia('(prefers-reduced-motion:reduce)');let motion=!reduced.matches,visible=true,locked=false,kind='';
   let idleTwo:number|undefined,idleFour:number|undefined,reaction:number|undefined,blink:number|undefined,blinkEnd:number|undefined;
   let pointer:{x:number;y:number}|undefined;
-  const symbols:Record<string,string>={neutral:'',happy:'〃',curious:'?',melancholic:'…',sleepy:'Zzz',surprised:'!!',dizzy:'@'};
-  const labels:Record<string,string>={neutral:'Myko · say hello',happy:'A little hello back.',curious:'Oh? What’s that?',melancholic:'Still there…?',sleepy:'Just resting my eyes.',surprised:'Oh! You’re back!',dizzy:'Whoa… it’s all spinning.'};
+  const symbols:Record<string,string>={neutral:'',happy:'〃',curious:'?',melancholic:'…',sleepy:'Zzz',surprised:'!!',dizzy:'@',squint:'!'};
+  const labels:Record<string,string>={neutral:'Myko · say hello',happy:'A little hello back.',curious:'Oh? What’s that?',melancholic:'Still there…?',sleepy:'Just resting my eyes.',surprised:'Oh! You’re back!',dizzy:'Whoa… it’s all spinning.',squint:'Hey!'};
   // Each click says the next line; after the first hello the rest loop.
   const sequence:[string,string][]=[['happy','Hi! I’m Myko.'],['happy','Hehe, that tickles!'],['curious','The mushrooms grew on me.'],['happy','Small explorer, big world.'],['curious','Fungi connect worlds.']];
-  let told=0;const clicks:number[]=[];
-  function gaze(){
-    if(!motion||!pointer||locked||myko.dataset.mood!=='neutral')return;
+  let told=0;const clicks:number[]=[],pending:number[]=[];
+  // Tap spots in the 1254px image: centre x, centre y, radius x, radius y.
+  const caps=[[616,88,160,72],[478,205,58,36],[812,205,84,50],[876,305,66,44]],visor=[502,442,136,140],pack=[945,630,68,180];
+  const spots:Record<string,[string,string][]>={cap:[['curious','Ooh, spores!'],['happy','Make a wish!'],['curious','They’ll grow somewhere nice.']],visor:[['squint','Hey! That’s my visor.'],['squint','Now it’s all smudgy.']],pack:[['happy','My field kit!'],['curious','Sample jars and a notebook.'],['happy','No snacks in there. Sadly.']]};
+  const said:Record<string,number>={cap:0,visor:0,pack:0};
+  const spores=stage.querySelector<HTMLElement>('[data-myko-spores]')!;
+  function toImage(x:number,y:number){const rect=stage.getBoundingClientRect();return{x:(x-rect.left)/rect.width*1254,y:(y-rect.top)/rect.height*1254};}
+  const within=([cx,cy,rx,ry]:number[],point:{x:number;y:number})=>((point.x-cx)/rx)**2+((point.y-cy)/ry)**2<=1;
+  function gaze(){if(!motion||!pointer||locked||myko.dataset.mood!=='neutral')return;aim(pointer.x,pointer.y);}
+  // Looks at a point in the image, for reactions that hold the gaze.
+  function look(x:number,y:number){if(!motion)return;const rect=stage.getBoundingClientRect();aim(rect.left+rect.width*x/1254,rect.top+rect.height*y/1254);}
+  function aim(x:number,y:number){
     const rect=stage.getBoundingClientRect();
-    const dx=pointer.x-(rect.left+rect.width*478.8/1254),dy=pointer.y-(rect.top+rect.height*449.5/1254);
+    const dx=x-(rect.left+rect.width*478.8/1254),dy=y-(rect.top+rect.height*449.5/1254);
     const distance=Math.hypot(dx,dy),reach=Math.tanh(distance/(rect.width*.3));
     // Preserve the cursor's angle at every distance; independent clamping flattened far-away directions.
     myko.style.setProperty('--eye-x',`${distance?dx/distance*reach*26:0}px`);
@@ -25,15 +34,35 @@ if(page){
 
   type Reaction={line?:string;mark?:string;duration?:number;type?:string;then?:()=>void};
   // A reaction holds the face for its duration; `then` chains the next reaction instead of returning to neutral.
-  function react(value:string,{line,mark,duration=2000,type='wake',then}:Reaction={}){clearTimeout(reaction);clearIdle();locked=true;kind=type;mood(value,line,mark);reaction=window.setTimeout(()=>{if(then)return then();locked=false;kind='';mood('neutral');idle();},duration);}
+  function later(run:()=>void,delay:number){pending.push(window.setTimeout(run,delay));}
+  function react(value:string,{line,mark,duration=2000,type='wake',then}:Reaction={}){clearTimeout(reaction);pending.splice(0).forEach(clearTimeout);clearIdle();locked=true;kind=type;mood(value,line,mark);reaction=window.setTimeout(()=>{if(then)return then();locked=false;kind='';mood('neutral');idle();},duration);}
   function speak(value:string,line:string,mark?:string){react(value,{line,mark,duration:2400,type:'click'});say.textContent=line;}
   // Five clicks inside 2.5 seconds make Myko dizzy; he ignores clicks until he has recovered.
   function spin(){const now=performance.now();clicks.push(now);while(now-clicks[0]>2500)clicks.shift();if(clicks.length<5)return false;clicks.length=0;say.textContent=labels.dizzy;react('dizzy',{duration:2400,type:'dizzy',then:()=>react('melancholic',{line:'Okay, okay…',duration:3000,type:'dizzy'})});return true;}
   function tell(){const [value,line]=sequence[told<sequence.length?told:1+(told-1)%(sequence.length-1)];told++;speak(value,line);}
+  function quip(spot:string){const lines=spots[spot],[value,line]=lines[said[spot]++%lines.length];speak(value,line);}
+  // Spores drift up from the gills under the tapped cap, and Myko's eyes follow them.
+  function puff([cx,cy,rx,ry]:number[]){
+    quip('cap');if(!motion)return;
+    const under=cy+ry*.55,scale=stage.getBoundingClientRect().width/1254;
+    look(cx,under);later(()=>look(cx,under-300),500);later(()=>look(cx+60,under-650),1100);
+    for(let i=0;i<14;i++){
+      const dot=document.createElement('i'),size=3+Math.random()*4,dx=(Math.random()-.5)*rx*1.4*scale,rise=(250+Math.random()*350)*scale;
+      dot.style.cssText=`left:${(cx+(Math.random()-.5)*rx*1.2)/12.54}%;top:${under/12.54}%;width:${size}px;height:${size}px`;
+      spores.append(dot);
+      const done=()=>dot.remove();
+      dot.animate([{transform:'translate(-50%,-50%) scale(.3)',opacity:0},{transform:`translate(calc(-50% + ${dx*.3}px),calc(-50% - ${rise*.25}px)) scale(1)`,opacity:1,offset:.2},{transform:`translate(calc(-50% + ${dx}px),calc(-50% - ${rise}px)) scale(.7)`,opacity:0}],{duration:1500+Math.random()*900,delay:Math.random()*250,easing:'ease-out',fill:'both'}).finished.then(done,done);
+    }
+  }
   function active(event?:PointerEvent){if(event)pointer={x:event.clientX,y:event.clientY};if(!visible||document.hidden)return;if(locked)return;const current=myko.dataset.mood;if(current==='sleepy')react('surprised');else if(current==='melancholic')react('curious');else{gaze();idle();}}
   document.addEventListener('pointermove',active);document.addEventListener('pointerdown',active);document.addEventListener('keydown',()=>active());
-  stage.addEventListener('click',()=>{if(kind==='dizzy'||spin())return;tell();});
-  function sync(){clearTimeout(blink);clearTimeout(blinkEnd);clearIdle();clearTimeout(reaction);locked=false;kind='';myko.removeAttribute('data-blinking');myko.toggleAttribute('data-animate',motion&&visible&&!document.hidden);myko.style.setProperty('--eye-x','0px');myko.style.setProperty('--eye-y','0px');mood('neutral');if(visible&&!document.hidden){idle();scheduleBlink();}}
+  stage.addEventListener('click',event=>{
+    if(kind==='dizzy'||spin())return;
+    // Keyboard clicks have no position, so they tell the running sequence.
+    const point=event.detail?toImage(event.clientX,event.clientY):undefined,cap=point&&caps.find(spot=>within(spot,point));
+    if(cap)puff(cap);else if(point&&within(visor,point))quip('visor');else if(point&&within(pack,point))quip('pack');else tell();
+  });
+  function sync(){clearTimeout(blink);clearTimeout(blinkEnd);clearIdle();clearTimeout(reaction);pending.splice(0).forEach(clearTimeout);locked=false;kind='';myko.removeAttribute('data-blinking');myko.toggleAttribute('data-animate',motion&&visible&&!document.hidden);myko.style.setProperty('--eye-x','0px');myko.style.setProperty('--eye-y','0px');mood('neutral');if(visible&&!document.hidden){idle();scheduleBlink();}}
   function scheduleBlink(){if(!motion||!visible||document.hidden)return;blink=window.setTimeout(()=>{if(myko.dataset.mood==='neutral'){myko.setAttribute('data-blinking','');blinkEnd=window.setTimeout(()=>myko.removeAttribute('data-blinking'),120);}scheduleBlink();},3300);}
   reduced.addEventListener('change',()=>{motion=!reduced.matches;sync();});document.addEventListener('visibilitychange',()=>{sync();});
   new IntersectionObserver(entries=>{const next=entries[0].isIntersecting;if(next!==visible){visible=next;if(visible&&locked){myko.toggleAttribute('data-animate',motion);scheduleBlink();}else sync();}},{threshold:.1}).observe(myko);

@@ -50,6 +50,18 @@ test('clicking Myko tells a running sequence and too many clicks make him dizzy'
   await hello.press('Enter');await expect(hint).toHaveText('Okay, okay…');
   await page.clock.runFor(3000);await expect(myko).toHaveAttribute('data-mood','neutral');await hello.press('Enter');await expect(myko).toHaveAttribute('data-mood','curious');await expect(hint).toHaveText('The mushrooms grew on me.');
 });
+test('tapping the caps, visor and backpack gets different reactions',async({page})=>{
+  await page.goto('/about/');
+  const myko=page.locator('[data-myko]'),hint=page.locator('[data-myko-hint]'),box=(await page.locator('.myko-stage').boundingBox())!;
+  const tap=(x:number,y:number)=>page.mouse.click(box.x+box.width*x/1254,box.y+box.height*y/1254);
+  await tap(616,70);await expect(myko).toHaveAttribute('data-mood','curious');await expect(hint).toHaveText('Ooh, spores!');
+  expect(await myko.locator('[data-myko-spores] i').count()).toBeGreaterThan(5);
+  await expect.poll(async()=>parseFloat(await myko.evaluate(el=>(el as HTMLElement).style.getPropertyValue('--eye-y')))).toBeLessThan(-20);
+  await expect.poll(()=>myko.locator('[data-myko-spores] i').count(),{timeout:5000}).toBe(0);
+  await tap(470,420);await expect(myko).toHaveAttribute('data-mood','squint');await expect(hint).toHaveText('Hey! That’s my visor.');await expect(myko.locator('.squint')).toBeVisible();
+  await tap(950,560);await expect(myko).toHaveAttribute('data-mood','happy');await expect(hint).toHaveText('My field kit!');
+  await tap(560,800);await expect(hint).toHaveText('Hi! I’m Myko.');
+});
 test('photo leads the layout and story tabs remain accessible',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/about/');await expect(page.locator('[data-about-page]')).toHaveAttribute('data-about-ready','true');
   const photo=await page.locator('.profile-main').boundingBox(),myko=await page.locator('[data-myko]').boundingBox();expect(photo!.width).toBeGreaterThan(myko!.width);await expect(page.locator('canvas')).toHaveCount(0);
@@ -79,4 +91,5 @@ test('social notes use the published profiles and Myko offers contact',async({pa
 });
 test('reduced motion keeps expressions but stops movement',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/about/');await expect(page.locator('[data-myko-motion]')).toHaveCount(0);await page.getByRole('button',{name:'Say hello to Myko'}).click();await expect(page.locator('[data-myko]')).toHaveAttribute('data-mood','happy');await expect(page.locator('[data-myko]')).not.toHaveAttribute('data-animate');
+  const box=(await page.locator('.myko-stage').boundingBox())!;await page.mouse.click(box.x+box.width*616/1254,box.y+box.height*70/1254);await expect(page.locator('[data-myko-hint]')).toHaveText('Ooh, spores!');await expect(page.locator('[data-myko-spores] i')).toHaveCount(0);
 });

@@ -11,3 +11,4 @@ Timing: neutral tracks the pointer; 2 seconds without activity makes Myko melanc
 ## Interactions
 
 Clicks (and Enter on Myko) say the next line of a running sequence; after the opening hello the other lines loop. Five clicks inside 2.5 seconds make him dizzy (spinning spiral eyes), then he recovers with "Okay, okay…"; he ignores clicks for both. Lines are announced through a polite live region.
+Tap spots are ellipses in the 1254px image space. Tapping a mushroom cap releases cyan spores from its gills and Myko's eyes follow them up; tapping the visor makes him squint (`><`); tapping the backpack gets field kit lines; anywhere else continues the running sequence. Reduced motion keeps the lines and faces but skips the spores and gaze.
