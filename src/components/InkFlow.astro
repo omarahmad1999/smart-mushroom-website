@@ -11,6 +11,8 @@ import scales from '@phosphor-icons/core/duotone/scales-duotone.svg?raw';
 import house from '@phosphor-icons/core/duotone/house-duotone.svg?raw';
 import toggle from '@phosphor-icons/core/duotone/toggle-right-duotone.svg?raw';
 import fan from '@phosphor-icons/core/duotone/fan-duotone.svg?raw';
+import drop from '@phosphor-icons/core/duotone/drop-duotone.svg?raw';
+import lightbulb from '@phosphor-icons/core/duotone/lightbulb-duotone.svg?raw';
 import timer from '@phosphor-icons/core/duotone/timer-duotone.svg?raw';
 import camera from '@phosphor-icons/core/duotone/camera-duotone.svg?raw';
 import images from '@phosphor-icons/core/duotone/images-duotone.svg?raw';
@@ -48,6 +50,8 @@ type Layout = {
   at: Record<string, Point>; sides?: Record<string, Side>; junction?: Point; stamp?: Point;
   routes: Record<string, string>; notes: { id: string; x: number; y: number; anchor: 'middle' | 'end' | 'start'; lines: string[] }[];
   marks: Record<string, string>;
+  // One hand-drawn loop around several final parts, instead of a loop around each.
+  groupLoop?: string;
 };
 const flows: Record<Pathway, { name: string; completion: string; steps: string[]; parts: Part[]; links: Link[]; layouts: Layout[]; crosslink?: { to: Pathway; text: string } }> = {
   observe: {
@@ -123,46 +127,54 @@ const flows: Record<Pathway, { name: string; completion: string; steps: string[]
       { id: 'mqtt', name: 'Mosquitto', detail: 'MQTT broker', icon: glyph(broadcast), verb: 'stamp' },
       { id: 'ha', name: 'Home Assistant', detail: 'manual control', icon: glyph(house), verb: 'ripple', source: true },
       { id: 'actuators', name: 'Actuator services', detail: 'Python services', icon: glyph(toggle), verb: 'toggle' },
-      { id: 'devices', name: 'Fan, humidifier & LEDs', detail: 'in the tent', icon: glyph(fan), verb: 'spin', final: true },
+      { id: 'fan', name: 'Fan', detail: 'ventilation', icon: glyph(fan), verb: 'spin', final: true },
+      { id: 'humidifier', name: 'Humidifier', detail: 'moisture', icon: glyph(drop), verb: 'mist', final: true },
+      { id: 'leds', name: 'LEDs', detail: 'lighting', icon: glyph(lightbulb), verb: 'glow', final: true },
     ],
     links: [
       { id: 'evaluate', to: 'controllers', kind: 'reading' }, { id: 'commands', to: 'mqtt', kind: 'command' }, { id: 'manual', to: 'mqtt', kind: 'command', dashed: true },
-      { id: 'route', to: 'actuators', kind: 'command' }, { id: 'drive', to: 'devices', kind: 'command' },
+      { id: 'route', to: 'actuators', kind: 'command' },
+      { id: 'drive-fan', to: 'fan', kind: 'command' }, { id: 'drive-humidifier', to: 'humidifier', kind: 'command' }, { id: 'drive-leds', to: 'leds', kind: 'command' },
     ],
     layouts: [
       {
         id: 'wide', viewBox: '0 0 1160 480', nameSize: 13, noteSize: 19,
-        at: { inputs: [110, 280], controllers: [330, 120], mqtt: [560, 250], ha: [560, 400], actuators: [790, 120], devices: [1030, 260] },
-        sides: { mqtt: 'above' }, stamp: [31, 31],
+        at: { inputs: [110, 280], controllers: [330, 120], mqtt: [560, 250], ha: [560, 400], actuators: [790, 120], fan: [1030, 120], humidifier: [1030, 250], leds: [1030, 380] },
+        sides: { mqtt: 'above', fan: 'right', humidifier: 'right', leds: 'right' }, stamp: [31, 31],
         routes: {
           evaluate: 'M152 280C230 280 210 120 288 120', commands: 'M372 120C450 120 440 250 518 250', manual: 'M560 358V292',
-          route: 'M602 250C680 250 670 120 748 120', drive: 'M832 120C910 120 900 260 988 260',
+          route: 'M602 250C680 250 670 120 748 120',
+          'drive-fan': 'M832 120H988', 'drive-humidifier': 'M832 120C900 120 920 250 988 250', 'drive-leds': 'M832 120C900 120 900 380 988 380',
         },
         notes: [
           { id: 'evaluate', x: 180, y: 162, anchor: 'middle', lines: ['evaluate', 'conditions'] },
           { id: 'commands', x: 500, y: 150, anchor: 'middle', lines: ['publish commands'] },
           { id: 'manual', x: 578, y: 330, anchor: 'start', lines: ['manual control'] },
           { id: 'route', x: 716, y: 236, anchor: 'middle', lines: ['route', 'commands'] },
-          { id: 'drive', x: 962, y: 170, anchor: 'middle', lines: ['drive devices'] },
+          { id: 'drive', x: 910, y: 106, anchor: 'middle', lines: ['drive devices'] },
         ],
         marks: {},
+        groupLoop: 'M998 80C1016 64 1048 66 1062 86C1072 150 1074 300 1066 400C1058 424 1006 428 994 402C984 330 984 160 992 96C996 84 1004 74 1016 70',
       },
       {
-        id: 'narrow', viewBox: '0 0 384 660', nameSize: 14, noteSize: 17,
-        at: { inputs: [140, 60], controllers: [140, 190], mqtt: [140, 330], ha: [320, 330], actuators: [140, 470], devices: [140, 600] },
-        sides: { mqtt: 'left', ha: 'below' },
+        id: 'narrow', viewBox: '0 0 384 716', nameSize: 14, noteSize: 17,
+        at: { inputs: [140, 60], controllers: [140, 190], mqtt: [140, 330], ha: [320, 330], actuators: [140, 470], fan: [60, 612], humidifier: [180, 612], leds: [300, 612] },
+        sides: { mqtt: 'left', ha: 'below', fan: 'below', humidifier: 'below', leds: 'below' },
         routes: {
           evaluate: 'M140 102C162 120 118 130 140 148', commands: 'M140 232C162 256 118 270 140 288', manual: 'M278 330H182',
-          route: 'M140 372C162 396 118 410 140 428', drive: 'M140 512C162 530 118 540 140 558',
+          route: 'M140 372C162 396 118 410 140 428',
+          'drive-fan': 'M140 512C140 548 60 540 60 570', 'drive-humidifier': 'M140 512C140 548 180 540 180 570', 'drive-leds': 'M140 512C140 548 300 530 300 570',
         },
         notes: [
           { id: 'evaluate', x: 112, y: 121, anchor: 'end', lines: ['evaluate', 'conditions'] },
           { id: 'commands', x: 112, y: 256, anchor: 'end', lines: ['publish', 'commands'] },
           { id: 'manual', x: 230, y: 316, anchor: 'middle', lines: ['manual control'] },
           { id: 'route', x: 112, y: 396, anchor: 'end', lines: ['route', 'commands'] },
-          { id: 'drive', x: 112, y: 533, anchor: 'end', lines: ['drive devices'] },
+          { id: 'drive', x: 192, y: 506, anchor: 'start', lines: ['drive devices'] },
         ],
         marks: {},
+        // Names sit under the devices here, so the loop circles each device together with its name.
+        groupLoop: 'M22 592C28 570 92 565 180 567S338 564 352 588C362 616 362 664 350 684C338 694 262 696 180 695S34 698 20 682C8 664 10 612 20 596C24 588 34 580 50 575',
       },
     ],
     crosslink: { to: 'observe', text: 'The sensors notice the change' },
@@ -225,6 +237,7 @@ const label = (side: Side, size: number) => ({
         <svg class={`ink-diagram ink-${layout.id}`} data-flow-layout={layout.id} viewBox={layout.viewBox} aria-hidden="true">
           <defs>
             <radialGradient id={id('soft')}><stop offset=".6" stop-color="#fff" /><stop offset="1" stop-color="#fff" stop-opacity="0" /></radialGradient>
+            <radialGradient id={id('glow')}><stop offset="0" stop-color="#ffd27a" stop-opacity=".95" /><stop offset=".55" stop-color="#ffc45c" stop-opacity=".45" /><stop offset="1" stop-color="#ffc45c" stop-opacity="0" /></radialGradient>
             <linearGradient id={id('feather')}><stop offset="0" stop-color="#fff" /><stop offset=".8" stop-color="#fff" /><stop offset="1" stop-color="#fff" stop-opacity="0" /></linearGradient>
             {flow.parts.map(part => <mask id={id(`reveal-${part.id}`)}><circle class="ink-reveal" data-ink-reveal={part.id} r="72" fill={`url(#${id('soft')})`} /></mask>)}
             {layout.notes.flatMap(note => note.lines.map((_, row) => <mask id={id(`note-${note.id}-${row}`)}><rect class="ink-note-reveal" data-ink-note-reveal={`${note.id}-${row}`} x="-4000" y="-4000" width="8000" height="8000" fill={`url(#${id('feather')})`} /></mask>))}
@@ -243,6 +256,7 @@ const label = (side: Side, size: number) => ({
             return (
               <g class:list={['ink-node', { 'ink-node-final': part.final }]} data-ink-node={part.id} data-verb={part.verb} data-source={part.source ? 'true' : undefined} data-final={part.final ? 'true' : undefined} data-state="ink" transform={`translate(${x} ${y})`}>
                 <path class="ink-wash" data-ink-wash d={blob(31 + index * 17, 36)} />
+                {part.verb === 'glow' && <circle class="ink-glow" data-ink-glow r="40" fill={`url(#${id('glow')})`} />}
                 {part.verb === 'ripple' && [0, 1].map(() => <circle class="ink-ripple" data-ink-ripple r="30" />)}
                 {!part.source && <circle class="ink-splash" data-ink-splash r="11" />}
                 <g class="ink-icon" data-ink-icon>
@@ -256,11 +270,13 @@ const label = (side: Side, size: number) => ({
                 <text class="ink-detail" data-ink-label x={name.x} y={name.y + layout.nameSize + 3} text-anchor={name.anchor} font-size={layout.nameSize - 2}>{part.detail}</text>
                 {part.verb === 'stamp' && <g class="ink-stamp" transform={`translate(${stamp[0]} ${stamp[1]})`}><g class="ink-stamp-body" data-ink-stamp><circle r="15" /><circle class="ink-stamp-inner" r="11.5" /><text y="2.6" text-anchor="middle">MQTT</text></g></g>}
                 {part.verb === 'flash' && <circle class="ink-flash" data-ink-flash r="14" />}
+                {part.verb === 'mist' && [[-10, -30, 3.4], [2, -36, 4.2], [12, -29, 3]].map(([cx, cy, r]) => <circle class="ink-mist" data-ink-mist cx={cx} cy={cy} r={r} />)}
                 {layout.marks[part.id] && <path class="ink-mark" data-ink-mark d={layout.marks[part.id]} pathLength="1" />}
-                {part.final && <path class="ink-loop" data-ink-loop d={loop} pathLength="1" transform={layout.id === 'narrow' ? 'scale(.86)' : undefined} />}
+                {part.final && !layout.groupLoop && <path class="ink-loop" data-ink-loop d={loop} pathLength="1" transform={layout.id === 'narrow' ? 'scale(.86)' : undefined} />}
               </g>
             );
           })}
+          {layout.groupLoop && <path class="ink-loop" data-ink-group-loop d={layout.groupLoop} pathLength="1" />}
           <g class="ink-notes">
             {layout.notes.map(note => <g data-ink-note={note.id}>
               {note.lines.map((line, row) => <text x={note.x} y={note.y + row * (layout.noteSize + 1)} text-anchor={note.anchor} font-size={layout.noteSize} mask={`url(#${id(`note-${note.id}-${row}`)})`} data-ink-note-line={`${note.id}-${row}`}>{line}</text>)}
@@ -313,6 +329,8 @@ const label = (side: Side, size: number) => ({
   .ink-node-final .ink-name{fill:#4f5a3c}
   .ink-ripple,.ink-splash{fill:none;stroke:var(--accent);stroke-width:1.2;opacity:0}
   .ink-flash{fill:#fffdf2;stroke:var(--accent);stroke-width:1;opacity:0}
+  .ink-glow{opacity:.45}
+  .ink-mist{fill:var(--wash);stroke:var(--accent);stroke-width:.8;opacity:0}
   .ink-stamp-body circle{fill:none;stroke:#b4521f;stroke-width:1.5}
   .ink-stamp-body .ink-stamp-inner{stroke-width:.8;stroke-dasharray:2 2.4}
   .ink-stamp-body text{font:700 6.6px var(--font-body,sans-serif);letter-spacing:.08em;fill:#b4521f}

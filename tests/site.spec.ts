@@ -113,7 +113,7 @@ test('architecture tabs trace the observation, control, and media pathways', asy
   await expect(tabs.nth(1)).toBeFocused();
   await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#architecture-panel-respond')).toBeVisible();
-  await expect(page.locator('#architecture-panel-respond')).toContainText('Fan, humidifier & LEDs');
+  await expect(page.locator('#architecture-panel-respond')).toContainText('Humidifier');
   await expect(page.locator('#architecture-panel-observe')).toBeHidden();
   await page.keyboard.press('End');
   await expect(tabs.nth(2)).toBeFocused();

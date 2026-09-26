@@ -122,7 +122,7 @@ test('pause, replay, offscreen suspension and keyboard tabs keep the sequence un
   const tabs=page.getByRole('tablist',{name:'Explore a system pathway'}).getByRole('tab');
   await tabs.nth(0).focus();await page.keyboard.press('ArrowRight');
   await expect(page.locator('#architecture-panel-respond')).toBeVisible();
-  await expect(page.locator('#architecture-panel-respond .ink-diagram:visible [data-ink-node]')).toHaveCount(6);
+  await expect(page.locator('#architecture-panel-respond .ink-diagram:visible [data-ink-node]')).toHaveCount(8);
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('#architecture-panel-record')).toBeVisible();
   await expect(page.locator('#architecture-panel-record .ink-diagram:visible [data-ink-node]')).toHaveCount(4);
@@ -160,7 +160,7 @@ test('reduced motion shows the full explanation without travelling pulses',async
   const respondTab=page.getByRole('tab',{name:/Respond/});
   await expect(respondTab).toHaveAttribute('aria-selected','true');await expect(respondTab).toBeFocused();
   await expect(page.locator('#architecture-panel-respond')).toBeVisible();
-  for(const [route,count,part] of [['respond',6,'Home Assistant'],['record',4,'Media preparation']] as const) {
+  for(const [route,count,part] of [['respond',8,'Humidifier'],['record',4,'Media preparation']] as const) {
     await page.locator(`[data-route="${route}"]`).click();
     const pathway=page.locator(`[data-system-flow="${route}"]`),drawing=pathway.locator('.ink-diagram:visible');
     await expect(pathway.locator('[data-pathway-status]')).toHaveText(/shown with motion reduced/);
@@ -175,8 +175,8 @@ test('reduced motion shows the full explanation without travelling pulses',async
 });
 
 for(const pathway of [
-  {id:'respond',start:'inputs',parts:6,hops:['controllers','mqtt','actuators','devices'],final:'devices'},
-  {id:'record',start:'schedule',parts:4,hops:['cameras','storage','media'],final:'media'},
+  {id:'respond',start:'inputs',parts:8,hops:[['controllers',['controllers']],['mqtt',['mqtt']],['actuators',['actuators']],['devices',['fan','humidifier','leds']]],finals:['fan','humidifier','leds']},
+  {id:'record',start:'schedule',parts:4,hops:[['cameras',['cameras']],['storage',['storage']],['media',['media']]],finals:['media']},
 ])test(`${pathway.id} inks its path like Observe and suspends when another tab opens`,async({page})=>{
   // The longest simulated run in the suite; the Pi needs more than the default budget to step through it.
   test.setTimeout(90_000);
@@ -187,23 +187,28 @@ for(const pathway of [
   expect((await trailOffsets(diagram)).every(offset=>offset>1)).toBe(true);
   await page.clock.runFor(400);
   expect((await states(diagram))[pathway.start]).toBe('ink');
-  for(const hop of pathway.hops){
+  for(const [hop,arrivals] of pathway.hops as [string,string[]][]){
     await reachStage(page,`to-${hop}`,pathway.id);await page.clock.runFor(150);
     const drops=await moving(diagram);
     expect(drops.length).toBeGreaterThan(0);
     for(const head of await heads(diagram,drops))expect(head.gap).toBeLessThan(1.5);
     // Commands from the controllers and Home Assistant's manual control reach Mosquitto together.
     if(pathway.id==='respond'&&hop==='mqtt'){expect(drops.sort()).toEqual(['commands','manual']);expect((await states(diagram)).ha).toBe('ink');}
+    // The actuator services drive all three devices at once.
+    if(hop==='devices')expect(drops.sort()).toEqual(['drive-fan','drive-humidifier','drive-leds']);
     await reachStage(page,hop,pathway.id);
-    expect((await states(diagram))[hop]).toBe('ink');
+    for(const arrival of arrivals)expect((await states(diagram))[arrival]).toBe('ink');
   }
-  await page.clock.runFor(1600);
+  // The loop around the three devices is the last stroke, about 1.7 s after they are inked.
+  await page.clock.runFor(2000);
   await expect(flow).toHaveAttribute('data-flow-state','complete');
   expect((await trailOffsets(diagram)).every(offset=>offset===0)).toBe(true);
   for(const value of await written(diagram))expect(value).toBeCloseTo(1,3);
   expect(Object.values(await states(diagram)).every(state=>state==='ink')).toBe(true);
-  await expect(diagram.locator(`[data-ink-node="${pathway.final}"] .ink-name`)).toHaveCSS('fill','rgb(79, 90, 60)');
-  expect(await diagram.locator(`[data-ink-node="${pathway.final}"] [data-ink-loop]`).evaluate(loop=>parseFloat(getComputedStyle(loop).strokeDashoffset))).toBe(0);
+  for(const final of pathway.finals)await expect(diagram.locator(`[data-ink-node="${final}"] .ink-name`)).toHaveCSS('fill','rgb(79, 90, 60)');
+  // The last parts are circled in olive: one loop around the three devices, or around the single final part.
+  const loops=await diagram.locator('[data-ink-loop],[data-ink-group-loop]').evaluateAll(items=>items.map(item=>parseFloat(getComputedStyle(item).strokeDashoffset)));
+  expect(loops.length).toBe(1);expect(loops[0]).toBe(0);
   // Another tab takes over: this drawing waits, then replays from pencil when its tab returns.
   const layout=await diagram.getAttribute('data-flow-layout'),drawing=flow.locator(`[data-flow-layout="${layout}"]`);
   await flow.locator('[data-pathway-replay]').evaluate((button:HTMLButtonElement)=>button.click());
@@ -229,7 +234,7 @@ test.describe('without JavaScript',()=>{
     for(const text of ['SHT31','SCD41','Mosquitto','Database writer','TimescaleDB','Grafana'])await expect(diagram.locator('.ink-name').filter({hasText:text})).toBeVisible();
     for(const note of await diagram.locator('[data-ink-note] text').all())await expect(note).toBeVisible();
     for(const link of await page.locator('[data-flow-goto]').all())await expect(link).toBeHidden();
-    for(const [route,count,names] of [['respond',6,['Controllers','Mosquitto','Home Assistant','Actuator services','Fan, humidifier & LEDs']],['record',4,['Capture schedule','Two cameras','Image storage','Media preparation']]] as const) {
+    for(const [route,count,names] of [['respond',8,['Controllers','Mosquitto','Home Assistant','Actuator services','Fan','Humidifier','LEDs']],['record',4,['Capture schedule','Two cameras','Image storage','Media preparation']]] as const) {
       const drawing=page.locator(`[data-system-flow="${route}"] .ink-diagram:visible`);
       await expect(drawing.locator('[data-ink-node]')).toHaveCount(count);
       for(const text of names)await expect(drawing.locator('.ink-name').filter({hasText:text})).toBeVisible();

@@ -5,7 +5,8 @@ type Drop = { el: SVGGElement; x: number; y: number; angle: number; stretch: num
 type Route = { id: string; to: string; trail: SVGPathElement; drop: Drop; length: number; xs: Float32Array; ys: Float32Array; angles: Float32Array };
 // A pathway is a list of stretches. Each stretch moves one or more messages at once, in phases (two sensor readings,
 // then the merged message); it writes its notes while travelling and arrives where its last phase ends.
-type Stretch = { phases: string[][]; notes: string[]; sources?: string[] };
+// A stretch whose last phase fans out to several parts arrives at all of them, under one shared stage name.
+type Stretch = { phases: string[][]; notes: string[]; sources?: string[]; stage?: string };
 const scripts: Record<string, { start: string; sources: string[]; stretches: Stretch[] }> = {
   observe: {
     start: 'sensors', sources: ['sht31', 'scd41'],
@@ -19,7 +20,9 @@ const scripts: Record<string, { start: string; sources: string[]; stretches: Str
     start: 'inputs', sources: ['inputs'],
     stretches: [
       { phases: [['evaluate']], notes: ['evaluate'] }, { phases: [['commands', 'manual']], notes: ['commands', 'manual'], sources: ['ha'] },
-      { phases: [['route']], notes: ['route'] }, { phases: [['drive']], notes: ['drive'] },
+      { phases: [['route']], notes: ['route'] },
+      // The actuator services drive the three devices at once: the message splits three ways.
+      { phases: [['drive-fan', 'drive-humidifier', 'drive-leds']], notes: ['drive'], stage: 'devices' },
     ],
   },
   record: {
@@ -42,7 +45,7 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
   // Paper-hidden offset for stroke reveals: slightly past 1, so no round cap shows before a line starts.
   const HIDDEN = 1.03;
   let active = true, inView = false, started = false, userPaused = false, complete = false, alive = true, ready = false;
-  let diagram!: SVGSVGElement, routes = new Map<string, Route>(), lastId = '';
+  let diagram!: SVGSVGElement, routes = new Map<string, Route>(), finalStage = '';
   const timeline = gsap.timeline({ paused: true, onComplete: finish });
   const all = <T extends Element = SVGElement>(query: string, scope: ParentNode = diagram) => Array.from(scope.querySelectorAll<T>(query));
   const one = <T extends Element = SVGElement>(query: string) => diagram.querySelector<T>(query);
@@ -77,7 +80,6 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
   }
   function mountLayout() {
     diagram = root.querySelector<SVGSVGElement>(`[data-flow-layout="${narrow.matches ? 'narrow' : 'wide'}"]`)!;
-    lastId = all<SVGGElement>('[data-ink-node][data-final]')[0]?.dataset.inkNode ?? '';
     routes = new Map(all<SVGPathElement>('[data-ink-route]').map((path): [string, Route] => {
       const id = path.dataset.inkRoute!, samples = sample(path);
       const drop: Drop = { el: one<SVGGElement>(`[data-ink-drop="${id}"]`)!, x: samples.xs[0], y: samples.ys[0], angle: samples.angles[0], stretch: 0, pop: 0 };
@@ -95,13 +97,14 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
   function reset() {
     sounds?.stop(owner);
     for (const route of routes.values()) { route.drop.pop = 0; draw(route.drop); }
-    for (const line of all('[data-ink-trail],[data-ink-mark],[data-ink-loop]')) line.setAttribute('stroke-dashoffset', String(HIDDEN));
+    for (const line of all('[data-ink-trail],[data-ink-mark],[data-ink-loop],[data-ink-group-loop]')) line.setAttribute('stroke-dashoffset', String(HIDDEN));
     gsap.set(all('[data-ink-reveal]'), { attr: { r: 0 } });
     gsap.set(all('[data-ink-note-reveal]'), { attr: { width: 0 } });
     gsap.set(all('[data-ink-wash]'), { opacity: 0, scale: .45 });
     gsap.set(all('[data-ink-icon]'), { scale: 1, scaleX: 1, scaleY: 1, rotation: 0, x: 0 });
     gsap.set(all('[data-ink-stamp]'), { opacity: 0, scale: 1.9, rotation: -26 });
-    gsap.set(all('[data-ink-ripple],[data-ink-splash],[data-ink-flash]'), { opacity: 0 });
+    gsap.set(all('[data-ink-ripple],[data-ink-splash],[data-ink-flash],[data-ink-glow],[data-ink-mist]'), { opacity: 0 });
+    gsap.set(all('[data-ink-mist]'), { y: 0 });
     gsap.set(all('.ink-name'), { fill: colors.pencil });
     gsap.set(all('.ink-detail'), { fill: colors.pencilDetail });
     gsap.set(all('[data-ink-junction]'), { fill: '#c3beae', attr: { r: 3.2 } });
@@ -112,15 +115,17 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
   function inked() {
     sounds?.stop(owner);
     for (const route of routes.values()) { route.drop.pop = 0; draw(route.drop); }
-    for (const line of all('[data-ink-trail],[data-ink-mark],[data-ink-loop]')) line.setAttribute('stroke-dashoffset', '0');
+    for (const line of all('[data-ink-trail],[data-ink-mark],[data-ink-loop],[data-ink-group-loop]')) line.setAttribute('stroke-dashoffset', '0');
     gsap.set(all('[data-ink-reveal]'), { attr: { r: 72 } });
     for (const rect of all<SVGRectElement>('[data-ink-note-reveal]')) rect.setAttribute('width', rect.dataset.width!);
     gsap.set(all('[data-ink-wash]'), { opacity: 1, scale: 1 });
     gsap.set(all('[data-ink-icon]'), { scale: 1, scaleX: 1, scaleY: 1, rotation: 0, x: 0 });
     gsap.set(all('[data-ink-stamp]'), { opacity: .8, scale: 1, rotation: -9 });
-    gsap.set(all('[data-ink-ripple],[data-ink-splash],[data-ink-flash]'), { opacity: 0 });
+    gsap.set(all('[data-ink-ripple],[data-ink-splash],[data-ink-flash],[data-ink-mist]'), { opacity: 0 });
+    // The LEDs stay softly lit on the finished page.
+    gsap.set(all('[data-ink-glow]'), { opacity: .45, scale: 1 });
     gsap.set(all('.ink-name'), { fill: colors.ink });
-    if (lastId) gsap.set(part(lastId, '.ink-name'), { fill: colors.final });
+    gsap.set(all('[data-ink-node][data-final] .ink-name'), { fill: colors.final });
     gsap.set(all('.ink-detail'), { fill: colors.detail });
     gsap.set(all('[data-ink-junction]'), { fill: colors.ink, attr: { r: 3.2 } });
     for (const item of all<SVGGElement>('[data-ink-node]')) item.dataset.state = 'ink';
@@ -207,6 +212,13 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
       case 'spin': timeline.fromTo(icon, { rotation: 0 }, { rotation: 360, duration: 1.1, ease: 'power2.inOut', immediateRender: false }, time).set(icon, { rotation: 0 }, time + 1.1); break;
       case 'tick': timeline.fromTo(icon, { rotation: -28 }, { rotation: 0, duration: .8, ease: 'elastic.out(1,.4)', immediateRender: false }, time); break;
       case 'flash': timeline.fromTo(part(id, '[data-ink-flash]'), { opacity: .95, attr: { r: 8 } }, { opacity: 0, attr: { r: 38 }, duration: .55, ease: 'power2.out', immediateRender: false }, time + .08); break;
+      // Small puffs of mist rise from the humidifier and fade.
+      case 'mist': timeline.fromTo(part(id, '[data-ink-mist]'), { opacity: .8, y: 4 }, { opacity: 0, y: -22, duration: 1.1, ease: 'sine.out', stagger: .16, immediateRender: false }, time + .1); break;
+      // The LEDs light up with a warm glow that settles to a steady light.
+      case 'glow':
+        timeline.fromTo(part(id, '[data-ink-glow]'), { opacity: 0, scale: .6 }, { opacity: .95, scale: 1.12, duration: .35, ease: 'power2.out', immediateRender: false }, time + .05)
+          .to(part(id, '[data-ink-glow]'), { opacity: .45, scale: 1, duration: .7, ease: 'sine.inOut' }, time + .4);
+        break;
     }
   }
 
@@ -222,7 +234,8 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
       if (!phases.length) return;
       for (const id of stretch.sources ?? []) arrive(id, time - .45, 'source');
       const durations = phases.map(phase => Math.max(...phase.map(span))), total = durations.reduce((sum, value) => sum + value, 0);
-      const destination = phases.at(-1)![0].to, final = index === script.stretches.length - 1;
+      const destinations = [...new Set(phases.at(-1)!.map(route => route.to))], final = index === script.stretches.length - 1;
+      const destination = stretch.stage ?? destinations[0];
       stage(`to-${destination}`, time); cue('travel', time, total);
       for (const note of stretch.notes) write(note, time, total);
       let clock = time;
@@ -236,8 +249,10 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
         }
         clock += durations[step];
       });
-      stage(destination, clock); arrive(destination, clock, final ? 'final' : 'hop', phases.flat());
-      arrival = clock; time = clock + (node(destination)?.dataset.verb === 'stamp' ? .66 : .52);
+      stage(destination, clock);
+      for (const id of destinations) arrive(id, clock, final ? 'final' : 'hop', phases.flat());
+      if (final) { finalStage = destination; stroke(one('[data-ink-group-loop]') ?? undefined, clock + .5, 1.2, 'power1.inOut'); }
+      arrival = clock; time = clock + (node(destinations[0])?.dataset.verb === 'stamp' ? .66 : .52);
     });
     timeline.to({}, { duration: .01 }, arrival + 1.35);
   }
@@ -253,7 +268,7 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
     controls.hidden = reduced.matches;
   }
   function finish() {
-    complete = true; root.dataset.flowStage = lastId; syncControls();
+    complete = true; root.dataset.flowStage = finalStage; syncControls();
     status.textContent = `The ${flowName} path is complete. ${root.dataset.flowCompletion} Replay to follow it again.`;
   }
   function stillView() {
