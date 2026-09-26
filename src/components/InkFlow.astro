@@ -244,7 +244,7 @@ const label = (side: Side, size: number) => ({
           </defs>
           <g class="ink-routes">
             {flow.links.map(link => <g class:list={{ 'ink-link-dashed': link.dashed }} data-ink-route-group={link.id}>
-              <path class="ink-route" d={layout.routes[link.id]} data-ink-route={link.id} data-ink-to={link.to} />
+              <path class="ink-route" d={layout.routes[link.id]} data-ink-route={link.id} data-ink-to={link.to} data-ink-kind={link.kind} />
               <path class="ink-trail" d={layout.routes[link.id]} pathLength="1" data-ink-trail={link.id} />
             </g>)}
             {layout.junction && <circle class="ink-junction" data-ink-junction cx={layout.junction[0]} cy={layout.junction[1]} r="3.2" />}

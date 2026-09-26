@@ -198,31 +198,33 @@ const routes = [
       button.addEventListener('click',()=>{const tab=tabs.find(item=>item.dataset.route===button.dataset.flowGoto);if(tab){selectRoute(tab);tab.focus();}});
     });
 
-    let unlocking=false;
+    // Browsers start audio only after a visitor's gesture. The first time it starts, the open drawing replays so it is heard from the beginning.
+    let heard=false;
+    const openFlow=()=>flows.get(tabs.find(tab=>tab.getAttribute('aria-selected')==='true')!.dataset.route!);
     const unlockDefault=async(event:Event)=>{
-      if(motion.matches||!sounds.enabled||sounds.ready||unlocking||soundButton.contains(event.target as Node))return;
-      unlocking=true;
-      const ready=await sounds.enable();unlocking=false;
+      if(!event.isTrusted||motion.matches||!sounds.enabled||sounds.ready||soundButton.contains(event.target as Node))return;
+      const ready=await sounds.enable();
       if(motion.matches)sounds.disable();
       syncSound();
-      if(ready&&!motion.matches)flows.get(tabs.find(tab=>tab.getAttribute('aria-selected')==='true')!.dataset.route!)?.restart();
+      if(ready&&!heard&&!motion.matches){heard=true;openFlow()?.restart();}
     };
-    document.addEventListener('pointerdown',unlockDefault,{capture:true});
-    document.addEventListener('keydown',unlockDefault,{capture:true});
+    // Touch screens allow audio when a tap lifts, not when it lands.
+    for(const type of ['pointerdown','pointerup','touchend','keydown'])document.addEventListener(type,unlockDefault,{capture:true});
+    // Sound is on by default; a visitor who mutes the diagrams stays muted on later visits.
+    const remember=(on:boolean)=>{try{if(on)localStorage.removeItem('diagram-sound');else localStorage.setItem('diagram-sound','off');}catch{/* storage unavailable */}};
+    const muted=()=>{try{return localStorage.getItem('diagram-sound')==='off';}catch{return false;}};
 
     soundButton.addEventListener('click',async()=>{
-      if(sounds.enabled){sounds.disable();syncSound();return;}
-      soundButton.disabled=true;soundLabel.textContent='Loading sound';
+      if(sounds.enabled){sounds.disable();remember(false);syncSound();return;}
       const ready=await sounds.enable();
       if(motion.matches){sounds.disable();syncSound();return;}
-      syncSound();
-      if(ready){sounds.play('click','controls');flows.get(tabs.find(tab=>tab.getAttribute('aria-selected')==='true')!.dataset.route!)?.restart();}
-      else soundLabel.textContent='Sound unavailable';
+      if(!ready){sounds.disable();syncSound();soundLabel.textContent='Sound unavailable';return;}
+      remember(true);heard=true;syncSound();
+      sounds.play('click','controls');openFlow()?.restart();
     });
     motion.addEventListener('change',()=>{if(motion.matches)sounds.disable();syncSound();});
-    document.addEventListener('visibilitychange',()=>{if(document.hidden)sounds.stop();});
     window.addEventListener('pagehide',event=>{sounds.stop();if(!event.persisted)sounds.dispose();});
-    if(motion.matches)sounds.disable();
+    if(motion.matches||muted())sounds.disable();
     syncSound();
 
     tabs.forEach((tab, index) => {

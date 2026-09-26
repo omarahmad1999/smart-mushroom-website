@@ -1,8 +1,8 @@
 import { gsap } from 'gsap';
-import type { FlowSounds } from './flow-sounds';
+import type { FlowSounds, Ink, Place, Voice } from './flow-sounds';
 
 type Drop = { el: SVGGElement; x: number; y: number; angle: number; stretch: number; pop: number };
-type Route = { id: string; to: string; trail: SVGPathElement; drop: Drop; length: number; xs: Float32Array; ys: Float32Array; angles: Float32Array };
+type Route = { id: string; to: string; kind: Ink; trail: SVGPathElement; drop: Drop; length: number; xs: Float32Array; ys: Float32Array; angles: Float32Array };
 // A pathway is a list of stretches. Each stretch moves one or more messages at once, in phases (two sensor readings,
 // then the merged message); it writes its notes while travelling and arrives where its last phase ends.
 // A stretch whose last phase fans out to several parts arrives at all of them, under one shared stage name.
@@ -30,6 +30,10 @@ const scripts: Record<string, { start: string; sources: string[]; stretches: Str
     stretches: [{ phases: [['trigger']], notes: ['trigger'] }, { phases: [['save']], notes: ['save'] }, { phases: [['prepare']], notes: ['prepare'] }],
   },
 };
+// When each part's own sound falls after it is inked, in step with its animation (the stamp lands, the shutter fires…).
+const cues: Partial<Record<string, number>> = { stamp: .34, scribble: .12, layer: .12, stack: .1, film: .12, chart: .15, tilt: .16, toggle: .04, spin: 0, tick: 0, flash: .08, mist: .1, glow: .05 };
+// How fast an eased stroke moves at eased progress p, relative to its average speed.
+const pace = { sine: (p: number) => Math.PI * Math.sqrt(Math.max(0, p * (1 - p))), quad: (p: number) => 2 * Math.sqrt(2 * Math.max(0, Math.min(p, 1 - p))) };
 
 /** A finite, authored ink explanation of one pathway. No readings, device clocks or services. */
 export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
@@ -52,6 +56,16 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
   const node = (id: string) => one<SVGGElement>(`[data-ink-node="${id}"]`);
   const part = (id: string, query: string) => all(query, node(id)!);
   const canSound = () => active && inView && !document.hidden && !userPaused && !reduced.matches;
+  const hearing = () => canSound() && !!sounds?.ready;
+  const at = (id: string) => node(id)!.getAttribute('transform')!.match(/-?[\d.]+/g)!.map(Number);
+  // Sounds sit where they happen: left to right across the drawing, and a little lower further down a phone drawing.
+  function where(x: number, y: number, level = 1): Place {
+    const box = diagram.viewBox.baseVal, across = Math.max(-1, Math.min(1, x / box.width * 2 - 1));
+    return narrow.matches ? { pan: across * .3, pitch: 1.04 - .1 * y / box.height, level } : { pan: across * .6, pitch: 1, level };
+  }
+  const whereIs = (id: string, level = 1) => { const [x, y] = at(id); return where(x, y, level); };
+  // A typical stroke's speed, so the pen sounds alike on the wide drawing and the more compact phone one.
+  const strokeSpeed = () => narrow.matches ? 150 : 300;
 
   // Sample each route once per layout; while the drop moves it only interpolates between stored points.
   function sample(path: SVGPathElement) {
@@ -83,7 +97,7 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
     routes = new Map(all<SVGPathElement>('[data-ink-route]').map((path): [string, Route] => {
       const id = path.dataset.inkRoute!, samples = sample(path);
       const drop: Drop = { el: one<SVGGElement>(`[data-ink-drop="${id}"]`)!, x: samples.xs[0], y: samples.ys[0], angle: samples.angles[0], stretch: 0, pop: 0 };
-      return [id, { id, to: path.dataset.inkTo!, trail: one<SVGPathElement>(`[data-ink-trail="${id}"]`)!, drop, ...samples }];
+      return [id, { id, to: path.dataset.inkTo!, kind: (path.dataset.inkKind ?? 'reading') as Ink, trail: one<SVGPathElement>(`[data-ink-trail="${id}"]`)!, drop, ...samples }];
     }));
     // Each handwritten line is revealed by a feathered mask as wide as the written text.
     for (const text of all<SVGTextElement>('[data-ink-note-line]')) {
@@ -132,15 +146,28 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
   }
 
   function stage(name: string, time: number) { timeline.call(() => { root.dataset.flowStage = name; }, [], time); }
-  function cue(name: 'node' | 'travel' | 'complete', time: number, duration: number) {
-    timeline.call(() => { if (canSound()) sounds?.play(name, owner, duration / timeline.timeScale()); }, [], time);
+  function sound(voice: Voice, time: number, spot?: Place) {
+    timeline.call(() => { if (canSound()) sounds?.play(voice, owner, spot); }, [], time);
   }
   function stroke(target: Element | undefined, time: number, duration: number, ease = 'sine.inOut') {
     if (target) timeline.fromTo(target, { attr: { 'stroke-dashoffset': HIDDEN } }, { attr: { 'stroke-dashoffset': 0 }, duration, ease, immediateRender: false }, time);
   }
-  function travel(route: Route, start: number, duration: number, gulp = false) {
-    const state = { progress: 0 };
-    timeline.fromTo(state, { progress: 0 }, { progress: 1, duration, ease: 'sine.inOut', immediateRender: false, onUpdate: () => place(route, state.progress) }, start)
+  // The closing loop is drawn with an audible pen stroke that follows its speed, fastest halfway round.
+  function flourish(target: SVGPathElement | undefined, time: number, duration: number, spot: Place) {
+    if (!target) return;
+    const state = { progress: 0 }, speed = target.getTotalLength() / duration / strokeSpeed();
+    timeline.fromTo(state, { progress: 0 }, { progress: 1, duration, ease: 'power1.inOut', immediateRender: false, onUpdate: () => {
+      target.setAttribute('stroke-dashoffset', String(HIDDEN * (1 - state.progress)));
+      if (hearing()) sounds!.pen(owner, 'loop', pace.quad(state.progress) * speed, 'reading', spot);
+    }, onComplete: () => sounds?.lift(owner, 'loop') }, time);
+  }
+  function travel(route: Route, start: number, duration: number, gulp = false, level = 1) {
+    const state = { progress: 0 }, speed = route.length / duration / strokeSpeed();
+    // The pen scratches in step with the drop: loudest mid-route, quiet as it sets off and lands.
+    timeline.fromTo(state, { progress: 0 }, { progress: 1, duration, ease: 'sine.inOut', immediateRender: false, onUpdate: () => {
+      place(route, state.progress);
+      if (hearing()) sounds!.pen(owner, route.id, pace.sine(state.progress) * speed, route.kind, where(route.drop.x, route.drop.y, level));
+    }, onComplete: () => sounds?.lift(owner, route.id) }, start)
       // A fresh drop swells into being; a merged one gulps its two halves together.
       .fromTo(route.drop, { pop: gulp ? .55 : 0 }, { pop: 1, duration: gulp ? .5 : .32, ease: gulp ? 'elastic.out(1.1,.45)' : 'back.out(2.4)', immediateRender: false, onUpdate: () => draw(route.drop) }, start)
       .to(route.drop, { pop: 0, duration: .2, ease: 'power2.in', onUpdate: () => draw(route.drop) }, start + duration - .1);
@@ -157,19 +184,20 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
   }
   // Where a message enters a part, relative to its centre, so the ink spreads in from that side.
   function entry(id: string, incoming: Route[]) {
-    const [x, y] = node(id)!.getAttribute('transform')!.match(/-?[\d.]+/g)!.map(Number);
+    const [x, y] = at(id);
     const route = incoming.find(item => item.to === id); if (!route) return [0, 0];
     const dx = route.xs.at(-1)! - x, dy = route.ys.at(-1)! - y, reach = Math.hypot(dx, dy) || 1;
     return [dx / reach * 34, dy / reach * 34];
   }
-  function arrive(id: string, time: number, kind: 'source' | 'hop' | 'final', incoming: Route[] = []) {
+  // Several parts inked at once share the loudness of one.
+  function arrive(id: string, time: number, kind: 'source' | 'hop' | 'final', incoming: Route[] = [], level = 1) {
     const target = node(id); if (!target) return;
     const icon = part(id, '[data-ink-icon]'), reveal = one<SVGCircleElement>(`[data-ink-reveal="${id}"]`)!, [ex, ey] = entry(id, incoming);
     timeline.call(() => {
       target.dataset.state = 'ink'; reveal.setAttribute('cx', String(ex)); reveal.setAttribute('cy', String(ey));
       for (const splash of part(id, '[data-ink-splash]')) { splash.setAttribute('cx', String(ex)); splash.setAttribute('cy', String(ey)); }
     }, [], time);
-    if (kind !== 'source') cue(kind === 'final' ? 'complete' : 'node', time, kind === 'final' ? 1.1 : .5);
+    if (kind !== 'source') sound('blot', time, whereIs(id, level));
     // Ink spreads into the icon from the side the message came in, then a watercolour wash blooms behind it.
     timeline.fromTo(reveal, { attr: { r: 0 } }, { attr: { r: 72 }, duration: .62, ease: 'power2.out', immediateRender: false }, time)
       .fromTo(part(id, '[data-ink-wash]'), { opacity: 0, scale: .45 }, { opacity: 1, scale: 1, duration: .8, ease: 'expo.out', immediateRender: false }, time + .05)
@@ -180,12 +208,13 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
     // Parts whose own action moves the icon skip the settling bounce, so two tweens never pull on it at once.
     if (!['stamp', 'layer', 'stack', 'film', 'spin', 'toggle', 'tilt'].includes(target.dataset.verb!)) timeline.fromTo(icon, { scale: 1.1 }, { scale: 1, duration: .7, ease: 'elastic.out(1,.55)', immediateRender: false }, time);
     act(id, time);
-    if (kind === 'final') stroke(part(id, '[data-ink-loop]')[0], time + .45, .95, 'power1.inOut');
+    if (kind === 'final') flourish(part(id, '[data-ink-loop]')[0] as SVGPathElement | undefined, time + .45, .95, whereIs(id, .8));
   }
-  // Each part then does one small thing that shows its job.
+  // Each part then does one small thing that shows its job, and makes the sound of it.
   function act(id: string, time: number) {
-    const icon = part(id, '[data-ink-icon]'), mark = part(id, '[data-ink-mark]')[0];
-    switch (node(id)!.dataset.verb) {
+    const icon = part(id, '[data-ink-icon]'), mark = part(id, '[data-ink-mark]')[0], verb = node(id)!.dataset.verb!, delay = cues[verb];
+    if (delay !== undefined) sound(verb as Voice, time + delay, whereIs(id));
+    switch (verb) {
       case 'ripple': timeline.fromTo(part(id, '[data-ink-ripple]'), { opacity: .55, attr: { r: 16 } }, { opacity: 0, attr: { r: 46 }, duration: 1.15, ease: 'power1.out', stagger: .3, immediateRender: false }, time); break;
       case 'stamp': {
         const body = part(id, '[data-ink-stamp]');
@@ -236,22 +265,24 @@ export function mountInkFlow(root: HTMLElement, sounds?: FlowSounds) {
       const durations = phases.map(phase => Math.max(...phase.map(span))), total = durations.reduce((sum, value) => sum + value, 0);
       const destinations = [...new Set(phases.at(-1)!.map(route => route.to))], final = index === script.stretches.length - 1;
       const destination = stretch.stage ?? destinations[0];
-      stage(`to-${destination}`, time); cue('travel', time, total);
+      stage(`to-${destination}`, time);
       for (const note of stretch.notes) write(note, time, total);
       let clock = time;
       phases.forEach((phase, step) => {
         // After two messages travel together, one continues: it gulps them together where they meet.
-        const gulp = step > 0 && phases[step - 1].length > 1;
-        for (const route of phase) travel(route, gulp ? clock - .04 : clock, durations[step], gulp);
-        if (step < phases.length - 1) {
-          const dot = one('[data-ink-junction]');
-          if (dot) timeline.to(dot, { fill: colors.ink, duration: .2, ease: 'sine.out' }, clock + durations[step]).fromTo(dot, { attr: { r: 6 } }, { attr: { r: 3.2 }, duration: .45, ease: 'back.out(3)', immediateRender: false }, clock + durations[step]);
-        }
+        const gulp = step > 0 && phases[step - 1].length > 1, dot = one('[data-ink-junction]');
+        if (gulp && dot) sound('gulp', clock - .04, where(Number(dot.getAttribute('cx')), Number(dot.getAttribute('cy'))));
+        for (const route of phase) travel(route, gulp ? clock - .04 : clock, durations[step], gulp, 1 / Math.sqrt(phase.length));
+        if (step < phases.length - 1 && dot) timeline.to(dot, { fill: colors.ink, duration: .2, ease: 'sine.out' }, clock + durations[step]).fromTo(dot, { attr: { r: 6 } }, { attr: { r: 3.2 }, duration: .45, ease: 'back.out(3)', immediateRender: false }, clock + durations[step]);
         clock += durations[step];
       });
       stage(destination, clock);
-      for (const id of destinations) arrive(id, clock, final ? 'final' : 'hop', phases.flat());
-      if (final) { finalStage = destination; stroke(one('[data-ink-group-loop]') ?? undefined, clock + .5, 1.2, 'power1.inOut'); }
+      for (const id of destinations) arrive(id, clock, final ? 'final' : 'hop', phases.flat(), 1 / Math.sqrt(destinations.length));
+      if (final) {
+        finalStage = destination;
+        const [x, y] = destinations.map(at).reduce(([sx, sy], [px, py]) => [sx + px / destinations.length, sy + py / destinations.length], [0, 0]);
+        flourish(one<SVGPathElement>('[data-ink-group-loop]') ?? undefined, clock + .5, 1.2, where(x, y, .8));
+      }
       arrival = clock; time = clock + (node(destinations[0])?.dataset.verb === 'stamp' ? .66 : .52);
     });
     timeline.to({}, { duration: .01 }, arrival + 1.35);
