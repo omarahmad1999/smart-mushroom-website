@@ -3,9 +3,10 @@
  * A pen scratches while each message travels, a drop of ink taps as it lands, and each part makes the small
  * sound of its own action. Audio starts only after the visitor interacts, and follows pause, mute and hidden tabs.
  */
-export type Voice = 'blot' | 'gulp' | 'stamp' | 'scribble' | 'layer' | 'chart' | 'tilt' | 'toggle' | 'spin' | 'mist' | 'glow' | 'tick' | 'flash' | 'stack' | 'film' | 'click';
-/** The kind of message a pen carries changes its stroke a little, as it changes the drop's shape. */
-export type Ink = 'reading' | 'command' | 'photo';
+export type Voice = 'blot' | 'gulp' | 'stamp' | 'scribble' | 'layer' | 'chart' | 'tilt' | 'toggle' | 'spin' | 'mist' | 'glow' | 'tick' | 'flash' | 'stack' | 'film' | 'click' | 'tap' | 'gate' | 'fill';
+/** The kind of message a pen carries changes its stroke a little, as it changes the drop's shape.
+ *  `light` is the 3D dioramas' version: a soft rush of light through a glass tube. */
+export type Ink = 'reading' | 'command' | 'photo' | 'light';
 /** Where a sound happens: pan follows the drawing left to right, pitch dips a little further down a phone drawing. */
 export type Place = { pan?: number; pitch?: number; level?: number };
 
@@ -86,9 +87,9 @@ const synths: Record<Voice, Synth> = {
   gulp: (kit, out, t, p) => chain(osc(kit, 'sine', 380 * p, 900 * p, t, .045, .14), hit(kit, t, .15, .004, .09), out),
   // Mosquitto's rubber stamp: a felt thump, a slap of paper, a faint lift.
   stamp: (kit, out, t, p) => {
-    chain(osc(kit, 'sine', 150 * p, 55 * p, t, .12, .4), hit(kit, t, .32, .003, .3), out);
-    chain(osc(kit, 'triangle', 340 * p, 190 * p, t, .06, .2), hit(kit, t, .12, .002, .12), out);
-    chain(hiss(kit, kit.white, t, .1), band(kit, 'bandpass', 1300 * p, .8), hit(kit, t, .2, .001, .06), out);
+    chain(osc(kit, 'sine', 150 * p, 55 * p, t, .12, .4), hit(kit, t, .29, .003, .3), out);
+    chain(osc(kit, 'triangle', 340 * p, 190 * p, t, .06, .2), hit(kit, t, .11, .002, .12), out);
+    chain(hiss(kit, kit.white, t, .1), band(kit, 'bandpass', 1300 * p, .8), hit(kit, t, .18, .001, .06), out);
     chain(hiss(kit, kit.white, t + .16, .04), band(kit, 'highpass', 2500), hit(kit, t + .16, .035, .001, .012), out);
   },
   // The database writer's quick pencil scribble, back and forth.
@@ -156,23 +157,42 @@ const synths: Record<Voice, Synth> = {
     gate.type = 'square'; gate.frequency.value = 24; chain(gate, depth); depth.connect(shutter.gain); gate.start(t); gate.stop(t + .75);
     chain(hiss(kit, kit.white, t, .75), band(kit, 'bandpass', 1900 * p, 1.4), shutter, hit(kit, t, .21, .08, .6), out);
   },
+  // A message of light arriving at a platform: a small, glassy tap.
+  tap: (kit, out, t, p) => {
+    for (const [tone, share, decay] of [[1250, 1, .16], [2975, .5, .09], [4410, .28, .05]]) chain(osc(kit, 'sine', tone * p, tone * p, t, .01, decay + .04), hit(kit, t, .07 * share, .002, decay), out);
+    chain(hiss(kit, kit.white, t, .02), band(kit, 'bandpass', 5200, 1), hit(kit, t, .05, .001, .008), out);
+  },
+  // Mosquitto's gate: a soft mechanical clunk and a short metallic ring as the message passes through.
+  gate: (kit, out, t, p) => {
+    chain(osc(kit, 'sine', 180 * p, 90 * p, t, .1, .3), hit(kit, t, .26, .003, .2), out);
+    for (const [tone, share] of [[820, 1], [1340, .6]]) chain(osc(kit, 'sine', tone * p, tone * p, t, .01, .32), hit(kit, t, .045 * share, .003, .26), out);
+    chain(hiss(kit, kit.white, t, .12), band(kit, 'bandpass', 2000 * p, .8), hit(kit, t, .09, .01, .08), out);
+  },
+  // TimescaleDB's discs filling with light: a soft swell that brightens as it rises.
+  fill: (kit, out, t, p) => {
+    const rise = band(kit, 'lowpass', 400 * p, .8);
+    rise.frequency.setValueCurveAtTime([400, 1100, 2400, 1500].map(value => value * p), t, .7);
+    chain(hiss(kit, kit.white, t, .75), rise, shape(kit, t, .7, [0, .6, 1, .55, 0], .14), out);
+  },
   // Pause, play, replay and tabs: a light tap.
   click: (kit, out, t) => {
-    chain(hiss(kit, kit.white, t, .02), band(kit, 'bandpass', 2600, 1.1), hit(kit, t, .49, .001, .01), out);
-    chain(osc(kit, 'triangle', 1200, 800, t, .01, .03), hit(kit, t, .14, .001, .012), out);
+    chain(hiss(kit, kit.white, t, .02), band(kit, 'bandpass', 2600, 1.1), hit(kit, t, .6, .001, .012), out);
+    chain(osc(kit, 'triangle', 1200, 800, t, .01, .03), hit(kit, t, .17, .001, .014), out);
   },
 };
 
-const PEN = .45, penTone: Record<Ink, number> = { reading: 2300, command: 3100, photo: 1800 };
+const PEN = .45, penTone: Record<Ink, number> = { reading: 2300, command: 3100, photo: 1800, light: 1150 };
 // The pen follows its speed (1 is a typical stroke at full pace): faster is louder, brighter and grittier.
 function penAt(speed: number, pitch: number, ink: Ink, level: number) {
   const pace = Math.min(1.6, Math.max(0, speed));
-  return { gain: PEN * level * Math.min(1, pace / 1.3) ** 1.4, frequency: penTone[ink] * pitch * (.75 + .3 * pace), rate: .8 + .35 * pace };
+  return { gain: PEN * level * (ink === 'light' ? .36 : 1) * Math.min(1, pace / 1.3) ** 1.4, frequency: penTone[ink] * pitch * (.75 + .3 * pace), rate: .8 + .35 * pace };
 }
 function penOn(kit: Kit, out: AudioNode, ink: Ink): Pen {
-  const context = kit.context, source = context.createBufferSource(), tone = band(kit, 'bandpass', penTone[ink], ink === 'photo' ? .6 : .9), gain = amp(kit, 0), pan = context.createStereoPanner();
-  source.buffer = kit.grain; source.loop = true; source.start(context.currentTime, Math.random() * 1.5);
-  chain(source, band(kit, 'highpass', 700), tone, gain, pan, out);
+  const context = kit.context, source = context.createBufferSource(), tone = band(kit, 'bandpass', penTone[ink], ink === 'photo' || ink === 'light' ? .55 : .9), gain = amp(kit, 0), pan = context.createStereoPanner();
+  // Light rushes rather than scratches: smooth noise, softened at the top.
+  source.buffer = ink === 'light' ? kit.white : kit.grain; source.loop = true; source.start(context.currentTime, Math.random() * 1.5);
+  if (ink === 'light') chain(source, band(kit, 'highpass', 300), tone, band(kit, 'lowpass', 2800), gain, pan, out);
+  else chain(source, band(kit, 'highpass', 700), tone, gain, pan, out);
   return { source, tone, gain, pan };
 }
 // Everything passes through one gentle chain: a small room for warmth, and a limiter so stacked sounds never clip.
@@ -272,13 +292,14 @@ export function createFlowSounds() {
 export type FlowSounds = ReturnType<typeof createFlowSounds>;
 
 /** Renders one sound offline through the same chain, so its level can be checked without speakers. */
-export async function renderSound(voice: Voice | 'pen', seconds = 2.4, sampleRate = 44100) {
+export async function renderSound(voice: Voice | 'pen' | 'rush', seconds = 2.4, sampleRate = 44100) {
   const context = new OfflineAudioContext(2, Math.ceil(seconds * sampleRate), sampleRate), tools = kit(context), out = context.createGain();
   out.connect(mix(context));
-  if (voice !== 'pen') synths[voice](tools, out, .05, 1);
+  if (voice !== 'pen' && voice !== 'rush') synths[voice](tools, out, .05, 1);
   else {
-    // A typical stroke: the pen speeds up to mid-route and slows to a stop over a second.
-    const pen = penOn(tools, out, 'reading'), steps = Array.from({ length: 61 }, (_, i) => penAt(Math.PI / 2 * Math.sin(Math.PI * i / 60), 1, 'reading', 1));
+    // A typical stroke: the pen (or the light) speeds up to mid-route and slows to a stop over a second.
+    const ink: Ink = voice === 'rush' ? 'light' : 'reading';
+    const pen = penOn(tools, out, ink), steps = Array.from({ length: 61 }, (_, i) => penAt(Math.PI / 2 * Math.sin(Math.PI * i / 60), 1, ink, 1));
     pen.gain.gain.setValueCurveAtTime(steps.map(step => step.gain), .05, 1);
     pen.tone.frequency.setValueCurveAtTime(steps.map(step => step.frequency), .05, 1);
     pen.source.playbackRate.setValueCurveAtTime(steps.map(step => step.rate), .05, 1);

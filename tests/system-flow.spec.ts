@@ -1,5 +1,11 @@
 import {test as base,expect,type Page} from '@playwright/test';
 
+// These machines render WebGL in software, which browsers refuse for the diorama; the tests of the live model allow it.
+// Elsewhere Observe stays a poster, so other tests do not pay for the model.
+const allowSoftware3d=()=>{
+  const getContext=HTMLCanvasElement.prototype.getContext as (this:HTMLCanvasElement,type:string,options?:object)=>RenderingContext|null;
+  HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,type:string,options?:object){return getContext.call(this,type,options&&{...options,failIfMajorPerformanceCaveat:false});} as typeof HTMLCanvasElement.prototype.getContext;
+};
 const test=base.extend<{staticBoundary:void}>({
   staticBoundary:[async({page},use)=>{
     const errors:string[]=[],requests:string[]=[],sockets:string[]=[];
@@ -42,6 +48,14 @@ async function reachStage(page:Page,name:string,route='observe') {
   await expect(flow).toHaveAttribute('data-flow-stage',name);
 }
 type Diagram=ReturnType<Page['locator']>;
+// The 3D diorama renders every simulated frame, which is slow without a GPU: jump the clock in
+// 300 ms strides instead (one frame each, under GSAP's 500 ms lag threshold, so time still flows).
+async function jump(page:Page,ms:number){for(let left=ms;left>0;left-=300)await page.clock.fastForward(Math.min(300,left));}
+async function jumpToStage(page:Page,name:string){
+  const flow=page.locator('[data-system-flow="observe"]');
+  for(let elapsed=0;elapsed<3000;elapsed+=300){if(await flow.getAttribute('data-flow-stage')===name)return;await page.clock.fastForward(300);}
+  await expect(flow).toHaveAttribute('data-flow-stage',name);
+}
 const trailOffsets=(diagram:Diagram)=>diagram.locator('[data-ink-trail]').evaluateAll(paths=>paths.map(path=>parseFloat(getComputedStyle(path).strokeDashoffset)));
 const written=(diagram:Diagram,note='')=>diagram.locator(`[data-ink-note-reveal^="${note}"]`).evaluateAll(rects=>rects.map(rect=>Number(rect.getAttribute('width'))/Number((rect as SVGElement).dataset.width)));
 const states=(diagram:Diagram)=>diagram.locator('[data-ink-node]').evaluateAll(nodes=>Object.fromEntries(nodes.map(node=>[(node as SVGElement).dataset.inkNode!,(node as SVGElement).dataset.state!])));
@@ -54,70 +68,58 @@ const heads=(diagram:Diagram,ids:string[])=>diagram.evaluate((svg,ids)=>ids.map(
 }),ids);
 const moving=(diagram:Diagram)=>diagram.locator('[data-ink-drop]').evaluateAll(drops=>drops.filter(drop=>getComputedStyle(drop).visibility==='visible').map(drop=>(drop as SVGElement).dataset.inkDrop!));
 
-test('the Observe ink drawing carries merged readings through every part and leaves a complete page',async({page})=>{
+// The Observe path is a 3D diorama: its labels, stages and caption are what a reader follows.
+const litLabels=(flow:Diorama)=>flow.locator('[data-diorama-label]').evaluateAll(labels=>labels.filter(label=>(label as HTMLElement).dataset.state==='lit').map(label=>(label as HTMLElement).dataset.dioramaLabel!));
+type Diorama=ReturnType<Page['locator']>;
+
+test('the Observe diorama carries merged readings through every part and leaves a lit model',async({page})=>{
+  test.setTimeout(120_000);
+  await page.addInitScript(allowSoftware3d);
   const flow=await openClocked(page);
-  const started=await page.evaluate(()=>performance.now());
-  const diagram=flow.locator('.ink-diagram:visible');
-  await expect(flow).toHaveAttribute('data-flow-style','ink');
-  await expect(diagram.locator('[data-ink-node]')).toHaveCount(6);
-  // Nothing is inked before the readings leave the sensors.
-  expect(Object.values(await states(diagram)).every(state=>state==='pencil')).toBe(true);
-  expect((await trailOffsets(diagram)).every(offset=>offset>1)).toBe(true);
-  expect((await written(diagram)).every(value=>value===0)).toBe(true);
-  // Both sensor routes end exactly where the merged route to Mosquitto begins.
-  const ends=await diagram.locator('[data-ink-route="sht31"],[data-ink-route="scd41"],[data-ink-route="merged"]').evaluateAll(paths=>paths.map((element,index)=>{const path=element as SVGPathElement,point=path.getPointAtLength(index===2?0:path.getTotalLength());return[Math.round(point.x),Math.round(point.y)];}));
-  expect(ends[0]).toEqual(ends[2]);expect(ends[1]).toEqual(ends[2]);
-  await page.clock.runFor(400);
-  expect((await states(diagram)).sht31).toBe('ink');expect((await states(diagram)).mqtt).toBe('pencil');
-  await reachStage(page,'to-mqtt');await page.clock.runFor(250);
-  // The two drops travel together, and each route is inked exactly up to its drop.
-  const heads=await diagram.evaluate(svg=>['sht31','scd41'].map(id=>{
-    const trail=svg.querySelector<SVGPathElement>(`[data-ink-trail="${id}"]`)!,drop=svg.querySelector<SVGGElement>(`[data-ink-drop="${id}"]`)!;
-    const progress=1-parseFloat(getComputedStyle(trail).strokeDashoffset)/1.03,point=trail.getPointAtLength(progress*trail.getTotalLength());
-    const [x,y]=drop.getAttribute('transform')!.match(/translate\(([-\d.]+) ([-\d.]+)\)/)!.slice(1).map(Number);
-    return{progress,gap:Math.hypot(point.x-x,point.y-y),visibility:getComputedStyle(drop).visibility};
-  }));
-  for(const head of heads){expect(head.progress).toBeGreaterThan(.05);expect(head.progress).toBeLessThan(1);expect(head.gap).toBeLessThan(1.5);expect(head.visibility).toBe('visible');}
-  expect(heads[0].progress).toBeCloseTo(heads[1].progress,4);
-  const readings=await written(diagram,'readings-');
-  expect(readings[0]).toBeGreaterThan(0);expect(readings[0]).toBeLessThan(1);
-  await reachStage(page,'mqtt');
-  expect((await states(diagram)).mqtt).toBe('ink');
-  await page.clock.runFor(500);
-  expect(Number(await diagram.locator('[data-ink-stamp]').evaluate(stamp=>getComputedStyle(stamp).opacity))).toBeGreaterThan(.5);
-  for(const part of ['writer','timescale','grafana']){await reachStage(page,part);expect((await states(diagram))[part]).toBe('ink');}
-  await page.clock.runFor(1600);
+  await expect(flow).toHaveAttribute('data-flow-style','diorama');
+  // The live model replaces the poster; the canvas is decorative and the steps stay in the text.
+  await expect(flow.locator('canvas.diorama-canvas')).toHaveCount(1);
+  await expect(flow.locator('canvas.diorama-canvas')).toHaveAttribute('aria-hidden','true');
+  await expect(flow.locator('.diorama-poster')).toBeHidden();
+  await expect(flow.locator('[data-diorama-label]')).toHaveCount(6);
+  for(const name of ['SHT31','SCD41','Mosquitto','Database writer','TimescaleDB','Grafana'])await expect(flow.locator('[data-diorama-label]').filter({hasText:name})).toBeVisible();
+  expect(await litLabels(flow)).toEqual([]);
+  await jump(page,400);
+  expect((await litLabels(flow)).sort()).toEqual(['scd41','sht31']);
+  await jumpToStage(page,'to-mqtt');
+  await expect(flow.locator('[data-diorama-caption]')).toContainText('merge before Mosquitto');
+  expect(await litLabels(flow)).not.toContain('mqtt');
+  await jumpToStage(page,'mqtt');
+  expect(await litLabels(flow)).toContain('mqtt');
+  for(const part of ['writer','timescale','grafana']){await jumpToStage(page,part);expect(await litLabels(flow)).toContain(part);}
+  await jump(page,1800);
   await expect(flow).toHaveAttribute('data-flow-state','complete');
-  expect(await page.evaluate(()=>performance.now())-started).toBeLessThan(9000);
-  // The finished page keeps every route inked and every note written; the last part is circled in olive.
-  expect((await trailOffsets(diagram)).every(offset=>offset===0)).toBe(true);
-  for(const value of await written(diagram))expect(value).toBeCloseTo(1,3);
-  expect(Object.values(await states(diagram)).every(state=>state==='ink')).toBe(true);
-  expect(await diagram.locator('[data-ink-drop]').evaluateAll(drops=>drops.every(drop=>getComputedStyle(drop).visibility==='hidden'))).toBe(true);
-  await expect(diagram.locator('[data-ink-node="grafana"] .ink-name')).toHaveCSS('fill','rgb(79, 90, 60)');
-  expect(await diagram.locator('[data-ink-loop]').evaluate(loop=>parseFloat(getComputedStyle(loop).strokeDashoffset))).toBe(0);
+  expect((await litLabels(flow)).length).toBe(6);
+  await expect(flow.locator('[data-diorama-caption]')).toHaveText('Grafana displays the stored measurements.');
+  await expect(flow.locator('[data-pathway-status]')).toContainText('The Observe path is complete.');
   await expect(flow.locator('[data-pathway-pause]')).toBeDisabled();
-  await page.clock.runFor(5000);
+  await jump(page,5000);
   await expect(flow).toHaveAttribute('data-flow-state','complete');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
 
 test('pause, replay, offscreen suspension and keyboard tabs keep the sequence under control',async({page})=>{
+  test.setTimeout(120_000);
+  await page.addInitScript(allowSoftware3d);
   const flow=await openClocked(page);
-  const diagram=flow.locator('.ink-diagram:visible');
   const pause=flow.locator('[data-pathway-pause]');
-  await page.clock.runFor(1300);
+  await jump(page,1300);
   await pause.evaluate((button:HTMLButtonElement)=>button.click());
   await expect(flow).toHaveAttribute('data-flow-state','paused');
-  const snapshot=()=>diagram.evaluate(svg=>({trail:getComputedStyle(svg.querySelector('[data-ink-trail="sht31"]')!).strokeDashoffset,drop:svg.querySelector('[data-ink-drop="sht31"]')!.getAttribute('transform'),note:svg.querySelector('[data-ink-note-reveal="readings-0"]')!.getAttribute('width')}));
+  const snapshot=async()=>({stage:await flow.getAttribute('data-flow-stage'),lit:await litLabels(flow),caption:await flow.locator('[data-diorama-caption]').textContent()});
   const before=await snapshot();
-  expect(parseFloat(before.trail)).toBeLessThan(1);expect(parseFloat(before.trail)).toBeGreaterThan(0);
-  await page.clock.runFor(3000);expect(await snapshot()).toEqual(before);
+  expect(before.stage).toBe('to-mqtt');
+  await jump(page,3000);expect(await snapshot()).toEqual(before);
   await pause.evaluate((button:HTMLButtonElement)=>button.click());
-  await page.clock.runFor(400);expect(await snapshot()).not.toEqual(before);
-  await page.evaluate(()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'}));await page.clock.runFor(100);
+  await jump(page,2500);expect((await snapshot()).stage).not.toBe(before.stage);
+  await page.evaluate(()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'}));await jump(page,100);
   await expect(flow).toHaveAttribute('data-flow-state','paused');
-  const stage=await flow.getAttribute('data-flow-stage');await page.clock.runFor(3000);
+  const stage=await flow.getAttribute('data-flow-stage');await jump(page,3000);
   await expect(flow).toHaveAttribute('data-flow-stage',stage!);
   const tabs=page.getByRole('tablist',{name:'Explore a system pathway'}).getByRole('tab');
   await tabs.nth(0).focus();await page.keyboard.press('ArrowRight');
@@ -128,33 +130,31 @@ test('pause, replay, offscreen suspension and keyboard tabs keep the sequence un
   await expect(page.locator('#architecture-panel-record .ink-diagram:visible [data-ink-node]')).toHaveCount(4);
   await page.keyboard.press('Home');
   for(let tries=0;tries<50&&await flow.getAttribute('data-flow-state')!=='running';tries++){await flow.locator('[data-pathway-canvas]').evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));await page.waitForTimeout(200);}
-  await page.clock.runFor(450);
+  await jump(page,450);
+  // Returning to the tab replays the path from the start.
   await expect(flow).toHaveAttribute('data-flow-stage','sensors');
-  expect((await written(diagram,'visualized-')).every(value=>value===0)).toBe(true);
-  await page.clock.runFor(3000);
+  expect(await litLabels(flow)).not.toContain('grafana');
+  await jump(page,3000);
   await flow.locator('[data-pathway-replay]').evaluate((button:HTMLButtonElement)=>button.click());
-  expect(Object.values(await states(diagram)).every(state=>state==='pencil')).toBe(true);
-  await page.clock.runFor(450);
+  expect(await litLabels(flow)).toEqual([]);
+  await jump(page,450);
   await expect(flow).toHaveAttribute('data-flow-stage','sensors');
-  expect((await states(diagram)).sht31).toBe('ink');
+  expect(await litLabels(flow)).toContain('sht31');
 });
 
 test('reduced motion shows the full explanation without travelling pulses',async({page})=>{
+  await page.addInitScript(allowSoftware3d);
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#architecture');
   const flow=page.locator('[data-system-flow="observe"]');
-  await expect(flow.locator('[data-pathway-status]')).toHaveText(/shown with motion reduced/);
+  await flow.scrollIntoViewIfNeeded();
+  await expect(flow.locator('[data-pathway-status]')).toHaveText(/shown with motion reduced/,{timeout:20000});
   await expect(flow).toHaveAttribute('data-flow-state','static');
   await expect(flow.locator('[data-pathway-controls]')).toBeHidden();
   await expect(flow.getByRole('button',{name:/These readings also feed the controllers/})).toBeVisible();
-  const diagram=flow.locator('.ink-diagram:visible');
-  expect((await trailOffsets(diagram)).every(offset=>offset===0)).toBe(true);
-  for(const value of await written(diagram))expect(value).toBeCloseTo(1,3);
-  expect(Object.values(await states(diagram)).every(state=>state==='ink')).toBe(true);
-  expect(await diagram.locator('[data-ink-drop]').evaluateAll(drops=>drops.every(drop=>getComputedStyle(drop).visibility==='hidden'))).toBe(true);
-  for(const [id,expected] of Object.entries({readings:'send readings',published:'carries published measurements',stored:'stores measurements',visualized:'visualizes stored measurements'})) {
-    expect((await diagram.locator(`[data-ink-note="${id}"] text`).allTextContents()).join(' ')).toBe(expected);
-  }
-  await expect(diagram.locator('[data-ink-node="writer"] .ink-name')).toHaveText('Database writer');
+  // The model is shown finished: every part lit and the completion in the caption.
+  expect((await litLabels(flow)).length).toBe(6);
+  await expect(flow.locator('[data-diorama-caption]')).toHaveText('Grafana displays the stored measurements.');
+  await expect(flow.locator('[data-diorama-label="writer"]')).toContainText('Database writer');
   // The handwritten cross-link hands the reader to the Respond pathway.
   await flow.getByRole('button',{name:/These readings also feed the controllers/}).click();
   const respondTab=page.getByRole('tab',{name:/Respond/});
@@ -226,13 +226,16 @@ for(const pathway of [
 
 test.describe('without JavaScript',()=>{
   test.use({javaScriptEnabled:false});
-  test('all three sections and the complete Observe diagram remain readable',async({page})=>{
+  test('all three sections, the Observe poster and the ink diagrams remain readable',async({page})=>{
     await page.goto('/#architecture');
     for(const id of ['observe','respond','record'])await expect(page.locator(`#architecture-panel-${id}`)).toBeVisible();
-    const diagram=page.locator('[data-system-flow="observe"] .ink-diagram:visible');
-    await expect(diagram.locator('[data-ink-node]')).toHaveCount(6);
-    for(const text of ['SHT31','SCD41','Mosquitto','Database writer','TimescaleDB','Grafana'])await expect(diagram.locator('.ink-name').filter({hasText:text})).toBeVisible();
-    for(const note of await diagram.locator('[data-ink-note] text').all())await expect(note).toBeVisible();
+    // Without JavaScript the Observe model is its finished poster, with its steps in the text.
+    const poster=page.locator('[data-system-flow="observe"] .diorama-poster img');
+    // The page's own anchor scroll brings the section into view, which also loads the lazy poster.
+    await expect(poster).toBeVisible();
+    await expect(poster).toHaveAttribute('alt',/Mosquitto.*Grafana/);
+    await expect.poll(()=>poster.evaluate((image:HTMLImageElement)=>image.naturalWidth)).toBeGreaterThan(0);
+    await expect(page.locator('[data-system-flow="observe"] ol')).toContainText('Grafana visualizes the stored measurements');
     for(const link of await page.locator('[data-flow-goto]').all())await expect(link).toBeHidden();
     for(const [route,count,names] of [['respond',8,['Controllers','Mosquitto','Home Assistant','Actuator services','Fan','Humidifier','LEDs']],['record',4,['Capture schedule','Two cameras','Image storage','Media preparation']]] as const) {
       const drawing=page.locator(`[data-system-flow="${route}"] .ink-diagram:visible`);

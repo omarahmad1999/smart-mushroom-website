@@ -1,0 +1,65 @@
+---
+import { dioramas } from '../scripts/diorama/paths';
+
+type Pathway = keyof typeof dioramas;
+interface Props { pathway: Pathway }
+const { pathway } = Astro.props;
+const diorama = dioramas[pathway];
+const named = diorama.parts.filter(part => part.name);
+---
+<div class="diorama-flow" data-system-flow={pathway} data-flow-style="diorama" data-flow-name={diorama.name} data-flow-completion={diorama.completion} data-flow-state="static" data-flow-stage="all" role="group" aria-label={`${diorama.name} Pathway Illustration`}>
+  <ol class="sr-only">{diorama.steps.map(step => <li>{step}</li>)}</ol>
+  <div class="diorama-viewport" data-diorama-viewport data-pathway-canvas>
+    <picture class="diorama-poster">
+      <source media="(max-width: 760px)" srcset={`/media/flow/${pathway}-diorama-narrow.webp`} />
+      <img src={`/media/flow/${pathway}-diorama.webp`} alt={`The ${diorama.name.toLowerCase()} path as a small model: ${named.map(part => part.name).join(', ')}, joined by glass tubes of light.`} width="1240" height="528" loading="lazy" decoding="async" />
+    </picture>
+    <div class="diorama-labels" aria-hidden="true">
+      {named.map(part => <p class="diorama-label" data-diorama-label={part.id} data-state="idle" hidden><span class="diorama-name">{part.name}</span><span class="diorama-detail">{part.detail}</span></p>)}
+    </div>
+    <p class="diorama-caption" data-diorama-caption aria-hidden="true" hidden></p>
+  </div>
+  <div class="diorama-bar">
+    {diorama.crosslink && <button type="button" class="diorama-crosslink" data-flow-goto={diorama.crosslink.to} hidden>{diorama.crosslink.text} <span aria-hidden="true">→</span> {diorama.crosslink.name}</button>}
+    <div class="diorama-playback" data-pathway-controls hidden>
+      <button type="button" data-pathway-pause aria-label={`Pause ${diorama.name} Animation`}><span data-pathway-pause-icon aria-hidden="true">Ⅱ</span><span data-pathway-pause-label>Pause</span></button>
+      <button type="button" data-pathway-replay aria-label={`Replay ${diorama.name} Animation`}><span aria-hidden="true">↺</span>Replay</button>
+    </div>
+  </div>
+  <p class="sr-only" data-pathway-status role="status" aria-live="polite"></p>
+</div>
+
+<style>
+  /* A small studio: a warm sweep of paper behind the model, like a product photograph. */
+  .diorama-flow{position:relative;min-width:0;margin:8px -10px 0}
+  .diorama-viewport{position:relative;aspect-ratio:2.35/1;overflow:hidden;border-radius:6px;background:radial-gradient(ellipse 75% 90% at 50% 38%,#fcf9f3 0%,#f5eee2 58%,#ede4d4 100%)}
+  .diorama-viewport :global(.diorama-canvas){position:absolute;inset:0;width:100%;height:100%;display:block}
+  .diorama-poster,.diorama-poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  [data-diorama-ready] .diorama-poster{display:none}
+  .diorama-labels{position:absolute;inset:0;pointer-events:none}
+  .diorama-label{position:absolute;left:0;top:0;display:grid;gap:2px;margin:0;text-align:center;white-space:nowrap;will-change:transform}
+  .diorama-label[data-side=below-left]{text-align:right}.diorama-label[data-side=below-right],.diorama-label[data-side=right]{text-align:left}
+  .diorama-name{font:500 13px/1.2 var(--font-body,sans-serif);letter-spacing:.01em;color:#a4a596;transition:color .45s}
+  .diorama-detail{font:11px/1.2 var(--font-body,sans-serif);color:#bab9ad;transition:color .45s}
+  .diorama-label[data-state=lit] .diorama-name{color:#24332f}.diorama-label[data-state=lit] .diorama-detail{color:#6f766a}
+  .diorama-name,.diorama-detail{text-shadow:0 0 5px #f8f3ea,0 0 2px #f8f3ea}
+  .diorama-caption{position:absolute;left:16px;bottom:14px;max-width:min(62%,520px);margin:0;padding:7px 11px;border-radius:3px;background:#fffdf8d9;box-shadow:0 1px 3px #4a3b2414;font:12px/1.5 var(--font-body,sans-serif);color:#4f594f}
+  .diorama-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 14px 2px;min-height:48px}
+  .diorama-crosslink{display:inline-block;min-height:44px;padding:9px 4px;border:0;background:none;color:#9a5b36;font:12px/1.3 var(--font-body,sans-serif);text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 30%,transparent);text-underline-offset:4px;transition:color .2s}
+  .diorama-crosslink:hover{color:#24332f}
+  .diorama-crosslink:focus-visible,.diorama-playback button:focus-visible{outline:2px solid #d45b36;outline-offset:3px}
+  .diorama-playback{display:flex;align-items:center;gap:9px;flex:none;margin-left:auto}
+  .diorama-playback button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;border:0;border-radius:3px;background:transparent;color:#69785f;padding:0 10px;font:11px var(--font-body,sans-serif);cursor:pointer}
+  .diorama-playback button>span[aria-hidden]{font-size:16px;line-height:1}
+  .diorama-playback button:hover{color:#9a5b36}
+  .diorama-playback button:disabled{opacity:.45;cursor:default}
+  @media(max-width:760px){
+    .diorama-flow{margin:0 -5px}
+    .diorama-viewport{aspect-ratio:.62/1;max-width:430px;margin:auto}
+    .diorama-name{font-size:12px}.diorama-detail{font-size:10px}
+    .diorama-caption{left:10px;right:10px;bottom:10px;max-width:none;font-size:11px}
+    .diorama-bar{flex-wrap:wrap;padding:6px 8px 0;gap:0 8px}.diorama-crosslink{flex:1 1 100%}
+    .diorama-playback{gap:4px}.diorama-playback button{padding-inline:8px;font-size:10px}
+  }
+  @media(prefers-reduced-motion:reduce){.diorama-playback{display:none}.diorama-name,.diorama-detail{transition:none}}
+</style>

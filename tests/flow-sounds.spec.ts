@@ -3,7 +3,13 @@ test.setTimeout(90_000);
 
 // The diagrams synthesize their sounds and announce each one, so the tests follow what plays, and the audio
 // contexts the page opens, without speakers.
+// These machines render WebGL in software, which browsers refuse for the diorama; allow it so the live model is tested.
+const allowSoftware3d=()=>{
+  const getContext=HTMLCanvasElement.prototype.getContext as (this:HTMLCanvasElement,type:string,options?:object)=>RenderingContext|null;
+  HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,type:string,options?:object){return getContext.call(this,type,options&&{...options,failIfMajorPerformanceCaveat:false});} as typeof HTMLCanvasElement.prototype.getContext;
+};
 async function listen(page:Page){
+  await page.addInitScript(allowSoftware3d);
   await page.addInitScript(()=>{
     const state={contexts:[] as AudioContext[],played:[] as string[],stopped:[] as string[]};
     Object.assign(window,{flowAudioTest:state});
@@ -36,10 +42,10 @@ test('diagram sound defaults on, starts on interaction, and stops with pause and
   // The ink drawing waits until most of it is on screen before it plays.
   await observe.locator('[data-pathway-canvas]').scrollIntoViewIfNeeded();
   await expect(observe).toHaveAttribute('data-flow-state','complete',{timeout:20000});
-  // A pen scratches while readings travel, ink taps as each part fills, the two readings merge with a gulp,
+  // Light rushes through the tubes, each part answers with a glassy tap, the two readings merge with a gulp,
   // and each part makes the sound of its own action.
   const played=(await heard(page)).played;
-  for(const voice of ['pen','blot','gulp','stamp','scribble','layer','chart'])expect(played).toContain(voice);
+  for(const voice of ['pen','tap','gulp','gate','toggle','fill','glow'])expect(played).toContain(voice);
   expect((await heard(page)).contexts).toHaveLength(1);
   await observe.locator('[data-pathway-replay]').click();
   await observe.locator('[data-pathway-pause]').click();
@@ -92,7 +98,7 @@ test('reduced motion keeps sound disabled and never starts audio',async({page})=
 test('every diagram sound is audible, balanced and never clips',async({page})=>{
   test.skip(!!process.env.TEST_PRODUCTION,'Renders the sound module from the development server.');
   await page.goto('/sound-check');
-  const voices=['pen','blot','gulp','stamp','scribble','layer','chart','tilt','toggle','spin','mist','glow','tick','flash','stack','film','click'];
+  const voices=['pen','rush','blot','gulp','stamp','scribble','layer','chart','tilt','toggle','spin','mist','glow','tick','flash','stack','film','click','tap','gate','fill'];
   const levels=await page.evaluate(async voices=>{
     const path='/src/scripts/flow-sounds.ts';
     const {renderSound}=await import(/* @vite-ignore */ path);
