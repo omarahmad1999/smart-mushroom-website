@@ -11,7 +11,8 @@ const test=base.extend<{staticBoundary:void}>({
     const errors:string[]=[],requests:string[]=[],sockets:string[]=[];
     page.on('pageerror',e=>errors.push(e.message));
     page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
-    page.on('request',r=>{if(['fetch','xhr'].includes(r.resourceType()))requests.push(r.url());});
+    // No data calls: the only files fetched are the site's own media, such as the diorama's model.
+    page.on('request',r=>{if(['fetch','xhr'].includes(r.resourceType())&&!new URL(r.url()).pathname.startsWith('/media/'))requests.push(r.url());});
     page.on('websocket',s=>{if(process.env.TEST_PRODUCTION)sockets.push(s.url());});
     await use();
     expect(errors).toEqual([]);expect(requests).toEqual([]);expect(sockets).toEqual([]);
@@ -82,7 +83,7 @@ test('the Observe diorama carries merged readings through every part and leaves 
   await expect(flow.locator('canvas.diorama-canvas')).toHaveAttribute('aria-hidden','true');
   await expect(flow.locator('.diorama-poster')).toBeHidden();
   await expect(flow.locator('[data-diorama-label]')).toHaveCount(6);
-  for(const name of ['SHT31','SCD41','Mosquitto','Database writer','TimescaleDB','Grafana'])await expect(flow.locator('[data-diorama-label]').filter({hasText:name})).toBeVisible();
+  for(const name of ['SHT31','SCD41','Mosquitto','Database Writer','TimescaleDB','Grafana'])await expect(flow.locator('[data-diorama-label]').filter({hasText:name})).toBeVisible();
   expect(await litLabels(flow)).toEqual([]);
   await jump(page,400);
   expect((await litLabels(flow)).sort()).toEqual(['scd41','sht31']);
@@ -92,7 +93,8 @@ test('the Observe diorama carries merged readings through every part and leaves 
   await jumpToStage(page,'mqtt');
   expect(await litLabels(flow)).toContain('mqtt');
   for(const part of ['writer','timescale','grafana']){await jumpToStage(page,part);expect(await litLabels(flow)).toContain(part);}
-  await jump(page,1800);
+  // Grafana's chart draws before the path counts as complete.
+  await jump(page,2400);
   await expect(flow).toHaveAttribute('data-flow-state','complete');
   expect((await litLabels(flow)).length).toBe(6);
   await expect(flow.locator('[data-diorama-caption]')).toHaveText('Grafana displays the stored measurements.');
@@ -108,7 +110,8 @@ test('pause, replay, offscreen suspension and keyboard tabs keep the sequence un
   await page.addInitScript(allowSoftware3d);
   const flow=await openClocked(page);
   const pause=flow.locator('[data-pathway-pause]');
-  await jump(page,1300);
+  // Past the sensors filling, while both readings travel.
+  await jump(page,2100);
   await pause.evaluate((button:HTMLButtonElement)=>button.click());
   await expect(flow).toHaveAttribute('data-flow-state','paused');
   const snapshot=async()=>({stage:await flow.getAttribute('data-flow-stage'),lit:await litLabels(flow),caption:await flow.locator('[data-diorama-caption]').textContent()});
@@ -143,18 +146,20 @@ test('pause, replay, offscreen suspension and keyboard tabs keep the sequence un
 });
 
 test('reduced motion shows the full explanation without travelling pulses',async({page})=>{
+  test.setTimeout(120_000);
   await page.addInitScript(allowSoftware3d);
   await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#architecture');
   const flow=page.locator('[data-system-flow="observe"]');
   await flow.scrollIntoViewIfNeeded();
-  await expect(flow.locator('[data-pathway-status]')).toHaveText(/shown with motion reduced/,{timeout:20000});
+  // The baked model takes a while to set up with software WebGL.
+  await expect(flow.locator('[data-pathway-status]')).toHaveText(/shown with motion reduced/,{timeout:60000});
   await expect(flow).toHaveAttribute('data-flow-state','static');
   await expect(flow.locator('[data-pathway-controls]')).toBeHidden();
   await expect(flow.getByRole('button',{name:/These readings also feed the controllers/})).toBeVisible();
   // The model is shown finished: every part lit and the completion in the caption.
   expect((await litLabels(flow)).length).toBe(6);
   await expect(flow.locator('[data-diorama-caption]')).toHaveText('Grafana displays the stored measurements.');
-  await expect(flow.locator('[data-diorama-label="writer"]')).toContainText('Database writer');
+  await expect(flow.locator('[data-diorama-label="writer"]')).toContainText('Database Writer');
   // The handwritten cross-link hands the reader to the Respond pathway.
   await flow.getByRole('button',{name:/These readings also feed the controllers/}).click();
   const respondTab=page.getByRole('tab',{name:/Respond/});

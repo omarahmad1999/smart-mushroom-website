@@ -36,13 +36,13 @@ export const dioramas: Record<'observe', Diorama> = {
       grafana: 'Grafana displays the stored measurements.',
     },
     parts: [
-      { id: 'sht31', name: 'SHT31', detail: 'temperature, humidity', prop: 'sensor', size: 1.3, source: true },
+      { id: 'sht31', name: 'SHT31', detail: 'Temperature, Humidity', prop: 'sensor', size: 1.3, source: true },
       { id: 'scd41', name: 'SCD41', detail: 'CO₂', prop: 'sensor', size: 1.3, source: true },
       { id: 'junction', name: '', detail: '', prop: 'valve', size: .62 },
-      { id: 'mqtt', name: 'Mosquitto', detail: 'MQTT broker', prop: 'gate', size: 1.55 },
-      { id: 'writer', name: 'Database writer', detail: 'Python service', prop: 'writer', size: 1.35 },
-      { id: 'timescale', name: 'TimescaleDB', detail: 'experiment history', prop: 'stack', size: 1.5 },
-      { id: 'grafana', name: 'Grafana', detail: 'dashboards', prop: 'screen', size: 1.7, final: true },
+      { id: 'mqtt', name: 'Mosquitto', detail: 'MQTT Broker', prop: 'gate', size: 1.55 },
+      { id: 'writer', name: 'Database Writer', detail: 'Python Service', prop: 'writer', size: 1.35 },
+      { id: 'timescale', name: 'TimescaleDB', detail: 'Experiment History', prop: 'stack', size: 1.5 },
+      { id: 'grafana', name: 'Grafana', detail: 'Dashboards', prop: 'screen', size: 1.7, final: true },
     ],
     links: [
       { id: 'sht31', from: 'sht31', to: 'junction' }, { id: 'scd41', from: 'scd41', to: 'junction' }, { id: 'merged', from: 'junction', to: 'mqtt' },

@@ -11,7 +11,7 @@ export function mountDioramaFlow(root: HTMLElement, sounds?: FlowSounds): Flow {
     loading = true; observer.disconnect();
     try {
       const { mountDiorama } = await import('./diorama/scene');
-      flow = mountDiorama(root, sounds);
+      flow = await mountDiorama(root, sounds);
       flow.setActive(active);
     } catch {
       root.dataset.flowState = 'static';

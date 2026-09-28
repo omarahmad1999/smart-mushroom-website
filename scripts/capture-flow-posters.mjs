@@ -24,7 +24,8 @@ try {
       await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(600);
       const png = join(temporary, `${pathway}${suffix}.png`);
-      await flow.locator('[data-diorama-viewport]').screenshot({ path: png });
+      // The site's fixed page navigation can sit over the drawing on a phone; leave it out of the still.
+      await flow.locator('[data-diorama-viewport]').screenshot({ path: png, style: '.home-paper-nav{visibility:hidden}' });
       execFileSync('python3', ['-c', 'from PIL import Image; import sys; Image.open(sys.argv[1]).convert("RGB").save(sys.argv[2],"WEBP",quality=86,method=6)', png, `public/media/flow/${pathway}-diorama${suffix}.webp`]);
       await page.close();
     }

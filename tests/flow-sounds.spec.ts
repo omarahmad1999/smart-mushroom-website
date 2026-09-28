@@ -43,9 +43,9 @@ test('diagram sound defaults on, starts on interaction, and stops with pause and
   await observe.locator('[data-pathway-canvas]').scrollIntoViewIfNeeded();
   await expect(observe).toHaveAttribute('data-flow-state','complete',{timeout:20000});
   // Light rushes through the tubes, each part answers with a glassy tap, the two readings merge with a gulp,
-  // and each part makes the sound of its own action.
+  // and each part makes the sound of its own action: the gate, the writer's pen, the filling database, the screen.
   const played=(await heard(page)).played;
-  for(const voice of ['pen','tap','gulp','gate','toggle','fill','glow'])expect(played).toContain(voice);
+  for(const voice of ['pen','tap','gulp','gate','scribble','fill','glow'])expect(played).toContain(voice);
   expect((await heard(page)).contexts).toHaveLength(1);
   await observe.locator('[data-pathway-replay]').click();
   await observe.locator('[data-pathway-pause]').click();
