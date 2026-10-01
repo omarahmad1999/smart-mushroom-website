@@ -90,6 +90,7 @@ mats = {
     'glow': material('gate glow', '#B95C2A', .4, emit='#B95C2A', strength=2.4),
     # Mosquitto's gate: deep teal enamel with cream lettering.
     'enamel': material('teal enamel', '#1D302F', .3, coat=.7),
+    'enamel light': material('light teal enamel', '#2E8784', .3, coat=.7),
     'cream': material('cream lettering', '#f5efe3', .4),
     'seam': material('database light', '#1D302F', .4, emit='#1D302F', strength=3.5),
     'seam idle': material('database seam', '#cfc8bb', .5),
@@ -98,6 +99,23 @@ mats = {
     'python blue': material('python blue', '#3776AB', .35, coat=.4),
     'python yellow': material('python yellow', '#FFD43B', .35, coat=.4),
     'ground': material('studio floor', '#f1e8da', .92),
+    # Respond's devices: a teal-bladed fan, a humidifier with a blue water tank, and an LED bar over a mushroom block.
+    'water tank': material('water tank', '#a9d3e6', .22, coat=.5, transmission=.35),
+    'water': material('water', '#4fa3c7', .2, emit='#4fa3c7', strength=.15),
+    'substrate': material('substrate', '#d8c39a', .9),
+    'cap': material('mushroom cap', '#c8763a', .55, sss=.2),
+    'stem': material('mushroom stem', '#efe6d6', .6, sss=.2),
+    'diffuser': material('led diffuser', '#efe9df', .35),
+    'led': material('led light', '#ffd9a6', .35, emit='#ffd9a6', strength=6),
+    # Record's parts: green camera boards with black lenses, and photographs on a tray.
+    'pcb': material('camera board', '#2b6e45', .45, coat=.3),
+    'lens body': material('lens body', '#1c1f1e', .35),
+    'lens glass': material('lens glass', '#26323a', .08, coat=1),
+    'ribbon': material('ribbon cable', '#d8b46a', .5),
+    'paper': material('photo paper', '#fbf8f2', .45),
+    'photo a': material('photo a', '#6f8a5b', .5),
+    'photo b': material('photo b', '#b98a5a', .5),
+    'photo c': material('photo c', '#5f7b86', .5),
     'label': flat('label', '#24332f'),
     'label detail': flat('label detail', '#34401f'),
 }
@@ -184,9 +202,10 @@ def import_svg(svg):
     return obj
 
 
-def fill_material(label, color, level, bottom, top, downwards=False):
+def fill_material(label, color, level, bottom, top, mode='bottom', centre=(0, 0)):
     """The inside of an icon: coloured up to `level` (0-1 of the icon's height, measured between `bottom` and
-    `top` in the icon's own units), pale glass above it. Filling downwards starts from the top, like writing a page."""
+    `top` in the icon's own units), pale glass above it. Filling from the top is like writing a page; a sweep
+    fills clockwise from twelve o'clock around `centre`, like a timer running."""
     m = bpy.data.materials.new(label)
     m.use_nodes = True
     nodes, links = m.node_tree.nodes, m.node_tree.links
@@ -200,11 +219,24 @@ def fill_material(label, color, level, bottom, top, downwards=False):
     empty.inputs['Roughness'].default_value = .3
     empty.inputs['Transmission Weight'].default_value = .35
     coord, split, test, mix = nodes.new('ShaderNodeTexCoord'), nodes.new('ShaderNodeSeparateXYZ'), nodes.new('ShaderNodeMath'), nodes.new('ShaderNodeMixShader')
-    test.operation = 'GREATER_THAN' if downwards else 'LESS_THAN'
-    height = top - bottom
-    test.inputs[1].default_value = top - level * height if downwards else bottom + level * height
     links.new(coord.outputs['Object'], split.inputs[0])
-    links.new(split.outputs['Y'], test.inputs[0])
+    if mode == 'sweep':
+        # The angle clockwise from straight up, as a share of a full turn.
+        dx, dy, angle, share = (nodes.new('ShaderNodeMath') for _ in range(4))
+        dx.operation = dy.operation = 'SUBTRACT'
+        links.new(split.outputs['X'], dx.inputs[0]); dx.inputs[1].default_value = centre[0]
+        links.new(split.outputs['Y'], dy.inputs[0]); dy.inputs[1].default_value = centre[1]
+        angle.operation = 'ARCTAN2'
+        links.new(dx.outputs[0], angle.inputs[0]); links.new(dy.outputs[0], angle.inputs[1])
+        share.operation = 'WRAP'
+        links.new(angle.outputs[0], share.inputs[0]); share.inputs[1].default_value, share.inputs[2].default_value = 2 * math.pi, 0
+        test.operation = 'LESS_THAN'
+        links.new(share.outputs[0], test.inputs[0]); test.inputs[1].default_value = level * 2 * math.pi
+    else:
+        test.operation = 'GREATER_THAN' if mode == 'top' else 'LESS_THAN'
+        height = top - bottom
+        test.inputs[1].default_value = top - level * height if mode == 'top' else bottom + level * height
+        links.new(split.outputs['Y'], test.inputs[0])
     links.new(test.outputs[0], mix.inputs['Fac'])
     links.new(empty.outputs[0], mix.inputs[1])
     links.new(full.outputs[0], mix.inputs[2])
@@ -242,10 +274,10 @@ def python_badge(owner):
         tag(snake, 'live:python-blue' if upper else 'live:python-yellow')
 
 
-def glass_box(part, at, icon, color, level, downwards=False):
+def glass_box(part, at, level):
     # A clear glass cube on the platform with the part's icon floating inside, turned towards the camera.
     # The icon's outline stays ink; its inside fills with colour as the message arrives.
-    pid = part['id']
+    pid, icon = part['id'], part['icon']
     root = group(f'{pid} glass box', at + Vector((0, 0, TOP)), math.radians(45))
     case = tag(parent(box('glass box', (.92, .92, .92), (0, 0, 0), 'glass box', .14, 8), root), f'live:glass-box:{pid}')
     case.location = (0, 0, .465)
@@ -254,14 +286,17 @@ def glass_box(part, at, icon, color, level, downwards=False):
     shell.thickness, shell.offset = .028, -1
     holder = group(f'{pid} icon', Vector((0, 0, 0)))
     parent(holder, root)
-    line, inside = import_svg(f'{icon}-line.svg'), import_svg(f'{icon}-inside.svg')
+    line, inside = import_svg(f"{icon['svg']}-line.svg"), import_svg(f"{icon['svg']}-inside.svg")
     # Both share the SVG's coordinates, so one centre and scale from the outline keeps them aligned.
     bpy.context.view_layer.update()
     corners = [Vector(c) for c in line.bound_box]
     centre = sum(corners, Vector()) / 8
     bottom, top = min(c.y for c in corners), max(c.y for c in corners)
     scale = .54 / max(max(c.x for c in corners) - min(c.x for c in corners), max(c.y for c in corners) - min(c.y for c in corners))
-    for obj, depth, mat, role in ((line, .07, mats['ink'], f'live:icon-line:{pid}'), (inside, .04, fill_material(f'{pid} fill', color, level, bottom, top, downwards), f'live:icon-fill:{pid}')):
+    # A sweep turns about the middle of the icon's inside (the timer's dial).
+    dial = sum((Vector(c) for c in inside.bound_box), Vector()) / 8
+    fill = fill_material(f'{pid} fill', icon['color'], level, bottom, top, icon.get('from', 'bottom'), (dial.x, dial.y))
+    for obj, depth, mat, role in ((line, .07, mats['ink'], f'live:icon-line:{pid}'), (inside, .04, fill, f'live:icon-fill:{pid}')):
         obj.parent = holder
         obj.location = -centre
         obj.data.extrude = depth / scale / 2
@@ -271,9 +306,9 @@ def glass_box(part, at, icon, color, level, downwards=False):
     holder.rotation_euler = (math.radians(90), 0, 0)
     # Low and near the front pane: from above, the case's front shows the icon up to about two thirds of its height.
     holder.location = (0, -.1, .42)
-    if pid == 'writer':
+    if icon.get('python'):
         python_badge(root)
-    if pid == 'scd41':
+    if icon.get('co2'):
         # A small CO2 inside the cloud, the 2 set lower and smaller as a subscript.
         for body, size, x, z in (('CO', .15, -.03, .385), ('2', .095, .09, .355)):
             mark = tag(text(body, size, 'medium', 'ink', 'CENTER', 'CENTER'), 'live:co2')
@@ -322,12 +357,14 @@ def gate(part, at, towards):
     tag(parent(arch(1.42, 1.42, .24, .3, .26, .1, .3), root), 'baked').data.materials[0] = mats['enamel']
     # An inner lining along the whole opening: the energy glows through the gate as it passes.
     lining = tag(parent(arch(1.42 - 2 * .24 + .04, 1.42 - .3 + .02, .025, .025, .12, .1, .26), root), 'live:gate-glow')
-    lining.data.materials[0] = mats['seam idle' if bake else 'glow']
-    mark = tag(text('MQTT', .17, 'medium', 'cream', 'CENTER', 'CENTER'), 'baked')
-    mark.data.extrude, mark.data.space_character = .008, 1.25
-    parent(mark, root)
-    mark.rotation_euler = (math.radians(90), 0, 0)
-    mark.location = (0, -.16, 1.27)
+    lining.data.materials[0] = mats['enamel' if bake else 'glow']
+    # Lettered on both faces, so it reads whichever way the gate stands.
+    for side_sign in (1, -1):
+        mark = tag(text('MQTT', .17, 'medium', 'cream', 'CENTER', 'CENTER'), 'baked')
+        mark.data.extrude, mark.data.space_character = .008, 1.25
+        parent(mark, root)
+        mark.rotation_euler = (math.radians(90), 0, 0 if side_sign > 0 else math.pi)
+        mark.location = (0, -.16 * side_sign, 1.27)
     return root
 
 
@@ -342,7 +379,8 @@ def stack(part, at):
 
 
 def screen(part, at):
-    root = group('grafana screen', at + Vector((0, 0, TOP)), math.radians(45))
+    pid = part['id']
+    root = group(f'{pid} screen', at + Vector((0, 0, TOP)), math.radians(45))
     tag(parent(cylinder('foot', .32, .05, (0, 0, 0), 'metal', .02), root), 'baked').location = (0, 0, .025)
     tag(parent(box('neck', (.1, .08, .42), (0, 0, 0), 'metal', .035, 4), root), 'baked').location = (0, .06, .24)
     tilt = group('tilt', Vector((0, 0, 0)))
@@ -350,15 +388,15 @@ def screen(part, at):
     tilt.location = (0, 0, .82)
     tilt.rotation_euler = (math.radians(-12), 0, 0)
     tag(parent(box('tablet', (1.36, .08, .9), (0, 0, 0), 'tile', .06, 6), tilt), 'baked')
-    # The display is a flat panel the site draws its chart on.
+    # The display is a flat panel the site draws on: Grafana's chart, or a timelapse being prepared.
     bpy.ops.mesh.primitive_plane_add(size=1)
     face = bpy.context.active_object
     face.scale = (1.2, .74, 1)
     bpy.ops.object.transform_apply(scale=True)
-    tag(finish(parent(face, tilt), 'screen'), 'live:screen-face')
+    tag(finish(parent(face, tilt), 'screen'), f'live:screen-face:{pid}')
     face.rotation_euler = (math.radians(90), 0, 0)
     face.location = (0, -.041, 0)
-    if not bake:
+    if not bake and part.get('action') == 'chart':
         curve = bpy.data.curves.new('chart', 'CURVE')
         curve.dimensions, curve.bevel_depth, curve.bevel_resolution = '3D', .014, 3
         points = [.62, .55, .6, .44, .5, .36, .41, .28, .33, .24]
@@ -370,6 +408,138 @@ def screen(part, at):
         scene.collection.objects.link(chart)
         chart.data.materials.append(mats['chart'])
         parent(chart, tilt)
+    if not bake and part.get('action') == 'film':
+        # The preview's finished timelapse: a strip of frames and a full progress bar.
+        for i in range(4):
+            frame = tag(box('frame', (.24, .01, .16), (0, 0, 0), 'photo ' + 'abca'[i], 0), 'preview')
+            parent(frame, tilt).location = (-.4 + i * .27, -.05, .08)
+        tag(parent(box('progress', (1.0, .01, .025), (0, 0, 0), 'chart', 0), tilt), 'preview').location = (0, -.05, -.22)
+    return root
+
+
+def spin(obj, pid):
+    """Moving parts that keep their baked light, like the valve's wheel: the site turns them about their middle."""
+    return tag(obj, f'spin:{pid}')
+
+
+def fan(part, at):
+    # A box fan facing the camera: a white housing, a pale round face, teal blades that spin and a metal grille,
+    # layered on the front rather than set into an opening, so the side light never leaves a deep shadow inside.
+    pid = part['id']
+    root = group(f'{pid} fan', at + Vector((0, 0, TOP)), math.radians(45))
+    tag(parent(box('housing', (1.0, .2, 1.0), (0, 0, 0), 'tile', .05, 5), root), 'baked').location = (0, 0, .6)
+    for x in (-.32, .32):
+        tag(parent(box('foot', (.16, .42, .08), (0, 0, 0), 'tile', .03, 4), root), 'baked').location = (x, 0, .06)
+    # A pale back panel behind the blades, so they read against it, and the grille in front: rings and spokes.
+    tag(parent(cylinder('face', .44, .02, (0, 0, 0), 'paper', .006, 64, (math.radians(90), 0, 0)), root), 'baked').location = (0, -.105, .6)
+    for radius in (.22, .42):
+        bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=.009, major_segments=72, minor_segments=8, location=(0, 0, 0), rotation=(math.radians(90), 0, 0))
+        ring = finish(bpy.context.active_object, 'metal')
+        tag(parent(ring, root), 'baked').location = (0, -.2, .6)
+    for angle in (0, 90):
+        spoke = tag(parent(box('spoke', (.86, .014, .014), (0, 0, 0), 'metal', .004, 2), root), 'baked')
+        spoke.location, spoke.rotation_euler = (0, -.2, .6), (0, math.radians(angle), 0)
+    hub = spin(parent(cylinder('hub', .075, .07, (0, 0, 0), 'enamel', .02, 32, (math.radians(90), 0, 0)), root), pid)
+    hub.location = (0, -.15, .6)
+    for k in range(5):
+        holder = group('blade', Vector((0, 0, 0)))
+        parent(holder, root)
+        holder.location, holder.rotation_euler = (0, -.15, .6), (0, math.radians(k * 72), 0)
+        blade = spin(parent(box('blade', (.3, .016, .15), (0, 0, 0), 'enamel light', .04, 4), holder), pid)
+        # Each blade is pitched, so the fan reads as one even when still.
+        blade.location, blade.rotation_euler = (.22, 0, 0), (math.radians(28), 0, 0)
+    bpy.context.view_layer.update()
+    # The blades turn about the axis the fan faces, through the hub.
+    return root, (root.matrix_world.to_3x3() @ Vector((0, -1, 0)), hub.matrix_world.translation.copy())
+
+
+def humidifier(part, at):
+    # A white humidifier on a blue water tank; the site puffs mist from its nozzle.
+    pid = part['id']
+    root = group(f'{pid} humidifier', at + Vector((0, 0, TOP)), math.radians(45))
+    tag(parent(cylinder('tank', .34, .32, (0, 0, 0), 'water tank', .04), root), 'baked').location = (0, 0, .16)
+    tag(parent(cylinder('water', .3, .2, (0, 0, 0), 'water', .02), root), 'baked').location = (0, 0, .11)
+    tag(parent(cylinder('head', .36, .26, (0, 0, 0), 'tile', .05), root), 'baked').location = (0, 0, .45)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=.36, segments=48, ring_count=24)
+    dome = finish(bpy.context.active_object, 'tile')
+    dome.scale = (1, 1, .32)
+    tag(parent(dome, root), 'baked').location = (0, 0, .58)
+    tag(parent(cylinder('nozzle', .085, .12, (0, 0, 0), 'tile', .02), root), 'baked').location = (0, 0, .7)
+    tag(parent(cylinder('outlet', .055, .02, (0, 0, 0), 'ink', .005), root), 'baked').location = (0, 0, .76)
+    # A small dial on the front.
+    tag(parent(cylinder('dial', .06, .03, (0, 0, 0), 'dark metal', .01, 32, (math.radians(90), 0, 0)), root), 'baked').location = (0, -.36, .45)
+    # Where the mist leaves: the site reads this point and hides the marker.
+    tag(parent(box('nozzle', (.02, .02, .02), (0, 0, 0), 'ink', 0), root), f'live:nozzle:{pid}').location = (0, 0, .78)
+    if not bake:
+        for i, (x, z, r) in enumerate(((.02, .95, .1), (-.06, 1.1, .14), (.05, 1.28, .18))):
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=(0, 0, 0))
+            puff = tag(finish(bpy.context.active_object, 'glass box'), 'preview')
+            parent(puff, root).location = (x, 0, z)
+    return root
+
+
+def lights(part, at):
+    # An LED bar on two posts over a small mushroom block: on its turn the bar glows and lights what grows below.
+    pid = part['id']
+    root = group(f'{pid} lights', at + Vector((0, 0, TOP)), math.radians(45))
+    tag(parent(box('block', (.46, .36, .3), (0, 0, 0), 'substrate', .05), root), 'baked').location = (0, .02, .15)
+    for x, y, z, r in ((-.1, -.06, .34, .1), (.08, .02, .38, .12), (.13, -.12, .32, .08)):
+        tag(parent(cylinder('stem', .025, .1, (0, 0, 0), 'stem', .01, 24), root), 'baked').location = (x, y, z - .03)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=r, segments=32, ring_count=16)
+        cap = finish(bpy.context.active_object, 'cap')
+        cap.scale = (1, 1, .45)
+        tag(parent(cap, root), 'baked').location = (x, y, z + .02)
+    for x in (-.56, .56):
+        tag(parent(box('post', (.05, .05, 1.02), (0, 0, 0), 'dark metal', .015, 3), root), 'baked').location = (x, .08, .51)
+    # The bar tilts towards the viewer on its posts, so its glowing face can be seen from above.
+    pivot = group('tilt', Vector((0, 0, 0)))
+    parent(pivot, root)
+    pivot.location, pivot.rotation_euler = (0, .06, 1.04), (math.radians(-62), 0, 0)
+    tag(parent(box('bar', (1.24, .16, .07), (0, 0, 0), 'enamel', .025, 4), pivot), 'baked')
+    led = tag(parent(box('diffuser', (1.1, .11, .02), (0, 0, 0), 'diffuser' if bake else 'led', .008, 2), pivot), f'live:led:{pid}')
+    led.location = (0, 0, -.045)
+    return root
+
+
+def cameras(part, at):
+    # Two Camera Module 3 Wide boards on small stands, turned slightly apart: one for the tent, one for the room.
+    pid = part['id']
+    root = group(f'{pid} cameras', at + Vector((0, 0, TOP)), math.radians(45))
+    for i, (x, turn) in enumerate(((-.3, 12), (.3, -12))):
+        unit = group('camera', Vector((0, 0, 0)))
+        parent(unit, root)
+        unit.location, unit.rotation_euler, unit.scale = (x * 1.25, 0, 0), (0, 0, math.radians(turn)), (1.45, 1.45, 1.45)
+        tag(parent(box('plate', (.24, .24, .03), (0, 0, 0), 'metal', .01, 2), unit), 'baked').location = (0, .04, .015)
+        tag(parent(box('post', (.06, .06, .36), (0, 0, 0), 'metal', .015, 2), unit), 'baked').location = (0, .06, .2)
+        tag(parent(box('board', (.3, .02, .3), (0, 0, 0), 'pcb', .01, 2), unit), 'baked').location = (0, .03, .52)
+        tag(parent(box('lens body', (.13, .05, .13), (0, 0, 0), 'lens body', .015, 3), unit), 'baked').location = (0, -.005, .53)
+        tag(parent(cylinder('barrel', .05, .05, (0, 0, 0), 'lens body', .01, 32, (math.radians(90), 0, 0)), unit), 'baked').location = (0, -.05, .53)
+        tag(parent(cylinder('lens', .036, .012, (0, 0, 0), 'lens glass', .004, 32, (math.radians(90), 0, 0)), unit), 'live:lens').location = (0, -.077, .53)
+        tag(parent(box('ribbon', (.1, .006, .3), (0, 0, 0), 'ribbon', 0), unit), 'baked').location = (0, .045, .28)
+    return root
+
+
+def photos(part, at):
+    # Image storage: photographs piling up on a tray. The prints already there are baked; three new ones arrive live.
+    pid = part['id']
+    root = group(f'{pid} photos', at + Vector((0, 0, TOP)), math.radians(45))
+    root.scale = (1.25, 1.25, 1.25)
+    tag(parent(box('tray', (.92, .72, .06), (0, 0, 0), 'tile', .025, 4), root), 'baked').location = (0, 0, .03)
+    def card(z, turn, face, role):
+        holder = group('print', Vector((0, 0, 0)))
+        parent(holder, root)
+        holder.location, holder.rotation_euler = (0, 0, z), (0, 0, math.radians(turn))
+        paper = tag(parent(box('paper', (.62, .46, .012), (0, 0, 0), 'paper', .004, 2), holder), role)
+        bpy.ops.mesh.primitive_plane_add(size=1)
+        picture = bpy.context.active_object
+        picture.scale = (.54, .38, 1)
+        bpy.ops.object.transform_apply(scale=True)
+        tag(finish(parent(picture, holder), face), role.replace('photo', 'photo-face') if role.startswith('live') else role).location = (0, 0, .0065)
+        return paper
+    for i, turn in enumerate((-4, 3, -2, 5)):
+        card(.066 + i * .014, turn, 'photo ' + 'abca'[i], 'baked')
+    for i, turn in enumerate((-6, 4, -1)):
+        card(.066 + (4 + i) * .014, turn, 'photo ' + 'bca'[i], f'live:photo:{i}')
     return root
 
 
@@ -386,19 +556,25 @@ def tube(link, start, end):
     glass = tag(bpy.data.objects.new('glass tube', curve), f"live:tube:{link['id']}")
     scene.collection.objects.link(glass)
     glass.data.materials.append(mats['glass'])
-    # The site fills the tube with goo along this line.
+    # The site runs the energy along this line.
     glass['start'], glass['end'], glass['radius'] = site(start), site(end), radius
+    if link.get('dashed'):
+        glass['dashed'] = True
     if not bake:
-        # In the studio preview the energy runs the whole tube, as the finished page shows it.
-        curve = bpy.data.curves.new('energy', 'CURVE')
-        curve.dimensions, curve.bevel_depth, curve.bevel_resolution, curve.use_fill_caps = '3D', .055, 8, True
-        spline = curve.splines.new('POLY')
-        spline.points.add(1)
-        spline.points[0].co = (*start, 1)
-        spline.points[1].co = (*end, 1)
-        core = tag(bpy.data.objects.new('energy', curve), 'preview')
-        scene.collection.objects.link(core)
-        core.data.materials.append(mats['core'])
+        # In the studio preview the energy runs the whole tube, as the finished page shows it (in dashes for an
+        # optional link).
+        pieces = 7 if link.get('dashed') else 1
+        for i in range(pieces):
+            a, b = (i / pieces, (i + .55) / pieces) if pieces > 1 else (0, 1)
+            curve = bpy.data.curves.new('energy', 'CURVE')
+            curve.dimensions, curve.bevel_depth, curve.bevel_resolution, curve.use_fill_caps = '3D', .055, 8, True
+            spline = curve.splines.new('POLY')
+            spline.points.add(1)
+            spline.points[0].co = (*start.lerp(end, a), 1)
+            spline.points[1].co = (*start.lerp(end, b), 1)
+            core = tag(bpy.data.objects.new('energy', curve), 'preview')
+            scene.collection.objects.link(core)
+            core.data.materials.append(mats['core'])
     # Metal collars where the tube meets each part.
     direction = (end - start).normalized()
     rotation = direction.to_track_quat('Z', 'Y').to_euler()
@@ -410,21 +586,27 @@ def tube(link, start, end):
 
 parts = {part['id']: part for part in layout['parts']}
 at = {pid: V(x, 0, z) for pid, (x, z) in layout['at'].items()}
-# Each icon's fill: the thermometer turns red from the bulb up, the cloud fills with gas, the notepad is written top down in green.
+# Each icon fills with its own colour (the thermometer red from the bulb up, the notepad written from the top...).
 # The bake sees them empty, as the site starts them, so no coloured glow is baked into the platforms.
 moment = args[3] if len(args) > 3 and not bake else 'done'
-level = {'mid': (.55, .4, .5), 'done': (1, 1, 1)}[moment] if not bake else (0, 0, 0)
-icons = {
-    'sht31': ('thermometer', '#e5484d', level[0], False),
-    'scd41': ('cloud', '#8ea3ad', level[1], False),
-    'writer': ('notepad', '#2E8565', level[2], True),
-}
+level = {'mid': .5, 'done': 1}[moment] if not bake else 0
+spin_axes = {}
 for pid, part in parts.items():
     here_at = at[pid]
     if part['prop'] != 'valve':
         platform(part, here_at)
-    if pid in icons:
-        glass_box(part, here_at, *icons[pid])
+    if part['prop'] == 'case':
+        glass_box(part, here_at, level)
+    elif part['prop'] == 'fan':
+        spin_axes[pid] = fan(part, here_at)[1]
+    elif part['prop'] == 'humidifier':
+        humidifier(part, here_at)
+    elif part['prop'] == 'lights':
+        lights(part, here_at)
+    elif part['prop'] == 'cameras':
+        cameras(part, here_at)
+    elif part['prop'] == 'photos':
+        photos(part, here_at)
     elif part['prop'] == 'valve':
         valve(part, here_at)
     elif part['prop'] == 'gate':
@@ -503,13 +685,18 @@ camera.data.shift_y = (max(ys) + min(ys)) / 2 / camera.data.ortho_scale
 
 if not bake:
     # Titles, as on the site: the name with its detail beneath, above or below each part, facing the camera.
-    heights = {'sensor': 1.3, 'writer': 1.0, 'gate': 1.5, 'stack': .8, 'screen': 1.35}
+    heights = {'case': 1.3, 'gate': 1.5, 'stack': .8, 'screen': 1.35, 'fan': 1.2, 'humidifier': 1.0, 'lights': 1.15, 'cameras': .8, 'photos': .4}
     for pid, part in parts.items():
         if not part['name']:
             continue
         h, origin, side_name = part['size'] / 2, at[pid], layout['labels'].get(pid, 'below')
+        across = 'CENTER'
         if side_name == 'above':
             anchor, align = origin + Vector((0, 0, TOP + heights.get(part['prop'], .8))) + up * .5, 'BOTTOM'
+        elif side_name in ('right', 'left'):
+            # Beside the platform's outer corner, level with its top.
+            sign = 1 if side_name == 'right' else -1
+            anchor, align, across = origin + Vector((sign * h, sign * h, TOP)) + right * sign * .25 + up * .2, 'TOP', 'LEFT' if sign > 0 else 'RIGHT'
         else:
             anchor, align = origin + Vector((h, -h, 0)) - up * .2, 'TOP'
         for body, size, weight, mat, shift in ((part['name'], .2, 'medium', 'label', 0), (part['detail'], .16, 'medium', 'label detail', -.26)):
@@ -517,7 +704,7 @@ if not bake:
             at_label = anchor + up * (shift + (.25 if align == 'BOTTOM' else 0)) + view * 8
             # DM Sans has no subscript digits: a subscript 2 is set smaller and lower, after the rest of the line.
             main, subscript = (body.split('₂')[0], '2') if '₂' in body else (body, '')
-            label = tag(text(main, size, weight, mat, 'CENTER', 'TOP'), 'preview')
+            label = tag(text(main, size, weight, mat, across, 'TOP'), 'preview')
             label.rotation_euler = camera.rotation_euler
             label.location = at_label - right * (size * .22 if subscript else 0)
             label.visible_shadow = False
@@ -605,8 +792,17 @@ if wheel:
     select([wheel])
     bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
 
+spinners = []
+for pid, (axis, hub) in spin_axes.items():
+    spinner = join(f'spin:{pid}', f'spin:{pid}')
+    bpy.context.scene.cursor.location = hub
+    select([spinner])
+    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+    spinner['axis'] = site(axis)
+    spinners.append(spinner)
+
 # One light texture for everything that stays still: unwrap together, then bake the full studio light into it.
-targets = [baked] + ([wheel] if wheel else [])
+targets = [baked] + ([wheel] if wheel else []) + spinners
 select(targets, baked)
 bpy.ops.object.mode_set(mode='EDIT')
 bpy.ops.mesh.select_all(action='SELECT')
@@ -615,23 +811,29 @@ bpy.ops.uv.pack_islands(margin=.003)
 bpy.ops.object.mode_set(mode='OBJECT')
 atlas_size = int(args[3]) if len(args) > 3 else 2048
 atlas = bpy.data.images.new('atlas', atlas_size, atlas_size, float_buffer=True)
-for obj in targets:
-    for slot in obj.material_slots:
-        nodes = slot.material.node_tree.nodes
-        node = nodes.new('ShaderNodeTexImage')
-        node.image = atlas
-        nodes.active = node
+# Each material bakes into the atlas once, however many objects share it.
+baking = list({slot.material for obj in targets for slot in obj.material_slots})
+for material_ in baking:
+    nodes = material_.node_tree.nodes
+    node = nodes.new('ShaderNodeTexImage')
+    node.image = atlas
+    nodes.active = node
 bake_settings = scene.render.bake
 bake_settings.margin, bake_settings.margin_type = 16, 'EXTEND'
+# The prints that arrive live are not on the tray yet when the page starts: keep them out of the light.
+arriving = [obj for obj in scene.objects if obj.get('role', '').startswith(('live:photo:', 'live:photo-face:'))]
+for obj in arriving:
+    obj.hide_render = True
 select(targets, baked)
 bpy.ops.object.bake(type='COMBINED')
+for obj in arriving:
+    obj.hide_render = False
 scene.render.image_settings.file_format, scene.render.image_settings.color_depth = 'PNG', '8'
 atlas.save_render(os.path.join(here, f'{name}-atlas.png'), scene=scene)
 print('BAKED', f'{name}-atlas.png')
-for obj in targets:
-    for slot in obj.material_slots:
-        nodes = slot.material.node_tree.nodes
-        nodes.remove(nodes.active)
+for material_ in baking:
+    nodes = material_.node_tree.nodes
+    nodes.remove(nodes.active)
 
 # The floor: how much light reaches it, turned into a soft shadow the site lays over its paper.
 shade = bpy.data.images.new('floor light', 1024, 1024, float_buffer=True)

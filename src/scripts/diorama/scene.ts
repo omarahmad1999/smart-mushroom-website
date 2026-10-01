@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { gsap } from 'gsap';
 import type { FlowSounds, Place, Voice } from '../flow-sounds';
-import { dioramas, type Diorama, type DioramaLayout, type Prop } from './paths';
+import { dioramas, type Action, type Diorama, type DioramaLayout, type DioramaPart, type Prop } from './paths';
 import { loadModel, type Model } from './model';
 
 // A connected-system path as a small 3D diorama, modelled and lit in Blender (tools/diorama/scene.py): each
@@ -10,15 +10,20 @@ import { loadModel, type Model } from './model';
 // explanation: no readings, services or clocks. It renders only while something moves, and only on screen.
 
 const GLOW = '#B95C2A', SEAM = '#2f5b56';
+/** How brightly a lit LED bar shines, the cone of light below it and the pool it throws on its platform. */
+const LED = 3, BEAM = .45, POOL = .5;
 /** The platforms' top surface, and how tall each part stands above it, for framing and labels. */
 const TOP = .42;
-const heights: Record<Prop, number> = { sensor: 1.3, valve: .2, gate: 1.45, writer: .95, stack: .8, screen: 1.3 };
+const heights: Record<Prop, number> = { case: 1.3, valve: .2, gate: 1.45, stack: .8, screen: 1.3, fan: 1.15, humidifier: .95, lights: 1.1, cameras: .85, photos: .45 };
+/** The sound of each part's own action as a message reaches it. */
+const actionVoices: Record<Action, Voice> = { scribble: 'scribble', tilt: 'tilt', toggle: 'toggle', chart: 'glow', film: 'film' };
+const propVoices: Partial<Record<Prop, Voice>> = { gate: 'gate', stack: 'fill', fan: 'spin', humidifier: 'mist', lights: 'glow', cameras: 'flash', photos: 'stack' };
 /** Where the Blender studio's key light sits relative to the scene, for the live materials' highlights. */
 const KEY = new THREE.Vector3(-7, 10, -1.5);
 /** How fast a message is moving at `p` of its way along a tube eased in and out: 0 at the ends, highest mid-way. */
 const pace = (p: number) => Math.PI * Math.sqrt(Math.max(0, p * (1 - p)));
 
-type Part = { id: string; prop: Prop; at: THREE.Vector3; size: number };
+type Part = { id: string; prop: Prop; at: THREE.Vector3; size: number; data: DioramaPart };
 
 export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
   const pathway = root.dataset.systemFlow as keyof typeof dioramas, diorama: Diorama = dioramas[pathway];
@@ -60,7 +65,7 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
   const view = { elevation: 33, target: new THREE.Vector3() };
   const models = new Map<string, Promise<Model>>();
   const load = (name: 'wide' | 'narrow') => {
-    if (!models.has(name)) models.set(name, loadModel(`/media/flow/${pathway}-${name}`, GLOW, SEAM));
+    if (!models.has(name)) models.set(name, loadModel(`/media/flow/${pathway}-${name}`, diorama.parts, GLOW, SEAM));
     return models.get(name)!;
   };
 
@@ -72,7 +77,7 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
     layout = diorama.layouts[name];
     view.elevation = layout.elevation;
     parts.clear();
-    for (const data of diorama.parts) { const [x, z] = layout.at[data.id]; parts.set(data.id, { id: data.id, prop: data.prop, at: new THREE.Vector3(x, 0, z), size: data.size }); }
+    for (const data of diorama.parts) { const [x, z] = layout.at[data.id]; parts.set(data.id, { id: data.id, prop: data.prop, at: new THREE.Vector3(x, 0, z), size: data.size, data }); }
     const centre = [...parts.values()].reduce((sum, part) => sum.add(part.at), new THREE.Vector3()).divideScalar(parts.size);
     key.position.copy(centre).add(KEY); key.target.position.copy(centre);
     view.target.copy(centre).setY(.5);
@@ -97,6 +102,7 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
     for (const point of corners) { const local = point.applyMatrix4(inverse); bounds.expandByPoint(new THREE.Vector2(local.x, local.y)); }
     // Room for the labels above and below.
     const pad = narrow.matches ? { x: .35, top: .65, bottom: .95, right: 2.3 } : { x: .35, top: .75, bottom: .7, right: 0 };
+    if (layout.room) Object.assign(pad, layout.room);
     const width = bounds.max.x - bounds.min.x + pad.x * 2 + pad.right, height = bounds.max.y - bounds.min.y + pad.top + pad.bottom;
     const aspect = size.width / size.height;
     const halfW = Math.max(width, height * aspect) / 2, halfH = halfW / aspect;
@@ -115,6 +121,7 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
       if (sideName === 'above') { ({ x, y } = project(at.clone().setY(TOP + heights[part.prop]))); y -= 10; shiftY = '-100%'; }
       else if (sideName === 'below') { ({ x, y } = project(at.clone().add(new THREE.Vector3(h, 0, h)))); y += 8; }
       else if (sideName === 'right') { ({ x, y } = project(at.clone().add(new THREE.Vector3(h, TOP / 2, -h)))); x += 14; shiftX = '0'; shiftY = '-50%'; }
+      else if (sideName === 'left') { ({ x, y } = project(at.clone().add(new THREE.Vector3(-h, TOP / 2, h)))); x -= 14; shiftX = '-100%'; shiftY = '-50%'; }
       else if (sideName === 'below-left') { ({ x, y } = project(at.clone().add(new THREE.Vector3(-h, 0, h)))); x += 6; y += 10; shiftX = '-100%'; }
       else { ({ x, y } = project(at.clone().add(new THREE.Vector3(h, 0, -h)))); x -= 6; y += 10; shiftX = '0'; }
       label.dataset.side = sideName;
@@ -164,30 +171,34 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
     timeline.call(() => { if (canSound()) sounds?.play(voice, owner, place); }, [], time);
   }
   const setState = (id: string, state: 'idle' | 'lit') => { const label = labels.get(id); if (label) label.dataset.state = state; };
-  const screenState = { progress: 0, light: 0 };
+  /** When the last part's own animation ends, so the page counts as complete only after it. */
+  let quiet = 0;
+  const until = (time: number) => { quiet = Math.max(quiet, time); };
 
+  /** Sets every live part to the start (0) or the finished page (1); the moving effects rest either way. */
+  function settle(done: 0 | 1) {
+    if (!model) return;
+    for (const tube of model.tubes.values()) if (done) tube.fill(); else tube.clear();
+    for (const fill of model.fills.values()) fill.set(done);
+    for (const seam of model.seams) seam.color.copy(done ? model.litSeam : model.idleSeam);
+    if (model.gateGlow) model.gateGlow.emissiveIntensity = 2.4 * done;
+    for (const spinner of model.spinners.values()) spinner.set(0);
+    for (const painter of model.screens.values()) painter.draw(done, done);
+    for (const { material, pool, beam } of model.lights.values()) { material.emissiveIntensity = LED * done; pool.set(POOL * done); beam.set(BEAM * done); }
+    for (const mist of model.mists.values()) mist.set(-1);
+    for (const { material, flash } of model.lenses) { material.emissiveIntensity = 0; flash.set(0); }
+    for (const print of model.prints) { print.visible = !!done; print.position.y = 0; }
+    for (const id of parts.keys()) setState(id, done ? 'lit' : 'idle');
+  }
   function reset() {
     sounds?.stop(owner);
-    if (!model) return;
-    for (const tube of model.tubes.values()) tube.clear();
-    for (const fill of model.fills.values()) fill.set(0);
-    for (const seam of model.seams) seam.color.copy(model.idleSeam);
-    if (model.gateGlow) model.gateGlow.emissiveIntensity = 0;
-    if (model.wheel) model.wheel.rotation.y = 0;
-    Object.assign(screenState, { progress: 0, light: 0 }); model.screen.draw(0, 0);
-    for (const id of parts.keys()) setState(id, 'idle');
-    root.dataset.flowStage = 'sensors'; setCaption(diorama.captions.sensors);
+    settle(0);
+    root.dataset.flowStage = diorama.start; setCaption(diorama.captions[diorama.start] ?? '');
   }
   // The finished diorama: every tube is lit and every part is awake. Also the reduced-motion view.
   function lit() {
     sounds?.stop(owner);
-    if (!model) return;
-    for (const tube of model.tubes.values()) tube.fill();
-    for (const fill of model.fills.values()) fill.set(1);
-    for (const seam of model.seams) seam.color.copy(model.litSeam);
-    if (model.gateGlow) model.gateGlow.emissiveIntensity = 2.4;
-    Object.assign(screenState, { progress: 1, light: 1 }); model.screen.draw(1, 1);
-    for (const id of parts.keys()) setState(id, 'lit');
+    settle(1);
     setCaption(diorama.completion);
   }
 
@@ -206,68 +217,106 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
     const fill = model!.fills.get(id); if (!fill) return;
     const state = { level: 0 };
     timeline.fromTo(state, { level: 0 }, { level: 1, duration, ease: 'power1.inOut', immediateRender: false, onUpdate: () => fill.set(state.level, timeline.time()) }, time);
+    until(time + duration);
+  }
+  /** Tweens a plain value from `from` to `to`, handing each step to `apply`. */
+  function animate(apply: (value: number) => void, from: number, to: number, time: number, duration: number, ease = 'sine.inOut') {
+    const state = { value: from };
+    timeline.fromTo(state, { value: from }, { value: to, duration, ease, immediateRender: false, onUpdate: () => apply(state.value) }, time);
+    until(time + duration);
   }
   function arrive(id: string, time: number, kind: 'source' | 'hop' | 'final', level = 1) {
-    const part = parts.get(id)!;
+    const part = parts.get(id)!, place = partPlace(id, level), m = model!;
     timeline.call(() => setState(id, 'lit'), [], time);
-    if (kind === 'source') { fillIcon(id, time, 1.1); return; }
-    sound('tap', time, partPlace(id, level));
-    if (part.prop === 'gate' && model!.gateGlow) {
-      timeline.fromTo(model!.gateGlow, { emissiveIntensity: 0 }, { emissiveIntensity: 4, duration: .14, ease: 'sine.out', immediateRender: false }, time).to(model!.gateGlow, { emissiveIntensity: 2.4, duration: .9, ease: 'sine.inOut' }, time + .18);
-      sound('gate', time, partPlace(id, level));
+    if (kind === 'source') {
+      // A source wakes on its own: its icon fills (the timer sweeps round with a tick).
+      fillIcon(id, time, 1.1);
+      sound(part.data.icon?.from === 'sweep' ? 'tick' : 'fill', time, place);
+      return;
     }
-    if (part.prop === 'writer') {
+    sound('tap', time, place);
+    const voice = part.data.action ? actionVoices[part.data.action] : propVoices[part.prop];
+    if (voice) sound(voice, time + .05, place);
+    if (part.prop === 'case') {
       fillIcon(id, time + .1);
-      sound('scribble', time + .1, partPlace(id, level));
-      // The Python badge gives a small hop as the service writes.
-      for (const snake of model!.python) timeline.fromTo(snake.position, { y: snake.position.y }, { y: snake.position.y + .04, duration: .18, ease: 'sine.out', yoyo: true, repeat: 1, immediateRender: false }, time + .15);
+      // The Python badge gives a small hop as the service does its work.
+      for (const { object, at } of m.python) {
+        if (Math.hypot(at.x - part.at.x, at.z - part.at.z) > part.size / 2 + .2) continue;
+        timeline.fromTo(object.position, { y: object.position.y }, { y: object.position.y + .04, duration: .18, ease: 'sine.out', yoyo: true, repeat: 1, immediateRender: false }, time + .15);
+      }
     }
-    if (part.prop === 'stack') {
-      model!.seams.forEach((seam, index) => {
-        const shade = { t: 0 }, from = model!.idleSeam, to = model!.litSeam;
-        timeline.fromTo(shade, { t: 0 }, { t: 1, duration: .4, ease: 'sine.out', immediateRender: false, onUpdate: () => { seam.color.copy(from).lerp(to, shade.t); } }, time + .1 + index * .18);
-      });
-      sound('fill', time + .1, partPlace(id, level));
+    if (part.prop === 'gate' && m.gateGlow) {
+      const glow = m.gateGlow;
+      timeline.fromTo(glow, { emissiveIntensity: 0 }, { emissiveIntensity: 4, duration: .14, ease: 'sine.out', immediateRender: false }, time).to(glow, { emissiveIntensity: 2.4, duration: .9, ease: 'sine.inOut' }, time + .18);
     }
-    if (part.prop === 'screen') {
-      const draw = () => model!.screen.draw(screenState.progress, screenState.light);
-      timeline.fromTo(screenState, { light: 0 }, { light: 1, duration: .3, ease: 'sine.out', immediateRender: false, onUpdate: draw }, time + .05)
-        .fromTo(screenState, { progress: 0 }, { progress: 1, duration: 1.2, ease: 'power1.inOut', immediateRender: false, onUpdate: draw }, time + .3);
-      sound('glow', time + .05, partPlace(id, level));
+    if (part.prop === 'stack') m.seams.forEach((seam, index) => {
+      animate(t => seam.color.copy(m.idleSeam).lerp(m.litSeam, t), 0, 1, time + .1 + index * .18, .4, 'sine.out');
+    });
+    const painter = m.screens.get(id);
+    if (part.prop === 'screen' && painter) {
+      // The screen wakes, then the chart draws or the timelapse plays frame by frame.
+      const state = { progress: 0, light: 0 }, draw = () => painter.draw(state.progress, state.light), film = part.data.action === 'film';
+      animate(value => { state.light = value; draw(); }, 0, 1, time + .05, .3, 'sine.out');
+      animate(value => { state.progress = value; draw(); }, 0, 1, time + .3, film ? 1.8 : 1.2, film ? 'none' : 'power1.inOut');
     }
+    const spinner = m.spinners.get(id);
+    // The fan spins up as it is driven and coasts to a stop once the path is complete.
+    if (part.prop === 'fan' && spinner) animate(angle => spinner.set(angle), 0, Math.PI * 2 * 6, time + .05, 2.8, 'power1.inOut');
+    const mist = m.mists.get(id);
+    if (part.prop === 'humidifier' && mist) animate(t => mist.set(t), 0, mist.duration, time + .1, mist.duration, 'none');
+    const light = m.lights.get(id);
+    if (part.prop === 'lights' && light) animate(k => { light.material.emissiveIntensity = LED * k; light.pool.set(POOL * k); light.beam.set(BEAM * k); }, 0, 1, time + .05, .5, 'sine.out');
+    // Both cameras fire, one just after the other.
+    if (part.prop === 'cameras') m.lenses.forEach(({ material, flash }, index) => {
+      const at = time + .08 + index * .2, shine = (k: number) => { material.emissiveIntensity = 3 * k; flash.set(k); };
+      animate(shine, 0, 1, at, .07, 'sine.out');
+      animate(shine, 1, 0, at + .08, .4, 'sine.in');
+    });
+    // The new photographs drop onto the pile one by one.
+    if (part.prop === 'photos') m.prints.forEach((print, index) => {
+      const at = time + .1 + index * .28;
+      timeline.set(print, { visible: true }, at);
+      animate(y => { print.position.y = y; }, .3, 0, at, .26, 'power2.in');
+    });
   }
 
   function build() {
     timeline.clear();
     if (!model) return;
     let time = .25, arrival = time;
-    stage('sensors', time);
-    for (const part of diorama.parts) if (part.source) arrive(part.id, time, 'source');
-    const sources = diorama.parts.filter(part => part.source).map(part => parts.get(part.id)!.at);
-    sound('fill', time, where(sources.reduce((sum, at) => sum.add(at), new THREE.Vector3()).divideScalar(sources.length).setY(TOP)));
+    quiet = 0;
+    stage(diorama.start, time);
+    // The first sources wake together; a source that joins later (Home Assistant) wakes just before its stretch.
+    const later = new Set(diorama.stretches.flatMap(stretch => stretch.sources ?? []));
+    const first = diorama.parts.filter(part => part.source && !later.has(part.id));
+    for (const part of first) arrive(part.id, time, 'source', 1 / Math.sqrt(first.length));
     time += 1.3;
     diorama.stretches.forEach((stretch, index) => {
       const final = index === diorama.stretches.length - 1;
+      for (const id of stretch.sources ?? []) arrive(id, time - .9, 'source');
       stage(`to-${stretch.stage}`, time);
       let clock = time;
       stretch.phases.forEach((phase, step) => {
         const duration = Math.max(...phase.map(id => gsap.utils.clamp(.75, 1.3, model!.tubes.get(id)!.length / 2.4)));
         // Two readings meet in the valve: its wheel turns, and one brighter message carries on.
         const merged = step > 0 && stretch.phases[step - 1].length > 1;
-        if (merged) {
-          if (model!.wheel) timeline.to(model!.wheel.rotation, { y: `+=${Math.PI / 2}`, duration: .5, ease: 'back.out(2)' }, clock - .1);
-          const valve = [...parts.values()].find(part => part.prop === 'valve');
-          if (valve) sound('gulp', clock - .08, where(valve.at.clone().setY(.4)));
+        const valve = [...parts.values()].find(part => part.prop === 'valve');
+        if (merged && valve) {
+          const wheel = model!.spinners.get(valve.id);
+          if (wheel) animate(angle => wheel.set(angle), 0, Math.PI / 2, clock - .1, .5, 'back.out(2)');
+          sound('gulp', clock - .08, where(valve.at.clone().setY(.4)));
         }
         for (const id of phase) travel(id, merged ? clock - .06 : clock, duration, 1 / Math.sqrt(phase.length), merged);
         clock += duration;
       });
       stage(stretch.stage, clock);
-      arrive(stretch.stage, clock, final ? 'final' : 'hop');
+      // Where the last phase's tubes lead: one part, or several that answer together (the three devices).
+      const destinations = [...new Set(stretch.phases.at(-1)!.map(id => diorama.links.find(link => link.id === id)!.to))];
+      for (const id of destinations) arrive(id, clock, final ? 'final' : 'hop', 1 / Math.sqrt(destinations.length));
       arrival = clock; time = clock + .6;
     });
-    // Let the chart finish drawing before the page counts as complete.
-    timeline.to({}, { duration: .01 }, arrival + 1.9);
+    // Let the last parts finish (the chart drawing, the mist rising) before the page counts as complete.
+    timeline.to({}, { duration: .01 }, Math.max(arrival + 1.9, quiet + .2));
   }
 
   function syncControls() {

@@ -15,8 +15,11 @@ const shared = /* glsl */`
   float filledAt(float along) { return 1.0 - smoothstep(uFill * uLength - .06, uFill * uLength + .06, along * uLength); }`;
 const coreFragment = /* glsl */`
   ${shared}
+  uniform float uDashed;
   varying float vAlong;
   void main() {
+    // An optional link (manual control) carries its light in dashes.
+    if (uDashed > .5 && fract(vAlong * uLength / .26) > .55) discard;
     // Lit, the core shines as Blender's does (the accent at emission 2.4), so the live beam matches the still.
     // The message itself is a brighter, still orange, head: pushed much further it would bleach to white.
     vec3 idle = vec3(.84, .81, .77), warm = uGlow * 2.4;
@@ -53,11 +56,11 @@ const shellFragment = /* glsl */`
 
 export type EnergyTube = ReturnType<typeof createEnergy>;
 /** Energy for one glass tube: `shell` is the tube exported from Blender, running from `start` to `end`. */
-export function createEnergy(shell: THREE.Mesh, start: THREE.Vector3, end: THREE.Vector3, tubeRadius: number, glow: THREE.Color) {
+export function createEnergy(shell: THREE.Mesh, start: THREE.Vector3, end: THREE.Vector3, tubeRadius: number, glow: THREE.Color, dashed = false) {
   const axis = end.clone().sub(start), length = axis.length();
   const uniforms = {
     uHead: { value: 0 }, uFill: { value: 0 }, uPulse: { value: 0 }, uLength: { value: length }, uGlow: { value: glow },
-    uStart: { value: start.clone() }, uAxis: { value: axis.clone().normalize() },
+    uStart: { value: start.clone() }, uAxis: { value: axis.clone().normalize() }, uDashed: { value: dashed ? 1 : 0 },
   };
   shell.material = new THREE.ShaderMaterial({ uniforms, vertexShader: shellVertex, fragmentShader: shellFragment, transparent: true, depthWrite: false });
   shell.renderOrder = 3;

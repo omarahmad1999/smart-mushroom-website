@@ -9,7 +9,7 @@ import { join } from 'node:path';
 const temporary = mkdtempSync(join(tmpdir(), 'flow-posters-'));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 try {
-  for (const pathway of ['observe']) {
+  for (const pathway of ['observe', 'respond', 'record']) {
     for (const [suffix, width, height, scale] of [['', 1440, 1000, 1.5], ['-narrow', 390, 844, 2]]) {
       const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: scale, reducedMotion: 'reduce' });
       // Headless Chromium renders WebGL in software, which the dioramas decline by default; allow it here.
@@ -18,6 +18,8 @@ try {
         HTMLCanvasElement.prototype.getContext = function (type, options) { return getContext.call(this, type, options && { ...options, failIfMajorPerformanceCaveat: false }); };
       });
       await page.goto(`${process.env.BASE_URL || 'http://127.0.0.1:4322'}/#architecture`);
+      // Each path's diorama loads when its tab opens.
+      await page.locator(`[data-route="${pathway}"]`).evaluate(tab => tab.click());
       const flow = page.locator(`[data-system-flow="${pathway}"]`);
       await flow.scrollIntoViewIfNeeded();
       await page.locator(`[data-system-flow="${pathway}"][data-diorama-ready]`).waitFor({ timeout: 90000 });
