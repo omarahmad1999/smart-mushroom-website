@@ -16,8 +16,11 @@ const LED = 3, BEAM = .45, POOL = .5;
 const TOP = .42;
 const heights: Record<Prop, number> = { case: 1.3, valve: .2, gate: 1.45, stack: .8, screen: 1.3, fan: 1.15, humidifier: .95, lights: 1.1, cameras: .85, photos: .45 };
 /** The sound of each part's own action as a message reaches it. */
-const actionVoices: Record<Action, Voice> = { scribble: 'scribble', tilt: 'tilt', toggle: 'toggle', chart: 'glow', film: 'film' };
-const propVoices: Partial<Record<Prop, Voice>> = { gate: 'gate', stack: 'fill', fan: 'spin', humidifier: 'mist', lights: 'glow', cameras: 'flash', photos: 'stack' };
+const actionVoices: Record<Action, Voice> = { scribble: 'scribble', tilt: 'tilt', toggle: 'toggle', chart: 'screen', film: 'film' };
+const propVoices: Partial<Record<Prop, Voice>> = { gate: 'gate', stack: 'chime', fan: 'spin', humidifier: 'mist', lights: 'glow' };
+/** How long after a message lands each part's own sound starts, in step with its animation. The cameras' shutters
+ *  and the photographs' landings are timed with each camera and each print. */
+const cues: Partial<Record<Voice, number>> = { chime: .1, film: .3, mist: .1 };
 /** Where the Blender studio's key light sits relative to the scene, for the live materials' highlights. */
 const KEY = new THREE.Vector3(-7, 10, -1.5);
 /** How fast a message is moving at `p` of its way along a tube eased in and out: 0 at the ends, highest mid-way. */
@@ -34,7 +37,7 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
   const replayButton = root.querySelector<HTMLButtonElement>('[data-pathway-replay]')!;
   const status = root.querySelector<HTMLElement>('[data-pathway-status]')!;
   const labels = new Map([...root.querySelectorAll<HTMLElement>('[data-diorama-label]')].map(label => [label.dataset.dioramaLabel!, label]));
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)'), narrow = matchMedia('(max-width: 760px)'), fine = matchMedia('(hover: hover) and (pointer: fine)');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)'), narrow = matchMedia('(max-width: 760px)');
   const abort = new AbortController(), events = { signal: abort.signal };
   const owner = pathway;
 
@@ -141,16 +144,6 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
     frame(); aim(); placeLabels(); render();
   }
 
-  // Pointer lean: the camera eases a few degrees towards the pointer, which reads as real depth.
-  const lean = { azimuth: 45, elevation: 0 };
-  const follow = () => { aim(lean.azimuth, view.elevation + lean.elevation); placeLabels(); render(); };
-  viewport.addEventListener('pointermove', event => {
-    if (!fine.matches || reduced.matches) return;
-    const box = viewport.getBoundingClientRect(), px = (event.clientX - box.left) / box.width - .5, py = (event.clientY - box.top) / box.height - .5;
-    gsap.to(lean, { azimuth: 45 + px * 7, elevation: -py * 4, duration: .9, ease: 'power3.out', overwrite: true, onUpdate: follow });
-  }, events);
-  viewport.addEventListener('pointerleave', () => { gsap.to(lean, { azimuth: 45, elevation: 0, duration: 1.2, ease: 'power3.inOut', overwrite: true, onUpdate: follow }); }, events);
-
   // Where a sound sits: pan across the drawing, and a little lower in pitch further down a phone.
   function where(point: THREE.Vector3, level = 1): Place {
     const p = point.clone().project(camera);
@@ -236,7 +229,7 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
     }
     sound('tap', time, place);
     const voice = part.data.action ? actionVoices[part.data.action] : propVoices[part.prop];
-    if (voice) sound(voice, time + .05, place);
+    if (voice) sound(voice, time + (cues[voice] ?? .05), place);
     if (part.prop === 'case') {
       fillIcon(id, time + .1);
       // The Python badge gives a small hop as the service does its work.
@@ -266,9 +259,10 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
     if (part.prop === 'humidifier' && mist) animate(t => mist.set(t), 0, mist.duration, time + .1, mist.duration, 'none');
     const light = m.lights.get(id);
     if (part.prop === 'lights' && light) animate(k => { light.material.emissiveIntensity = LED * k; light.pool.set(POOL * k); light.beam.set(BEAM * k); }, 0, 1, time + .05, .5, 'sine.out');
-    // Both cameras fire, one just after the other.
+    // Both cameras capture, one just after the other: each shutter fires with its flash.
     if (part.prop === 'cameras') m.lenses.forEach(({ material, flash }, index) => {
       const at = time + .08 + index * .2, shine = (k: number) => { material.emissiveIntensity = 3 * k; flash.set(k); };
+      sound('shutter', at, place);
       animate(shine, 0, 1, at, .07, 'sine.out');
       animate(shine, 1, 0, at + .08, .4, 'sine.in');
     });
@@ -277,6 +271,7 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
       const at = time + .1 + index * .28;
       timeline.set(print, { visible: true }, at);
       animate(y => { print.position.y = y; }, .3, 0, at, .26, 'power2.in');
+      sound('stack', at + .26, partPlace(id, level * .8));
     });
   }
 
@@ -286,7 +281,7 @@ export async function mountDiorama(root: HTMLElement, sounds?: FlowSounds) {
     let time = .25, arrival = time;
     quiet = 0;
     stage(diorama.start, time);
-    // The first sources wake together; a source that joins later (Home Assistant) wakes just before its stretch.
+    // The first sources wake together; a source named by a later stretch wakes just before that stretch leaves.
     const later = new Set(diorama.stretches.flatMap(stretch => stretch.sources ?? []));
     const first = diorama.parts.filter(part => part.source && !later.has(part.id));
     for (const part of first) arrive(part.id, time, 'source', 1 / Math.sqrt(first.length));

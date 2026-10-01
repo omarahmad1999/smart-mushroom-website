@@ -70,7 +70,7 @@ function fillMaterial(icon: CaseIcon, bounds: THREE.Box3) {
 function tubeLine(object: THREE.Object3D) {
   for (let node: THREE.Object3D | null = object; node; node = node.parent) {
     const data = node.userData;
-    if (data.start) return data as { start: [number, number, number]; end: [number, number, number]; radius: number; dashed?: boolean };
+    if (data.start) return data as { start: [number, number, number]; end: [number, number, number]; radius: number };
   }
 }
 const roleOf = (object: THREE.Object3D) => { for (let node: THREE.Object3D | null = object; node; node = node.parent) if (node.userData.role) return node.userData.role as string; return ''; };
@@ -197,7 +197,7 @@ export async function loadModel(base: string, parts: DioramaPart[], glowColor: s
   // Each glass tube gets its core of light, along the line Blender recorded for it.
   for (const [link, shell] of tubes) {
     const line = tubeLine(shell)!;
-    const energy = createEnergy(shell, new THREE.Vector3(...line.start), new THREE.Vector3(...line.end), line.radius, new THREE.Color(glowColor), !!line.dashed);
+    const energy = createEnergy(shell, new THREE.Vector3(...line.start), new THREE.Vector3(...line.end), line.radius, new THREE.Color(glowColor));
     root.add(energy.group); model.tubes.set(link, energy);
   }
   return model;

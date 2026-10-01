@@ -43,9 +43,10 @@ test('diagram sound defaults on, starts on interaction, and stops with pause and
   await observe.locator('[data-pathway-canvas]').scrollIntoViewIfNeeded();
   await expect(observe).toHaveAttribute('data-flow-state','complete',{timeout:20000});
   // Light rushes through the tubes, each part answers with a glassy tap, the two readings merge with a gulp,
-  // and each part makes the sound of its own action: the gate, the writer's pen, the filling database, the screen.
+  // and each part makes the sound of its own action: the sensors filling, the gate, the writer's pencil, the
+  // database's chime and Grafana's screen.
   const played=(await heard(page)).played;
-  for(const voice of ['pen','tap','gulp','gate','scribble','fill','glow'])expect(played).toContain(voice);
+  for(const voice of ['pen','tap','gulp','gate','scribble','fill','chime','screen'])expect(played).toContain(voice);
   expect((await heard(page)).contexts).toHaveLength(1);
   await observe.locator('[data-pathway-replay]').click();
   await observe.locator('[data-pathway-pause]').click();
@@ -98,7 +99,7 @@ test('reduced motion keeps sound disabled and never starts audio',async({page})=
 test('every diagram sound is audible, balanced and never clips',async({page})=>{
   test.skip(!!process.env.TEST_PRODUCTION,'Renders the sound module from the development server.');
   await page.goto('/sound-check');
-  const voices=['pen','rush','blot','gulp','stamp','scribble','layer','chart','tilt','toggle','spin','mist','glow','tick','flash','stack','film','click','tap','gate','fill'];
+  const voices=['rush','tap','gulp','gate','fill','chime','scribble','tilt','toggle','screen','spin','mist','glow','tick','shutter','stack','film','click'];
   const levels=await page.evaluate(async voices=>{
     const path='/src/scripts/flow-sounds.ts';
     const {renderSound}=await import(/* @vite-ignore */ path);

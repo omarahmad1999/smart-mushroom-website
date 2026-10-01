@@ -14,7 +14,8 @@ export function mountDioramaFlow(root: HTMLElement, sounds?: FlowSounds): Flow {
       flow = await mountDiorama(root, sounds);
       flow.setActive(active);
     } catch {
-      root.dataset.flowState = 'static';
+      // No live model on this device: show the finished still instead of the start.
+      root.dataset.flowState = 'static'; root.dataset.dioramaFallback = '';
       const status = root.querySelector<HTMLElement>('[data-pathway-status]');
       if (status) status.textContent = `The ${root.dataset.flowName} path is shown as a still picture on this device.`;
     }

@@ -10,10 +10,15 @@ const named = diorama.parts.filter(part => part.name);
 <div class="diorama-flow" data-system-flow={pathway} data-flow-style="diorama" data-flow-name={diorama.name} data-flow-completion={diorama.completion} data-flow-state="static" data-flow-stage="all" role="group" aria-label={`${diorama.name} Pathway Illustration`}>
   <ol class="sr-only">{diorama.steps.map(step => <li>{step}</li>)}</ol>
   <div class="diorama-viewport" data-diorama-viewport data-pathway-canvas>
-    <picture class="diorama-poster">
-      <source media="(max-width: 760px)" srcset={`/media/flow/${pathway}-diorama-narrow.webp`} />
-      <img src={`/media/flow/${pathway}-diorama.webp`} alt={`The ${diorama.name.toLowerCase()} path as a small model: ${named.map(part => part.name).join(', ')}, joined by glass tubes of light.`} width="1240" height="528" loading="lazy" decoding="async" />
-    </picture>
+    {/* The finished model is the still for pages without JavaScript or 3D; while the live model loads, the page
+        shows it at its start, so it never looks finished and then begins again. */}
+    {(['done', 'start'] as const).map(moment => {
+      const name = `/media/flow/${pathway}-diorama${moment === 'start' ? '-start' : ''}`;
+      return <picture class="diorama-poster" data-poster={moment}>
+        <source media="(max-width: 760px)" srcset={`${name}-narrow.webp`} />
+        <img src={`${name}.webp`} alt={`The ${diorama.name.toLowerCase()} path as a small model: ${named.map(part => part.name).join(', ')}, joined by glass tubes of light.`} width="1240" height="528" loading="lazy" decoding="async" />
+      </picture>;
+    })}
     <div class="diorama-labels" aria-hidden="true">
       {named.map(part => <p class="diorama-label" data-diorama-label={part.id} data-state="idle" hidden><span class="diorama-name">{part.name}</span><span class="diorama-detail">{part.detail}</span></p>)}
     </div>
@@ -35,7 +40,10 @@ const named = diorama.parts.filter(part => part.name);
   .diorama-viewport{position:relative;aspect-ratio:2.35/1;overflow:hidden;border-radius:6px;background:radial-gradient(ellipse 75% 90% at 50% 38%,#fcf9f3 0%,#f5eee2 58%,#ede4d4 100%)}
   .diorama-viewport :global(.diorama-canvas){position:absolute;inset:0;width:100%;height:100%;display:block}
   .diorama-poster,.diorama-poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-  [data-diorama-ready] .diorama-poster{display:none}
+  .diorama-poster[data-poster=start]{display:none}
+  :global([data-enhanced]) .diorama-flow:not([data-diorama-fallback]) .diorama-poster[data-poster=start]{display:block}
+  :global([data-enhanced]) .diorama-flow:not([data-diorama-fallback]) .diorama-poster[data-poster=done]{display:none}
+  [data-diorama-ready] .diorama-poster{display:none!important}
   .diorama-labels{position:absolute;inset:0;pointer-events:none}
   .diorama-label{position:absolute;left:0;top:0;display:grid;gap:2px;margin:0;text-align:center;white-space:nowrap;will-change:transform}
   .diorama-label[data-side=below-left]{text-align:right}.diorama-label[data-side=below-right],.diorama-label[data-side=right]{text-align:left}
@@ -61,5 +69,10 @@ const named = diorama.parts.filter(part => part.name);
     .diorama-bar{flex-wrap:wrap;padding:6px 8px 0;gap:0 8px}.diorama-crosslink{flex:1 1 100%}
     .diorama-playback{gap:4px}.diorama-playback button{padding-inline:8px;font-size:10px}
   }
-  @media(prefers-reduced-motion:reduce){.diorama-playback{display:none}.diorama-name,.diorama-detail{transition:none}}
+  @media(prefers-reduced-motion:reduce){
+    .diorama-playback{display:none}.diorama-name,.diorama-detail{transition:none}
+    /* With motion reduced the model is shown finished, so its still is the finished one too. */
+    :global([data-enhanced]) .diorama-flow .diorama-poster[data-poster=start]{display:none}
+    :global([data-enhanced]) .diorama-flow .diorama-poster[data-poster=done]{display:block}
+  }
 </style>

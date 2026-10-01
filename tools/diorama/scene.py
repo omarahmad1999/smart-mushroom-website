@@ -558,23 +558,17 @@ def tube(link, start, end):
     glass.data.materials.append(mats['glass'])
     # The site runs the energy along this line.
     glass['start'], glass['end'], glass['radius'] = site(start), site(end), radius
-    if link.get('dashed'):
-        glass['dashed'] = True
     if not bake:
-        # In the studio preview the energy runs the whole tube, as the finished page shows it (in dashes for an
-        # optional link).
-        pieces = 7 if link.get('dashed') else 1
-        for i in range(pieces):
-            a, b = (i / pieces, (i + .55) / pieces) if pieces > 1 else (0, 1)
-            curve = bpy.data.curves.new('energy', 'CURVE')
-            curve.dimensions, curve.bevel_depth, curve.bevel_resolution, curve.use_fill_caps = '3D', .055, 8, True
-            spline = curve.splines.new('POLY')
-            spline.points.add(1)
-            spline.points[0].co = (*start.lerp(end, a), 1)
-            spline.points[1].co = (*start.lerp(end, b), 1)
-            core = tag(bpy.data.objects.new('energy', curve), 'preview')
-            scene.collection.objects.link(core)
-            core.data.materials.append(mats['core'])
+        # In the studio preview the energy runs the whole tube, as the finished page shows it.
+        curve = bpy.data.curves.new('energy', 'CURVE')
+        curve.dimensions, curve.bevel_depth, curve.bevel_resolution, curve.use_fill_caps = '3D', .055, 8, True
+        spline = curve.splines.new('POLY')
+        spline.points.add(1)
+        spline.points[0].co = (*start, 1)
+        spline.points[1].co = (*end, 1)
+        core = tag(bpy.data.objects.new('energy', curve), 'preview')
+        scene.collection.objects.link(core)
+        core.data.materials.append(mats['core'])
     # Metal collars where the tube meets each part.
     direction = (end - start).normalized()
     rotation = direction.to_track_quat('Z', 'Y').to_euler()

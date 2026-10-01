@@ -12,8 +12,7 @@ export interface CaseIcon { svg: string; color: string; from?: 'bottom' | 'top' 
 /** What a part does when a message reaches it, and the sound it makes. */
 export type Action = 'scribble' | 'tilt' | 'toggle' | 'chart' | 'film';
 export interface DioramaPart { id: string; name: string; detail: string; prop: Prop; size: number; source?: boolean; final?: boolean; icon?: CaseIcon; action?: Action }
-/** A dashed link is optional, like manual control: its light runs in dashes. */
-export interface DioramaLink { id: string; from: string; to: string; dashed?: boolean }
+export interface DioramaLink { id: string; from: string; to: string }
 /** `room` widens the margin left for labels at the top or bottom of the frame, in world units. */
 export interface DioramaLayout { elevation: number; at: Record<string, [number, number]>; labels: Record<string, Side>; room?: { top?: number; bottom?: number } }
 /** Messages travel stretch by stretch. A stretch may move several at once and then continue as one (merging in
@@ -89,7 +88,6 @@ export const dioramas: Record<Pathway, Diorama> = {
     steps: [
       'Readings and phase settings provide the context for a decision.',
       'The controllers, Python services, evaluate the configured conditions and publish commands through Mosquitto, the MQTT broker.',
-      'Home Assistant adds manual control, sending its commands the same way.',
       'Mosquitto routes the commands to the actuator services.',
       'The actuator services drive the fan, humidifier and LEDs.',
     ],
@@ -97,7 +95,7 @@ export const dioramas: Record<Pathway, Diorama> = {
     captions: {
       inputs: 'Readings and phase settings give the context for a decision.',
       'to-controllers': 'The controllers evaluate the configured conditions.',
-      'to-mqtt': 'Commands are published through Mosquitto; Home Assistant adds manual control.',
+      'to-mqtt': 'The controllers publish their commands through Mosquitto.',
       'to-actuators': 'Mosquitto routes the commands to the actuator services.',
       'to-devices': 'The actuator services drive the fan, humidifier and LEDs.',
       devices: 'The actuator services drive ventilation, moisture and lighting in the tent.',
@@ -105,7 +103,6 @@ export const dioramas: Record<Pathway, Diorama> = {
     parts: [
       { id: 'inputs', name: 'Readings & Phase Settings', detail: 'Decision Context', prop: 'case', size: 1.3, source: true, icon: { svg: 'sliders-horizontal', color: '#D6A23E', feel: 'solid' } },
       { id: 'controllers', name: 'Controllers', detail: 'Environment & Lighting', prop: 'case', size: 1.3, action: 'tilt', icon: { svg: 'scales', color: '#2E8784', feel: 'solid', python: true } },
-      { id: 'ha', name: 'Home Assistant', detail: 'Manual Control', prop: 'case', size: 1.3, source: true, icon: { svg: 'house', color: '#18BCF2', feel: 'solid' } },
       { id: 'mqtt', name: 'Mosquitto', detail: 'MQTT Broker', prop: 'gate', size: 1.55 },
       { id: 'actuators', name: 'Actuator Services', detail: 'Python Services', prop: 'case', size: 1.3, action: 'toggle', icon: { svg: 'toggle-right', color: '#3FA56B', feel: 'solid', python: true } },
       { id: 'fan', name: 'Fan', detail: 'Ventilation', prop: 'fan', size: 1.4, final: true },
@@ -113,34 +110,32 @@ export const dioramas: Record<Pathway, Diorama> = {
       { id: 'leds', name: 'LEDs', detail: 'Lighting', prop: 'lights', size: 1.5, final: true },
     ],
     links: [
-      { id: 'evaluate', from: 'inputs', to: 'controllers' }, { id: 'commands', from: 'controllers', to: 'mqtt' }, { id: 'manual', from: 'ha', to: 'mqtt', dashed: true },
+      { id: 'evaluate', from: 'inputs', to: 'controllers' }, { id: 'commands', from: 'controllers', to: 'mqtt' },
       { id: 'route', from: 'mqtt', to: 'actuators' },
       { id: 'drive-fan', from: 'actuators', to: 'fan' }, { id: 'drive-humidifier', from: 'actuators', to: 'humidifier' }, { id: 'drive-leds', from: 'actuators', to: 'leds' },
     ],
     stretches: [
       { phases: [['evaluate']], stage: 'controllers' },
-      // Commands from the controllers and Home Assistant's manual control reach Mosquitto together.
-      { phases: [['commands', 'manual']], stage: 'mqtt', sources: ['ha'] },
+      { phases: [['commands']], stage: 'mqtt' },
       { phases: [['route']], stage: 'actuators' },
       // The actuator services drive the three devices at once: the message splits three ways.
       { phases: [['drive-fan', 'drive-humidifier', 'drive-leds']], stage: 'devices' },
     ],
     layouts: {
-      // The two command sources converge on the gate from the left, as the sensors do in Observe; the actuator
-      // services fan out to the three devices on the right.
+      // A zigzag from the inputs to the gate, then the actuator services fan out to the three devices on the right.
       wide: {
         elevation: 33,
-        at: { inputs: [-4, 4], controllers: [-1.4, 4], ha: [-4, 1.4], mqtt: [-1.4, 1.4], actuators: [1, -1], fan: [1, -3.6], leds: [3.4, -3.4], humidifier: [3.6, -1] },
-        labels: { inputs: 'above', controllers: 'below', ha: 'above', mqtt: 'below', actuators: 'below', fan: 'above', humidifier: 'below', leds: 'below' },
+        at: { inputs: [-4, 4], controllers: [-1.4, 4], mqtt: [-1.4, 1.4], actuators: [1, -1], fan: [1, -3.6], leds: [3.4, -3.4], humidifier: [3.6, -1] },
+        labels: { inputs: 'above', controllers: 'below', mqtt: 'below', actuators: 'below', fan: 'above', humidifier: 'below', leds: 'below' },
         // The lowest labels sit clear of the caption in the corner.
         room: { bottom: 1.25 },
       },
-      // On a phone the path runs down the screen with its names to the right. Home Assistant joins from the left,
-      // and the three devices spread across the bottom, the short humidifier under the actuator services' name.
+      // On a phone the path runs down the screen with its names to the right, and the three devices spread
+      // across the bottom, the short humidifier under the actuator services' name.
       narrow: {
         elevation: 38,
-        at: { inputs: [0, 0], controllers: [2, 2], mqtt: [4, 4], ha: [1.4, 4], actuators: [6, 6], leds: [6, 8.8], fan: [8, 8], humidifier: [8.8, 6] },
-        labels: { inputs: 'right', controllers: 'right', mqtt: 'right', ha: 'above', actuators: 'right', fan: 'below', humidifier: 'below', leds: 'below' },
+        at: { inputs: [0, 0], controllers: [2, 2], mqtt: [4, 4], actuators: [6, 6], leds: [6, 8.8], fan: [8, 8], humidifier: [8.8, 6] },
+        labels: { inputs: 'right', controllers: 'right', mqtt: 'right', actuators: 'right', fan: 'below', humidifier: 'below', leds: 'below' },
       },
     },
     crosslink: { to: 'observe', text: 'The sensors notice the change', name: 'Observe' },

@@ -51,15 +51,37 @@ async function jumpToStage(page:Page,name:string,route='observe'){
 const litLabels=(flow:Diorama)=>flow.locator('[data-diorama-label]').evaluateAll(labels=>labels.filter(label=>(label as HTMLElement).dataset.state==='lit').map(label=>(label as HTMLElement).dataset.dioramaLabel!));
 type Diorama=ReturnType<Page['locator']>;
 
+test('while a model loads, the page shows it at its start rather than finished',async({page})=>{
+  await page.addInitScript(allowSoftware3d);
+  // Hold the model's download, so the page stays in its loading view.
+  await page.route('**/media/flow/*.glb',()=>{});
+  await page.goto('/#architecture');
+  const flow=page.locator('[data-system-flow="observe"]');
+  await flow.scrollIntoViewIfNeeded();
+  await expect(flow.locator('.diorama-poster[data-poster=start]')).toBeVisible();
+  await expect(flow.locator('.diorama-poster[data-poster=done]')).toBeHidden();
+});
+
+test('where 3D is unavailable, the finished still is shown',async({page})=>{
+  // These machines render WebGL in software, which the dioramas decline: the fallback is what a visitor sees.
+  await page.goto('/#architecture');
+  const flow=page.locator('[data-system-flow="observe"]');
+  await flow.scrollIntoViewIfNeeded();
+  await expect(flow).toHaveAttribute('data-diorama-fallback','',{timeout:60000});
+  await expect(flow.locator('.diorama-poster[data-poster=done]')).toBeVisible();
+  await expect(flow.locator('.diorama-poster[data-poster=start]')).toBeHidden();
+  await expect(flow.locator('[data-pathway-status]')).toContainText('shown as a still picture');
+});
+
 test('the Observe diorama carries merged readings through every part and leaves a lit model',async({page})=>{
   test.setTimeout(120_000);
   await page.addInitScript(allowSoftware3d);
   const flow=await openClocked(page);
   await expect(flow).toHaveAttribute('data-flow-style','diorama');
-  // The live model replaces the poster; the canvas is decorative and the steps stay in the text.
+  // The live model replaces the posters; the canvas is decorative and the steps stay in the text.
   await expect(flow.locator('canvas.diorama-canvas')).toHaveCount(1);
   await expect(flow.locator('canvas.diorama-canvas')).toHaveAttribute('aria-hidden','true');
-  await expect(flow.locator('.diorama-poster')).toBeHidden();
+  for(const poster of await flow.locator('.diorama-poster').all())await expect(poster).toBeHidden();
   await expect(flow.locator('[data-diorama-label]')).toHaveCount(6);
   for(const name of ['SHT31','SCD41','Mosquitto','Database Writer','TimescaleDB','Grafana'])await expect(flow.locator('[data-diorama-label]').filter({hasText:name})).toBeVisible();
   expect(await litLabels(flow)).toEqual([]);
@@ -68,6 +90,11 @@ test('the Observe diorama carries merged readings through every part and leaves 
   await jumpToStage(page,'to-mqtt');
   await expect(flow.locator('[data-diorama-caption]')).toContainText('merge before Mosquitto');
   expect(await litLabels(flow)).not.toContain('mqtt');
+  // A visitor's first click turns sound on without sending the path back to its start.
+  const lit=await litLabels(flow);
+  await flow.locator('[data-diorama-viewport]').click({position:{x:8,y:8}});
+  await expect(flow).toHaveAttribute('data-flow-stage','to-mqtt');
+  expect(await litLabels(flow)).toEqual(lit);
   await jumpToStage(page,'mqtt');
   expect(await litLabels(flow)).toContain('mqtt');
   for(const part of ['writer','timescale','grafana']){await jumpToStage(page,part);expect(await litLabels(flow)).toContain(part);}
@@ -105,7 +132,7 @@ test('pause, replay, offscreen suspension and keyboard tabs keep the sequence un
   const tabs=page.getByRole('tablist',{name:'Explore a system pathway'}).getByRole('tab');
   await tabs.nth(0).focus();await page.keyboard.press('ArrowRight');
   await expect(page.locator('#architecture-panel-respond')).toBeVisible();
-  await expect(page.locator('#architecture-panel-respond [data-diorama-label]')).toHaveCount(8);
+  await expect(page.locator('#architecture-panel-respond [data-diorama-label]')).toHaveCount(7);
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('#architecture-panel-record')).toBeVisible();
   await expect(page.locator('#architecture-panel-record [data-diorama-label]')).toHaveCount(4);
@@ -143,7 +170,7 @@ test('reduced motion shows the full explanation without travelling pulses',async
   const respondTab=page.getByRole('tab',{name:/Respond/});
   await expect(respondTab).toHaveAttribute('aria-selected','true');await expect(respondTab).toBeFocused();
   await expect(page.locator('#architecture-panel-respond')).toBeVisible();
-  for(const [route,count,completion] of [['respond',8,'The actuator services drive ventilation, moisture and lighting in the tent.'],['record',4,'Selected photographs and completed timelapses form the visual record.']] as const) {
+  for(const [route,count,completion] of [['respond',7,'The actuator services drive ventilation, moisture and lighting in the tent.'],['record',4,'Selected photographs and completed timelapses form the visual record.']] as const) {
     await page.locator(`[data-route="${route}"]`).click();
     const pathway=page.locator(`[data-system-flow="${route}"]`);
     await expect(pathway.locator('[data-pathway-status]')).toHaveText(/shown with motion reduced/,{timeout:60000});
@@ -155,7 +182,7 @@ test('reduced motion shows the full explanation without travelling pulses',async
 });
 
 for(const pathway of [
-  {id:'respond',start:'inputs',parts:8,hops:[['controllers',['controllers']],['mqtt',['mqtt']],['actuators',['actuators']],['devices',['fan','humidifier','leds']]],completion:'The actuator services drive ventilation, moisture and lighting in the tent.'},
+  {id:'respond',start:'inputs',parts:7,hops:[['controllers',['controllers']],['mqtt',['mqtt']],['actuators',['actuators']],['devices',['fan','humidifier','leds']]],completion:'The actuator services drive ventilation, moisture and lighting in the tent.'},
   {id:'record',start:'schedule',parts:4,hops:[['cameras',['cameras']],['storage',['storage']],['media',['media']]],completion:'Selected photographs and completed timelapses form the visual record.'},
 ])test(`${pathway.id} plays its diorama like Observe and suspends when another tab opens`,async({page})=>{
   test.setTimeout(150_000);
@@ -163,7 +190,7 @@ for(const pathway of [
   const flow=await openClocked(page,pathway.id);
   await expect(flow).toHaveAttribute('data-flow-style','diorama');
   await expect(flow.locator('canvas.diorama-canvas')).toHaveCount(1);
-  await expect(flow.locator('.diorama-poster')).toBeHidden();
+  for(const poster of await flow.locator('.diorama-poster').all())await expect(poster).toBeHidden();
   await expect(flow.locator('[data-diorama-label]')).toHaveCount(pathway.parts);
   expect(await litLabels(flow)).toEqual([]);
   await jump(page,400);
@@ -171,8 +198,6 @@ for(const pathway of [
   for(const [hop,arrivals] of pathway.hops as [string,string[]][]){
     await jumpToStage(page,`to-${hop}`,pathway.id);
     for(const arrival of arrivals)expect(await litLabels(flow)).not.toContain(arrival);
-    // Home Assistant wakes just before its manual command sets off with the controllers' commands.
-    if(hop==='mqtt')expect(await litLabels(flow)).toContain('ha');
     await jumpToStage(page,hop,pathway.id);
     // The actuator services drive all three devices at once.
     for(const arrival of arrivals)expect(await litLabels(flow)).toContain(arrival);
@@ -201,16 +226,16 @@ test.describe('without JavaScript',()=>{
     await page.goto('/#architecture');
     for(const id of ['observe','respond','record'])await expect(page.locator(`#architecture-panel-${id}`)).toBeVisible();
     // Without JavaScript each model is its finished poster, with its steps in the text.
-    const poster=page.locator('[data-system-flow="observe"] .diorama-poster img');
+    const poster=page.locator('[data-system-flow="observe"] .diorama-poster[data-poster=done] img');
     // The page's own anchor scroll brings the section into view, which also loads the lazy poster.
     await expect(poster).toBeVisible();
     await expect(poster).toHaveAttribute('alt',/Mosquitto.*Grafana/);
     await expect.poll(()=>poster.evaluate((image:HTMLImageElement)=>image.naturalWidth)).toBeGreaterThan(0);
     await expect(page.locator('[data-system-flow="observe"] ol')).toContainText('Grafana visualizes the stored measurements');
     for(const link of await page.locator('[data-flow-goto]').all())await expect(link).toBeHidden();
-    for(const [route,names,step] of [['respond',['Controllers','Mosquitto','Home Assistant','Actuator Services','Fan','Humidifier','LEDs'],'drive the fan, humidifier and LEDs'],['record',['Capture Schedule','Two Cameras','Image Storage','Media Preparation'],'produces completed timelapses']] as const) {
-      const image=page.locator(`[data-system-flow="${route}"] .diorama-poster img`);
-      await image.scrollIntoViewIfNeeded();
+    for(const [route,names,step] of [['respond',['Controllers','Mosquitto','Actuator Services','Fan','Humidifier','LEDs'],'drive the fan, humidifier and LEDs'],['record',['Capture Schedule','Two Cameras','Image Storage','Media Preparation'],'produces completed timelapses']] as const) {
+      const image=page.locator(`[data-system-flow="${route}"] .diorama-poster[data-poster=done] img`);
+      await image.evaluate(element=>element.scrollIntoView({block:'center'}));
       await expect(image).toBeVisible();
       for(const name of names)expect(await image.getAttribute('alt')).toContain(name);
       await expect.poll(()=>image.evaluate((element:HTMLImageElement)=>element.naturalWidth)).toBeGreaterThan(0);

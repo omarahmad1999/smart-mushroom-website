@@ -13,7 +13,7 @@ const routes = [
     id: 'respond',
     name: 'Respond',
     verb: 'A condition becomes a decision.',
-    description: 'The controllers consider environmental readings alongside the settings for the cultivation phase. They send commands through MQTT to the services responsible for ventilation, moisture and lighting. Home Assistant adds manual control.',
+    description: 'The controllers consider environmental readings alongside the settings for the cultivation phase. They send commands through MQTT to the services responsible for ventilation, moisture and lighting.',
     eyebrow: 'THE CONTROL PATH',
   },
   {
@@ -198,15 +198,13 @@ const routes = [
       button.addEventListener('click',()=>{const tab=tabs.find(item=>item.dataset.route===button.dataset.flowGoto);if(tab){selectRoute(tab);tab.focus();}});
     });
 
-    // Browsers start audio only after a visitor's gesture. The first time it starts, the open drawing replays so it is heard from the beginning.
-    let heard=false;
-    const openFlow=()=>flows.get(tabs.find(tab=>tab.getAttribute('aria-selected')==='true')!.dataset.route!);
+    // Browsers start audio only after a visitor's gesture. Sound then joins the path where it is: the model never
+    // jumps back to the start because audio became available.
     const unlockDefault=async(event:Event)=>{
       if(!event.isTrusted||motion.matches||!sounds.enabled||sounds.ready||soundButton.contains(event.target as Node))return;
-      const ready=await sounds.enable();
+      await sounds.enable();
       if(motion.matches)sounds.disable();
       syncSound();
-      if(ready&&!heard&&!motion.matches){heard=true;openFlow()?.restart();}
     };
     // Touch screens allow audio when a tap lifts, not when it lands.
     for(const type of ['pointerdown','pointerup','touchend','keydown'])document.addEventListener(type,unlockDefault,{capture:true});
@@ -219,8 +217,8 @@ const routes = [
       const ready=await sounds.enable();
       if(motion.matches){sounds.disable();syncSound();return;}
       if(!ready){sounds.disable();syncSound();soundLabel.textContent='Sound unavailable';return;}
-      remember(true);heard=true;syncSound();
-      sounds.play('click','controls');openFlow()?.restart();
+      remember(true);syncSound();
+      sounds.play('click','controls');
     });
     motion.addEventListener('change',()=>{if(motion.matches)sounds.disable();syncSound();});
     window.addEventListener('pagehide',event=>{sounds.stop();if(!event.persisted)sounds.dispose();});
