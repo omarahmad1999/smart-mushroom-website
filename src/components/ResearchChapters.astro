@@ -13,8 +13,8 @@ const phases = [
     title: 'Much of the work happens out of sight.',
     description: 'Mycelium spreads through the straw inside each bag. What is visible on the surface is only part of the story, so a quiet-looking bag does not tell us everything about colonization.',
     focus: 'Observe patiently. Follow the developing mycelium and the surrounding conditions.',
-    image: '/media/bag-bare.webp',
-    alt: 'Illustration of a hanging straw substrate bag before visible mushroom fruiting.',
+    image: '/media/cultivation/stage-incubation.webp',
+    alt: 'Rendered illustration of a hanging bag of chopped straw in clear plastic, with white mycelium beginning to spread through it.',
   },
   {
     id: 'pinning',
@@ -23,8 +23,8 @@ const phases = [
     title: 'The first small signs become visible.',
     description: 'Tiny mushroom initials mark a visible transition. This is a useful moment to look closely at the relationship between the growing environment and what the cameras can actually observe.',
     focus: 'Look for the transition. Environmental settings and observation schedules can change by phase.',
-    image: '/media/bag-bare.webp',
-    alt: 'Conceptual illustration of a hanging straw substrate bag; it is not a photograph of pinning.',
+    image: '/media/cultivation/stage-pinning.webp',
+    alt: 'Rendered illustration of the same bag, now white with mycelium, with clusters of tiny grey-tipped mushroom pins at three cuts in the plastic.',
   },
   {
     id: 'fruiting',
@@ -33,8 +33,8 @@ const phases = [
     title: 'Slow changes start to take shape.',
     description: 'Oyster mushrooms develop into their recognizable clusters. Scheduled photographs can make gradual changes easier to see, while environmental measurements provide a separate record in Grafana.',
     focus: 'Observe shape and development. A visual impression alone is not a measurement of yield.',
-    image: '/media/bag-oyster.webp',
-    alt: 'Generated illustration of oyster mushroom clusters emerging from a hanging substrate bag.',
+    image: '/media/cultivation/stage-fruiting.webp',
+    alt: 'Rendered illustration of the bag with grey-brown oyster mushroom clusters growing from its three openings.',
   },
   {
     id: 'harvest',
@@ -43,8 +43,8 @@ const phases = [
     title: 'An endpoint, and a new set of questions.',
     description: 'Harvest offers a moment to document the outcome and review the run. Any conclusions need to account for the actual observations, the conditions, and the gaps in the record.',
     focus: 'Reflect on the evidence. This conceptual stage does not indicate that a harvest has been completed.',
-    image: '/media/bag-oyster.webp',
-    alt: 'Illustrative oyster mushrooms on a substrate bag, not evidence of an actual harvest.',
+    image: '/media/cultivation/stage-harvest.webp',
+    alt: 'Rendered illustration of the bag with cut stems at its openings and the harvested oyster clusters in a dish below; not evidence of an actual harvest.',
   },
 ];
 
@@ -100,8 +100,8 @@ const phases = [
             </div>
             <figure class="rc-phase-art">
               <span class="rc-art-ring rc-art-ring-one" aria-hidden="true"></span><span class="rc-art-ring rc-art-ring-two" aria-hidden="true"></span>
-              <img src={phase.image} alt={phase.alt} width="640" height="800" loading="lazy" />
-              <figcaption>GENERATED ILLUSTRATION · CONCEPTUAL, NOT AN OBSERVED RESULT</figcaption>
+              <img src={phase.image} alt={phase.alt} width="780" height="1080" loading="lazy" decoding="async" />
+              <figcaption>RENDERED ILLUSTRATION · CONCEPTUAL, NOT AN OBSERVED RESULT</figcaption>
             </figure>
           </div>
         ))}
