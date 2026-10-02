@@ -179,11 +179,54 @@ def parent(child, owner):
 
 # Parts --------------------------------------------------------------------------------------------
 
-def platform(part, at):
+# Where a tube runs diagonally it meets its part at a corner. A round collar cannot sit flush against a corner,
+# so that corner is cut back to a small flat face, square to the tube, for the collar to seat on.
+CHAMFER = .26
+
+
+def diagonal(a, b):
+    d = b - a
+    return abs(d.x) > .01 and abs(d.y) > .01 and .5 < abs(d.x) / abs(d.y) < 2
+
+
+def port_distance(pid):
+    """How far from a part's middle the flat face of a diagonal port lies."""
+    return parts[pid]['size'] / 2 * math.sqrt(2) - CHAMFER
+
+
+def cut_ports(obj, pid):
+    for along in ports.get(pid, []):
+        bpy.ops.mesh.primitive_cube_add(size=2)
+        cutter = bpy.context.active_object
+        cutter.location = at[pid] + along * (port_distance(pid) + 1) + Vector((0, 0, .3))
+        cutter.rotation_euler = (0, 0, math.atan2(along.y, along.x))
+        bpy.context.view_layer.update()
+        cut = obj.modifiers.new('Port', 'BOOLEAN')
+        cut.operation, cut.object, cut.solver = 'DIFFERENCE', cutter, 'EXACT'
+        # The new face takes the part's own material, not one from the cutter.
+        if hasattr(cut, 'material_mode'):
+            cut.material_mode = 'INDEX'
+        bpy.context.view_layer.objects.active = obj
+        # Cut before the bevel, so the new face's edges are rounded like the rest.
+        bpy.ops.object.modifier_move_to_index(modifier='Port', index=0)
+        bpy.ops.object.modifier_apply(modifier='Port')
+        bpy.data.objects.remove(cutter)
+        # Drop any empty material slot the cut left behind (it holds no faces).
+        while obj.data.materials and obj.data.materials[-1] is None:
+            obj.data.materials.pop()
+    return obj
+
+
+def platform(part, at_):
     s = part['size']
-    root = group(f"{part['id']} platform", at)
-    tag(parent(box('base', (s, s, .3), (0, 0, .15), 'base', .1), root), 'baked').location = (0, 0, .15)
-    tag(parent(box('acrylic top', (s * .86, s * .86, .12), (0, 0, 0), 'acrylic', .06), root), 'baked').location = (0, 0, .36)
+    root = group(f"{part['id']} platform", at_)
+    base = tag(parent(box('base', (s, s, .3), (0, 0, .15), 'base', .1), root), 'baked')
+    base.location = (0, 0, .15)
+    top = tag(parent(box('acrylic top', (s * .86, s * .86, .12), (0, 0, 0), 'acrylic', .06), root), 'baked')
+    top.location = (0, 0, .36)
+    bpy.context.view_layer.update()
+    for obj in (base, top):
+        cut_ports(obj, part['id'])
     return root
 
 
@@ -320,7 +363,10 @@ def glass_box(part, at, level):
 
 def valve(part, at):
     root = group('junction valve', at)
-    tag(parent(box('valve body', (.62, .62, .44), (0, 0, 0), 'metal', .1), root), 'baked').location = (0, 0, .22)
+    body = tag(parent(box('valve body', (.62, .62, .44), (0, 0, 0), 'metal', .1), root), 'baked')
+    body.location = (0, 0, .22)
+    bpy.context.view_layer.update()
+    cut_ports(body, part['id'])
     tag(parent(cylinder('hub', .08, .12, (0, 0, 0), 'dark metal'), root), 'wheel').location = (0, 0, .5)
     for angle in (45, -45):
         spoke = tag(parent(box('spoke', (.5, .07, .06), (0, 0, 0), 'dark metal', .025, 4), root), 'wheel')
@@ -596,6 +642,13 @@ def tube(link, start, end):
 
 parts = {part['id']: part for part in layout['parts']}
 at = {pid: V(x, 0, z) for pid, (x, z) in layout['at'].items()}
+# The directions in which each part has a diagonal tube.
+ports = {}
+for link in layout['links']:
+    for end, other in ((link['from'], link['to']), (link['to'], link['from'])):
+        if diagonal(at[end], at[other]):
+            d = at[other] - at[end]
+            ports.setdefault(end, []).append(Vector((d.x, d.y, 0)).normalized())
 # Each icon fills with its own colour (the thermometer red from the bulb up, the notepad written from the top...).
 # The bake sees them empty, as the site starts them, so no coloured glow is baked into the platforms.
 moment = args[3] if len(args) > 3 and not bake else 'done'
@@ -633,10 +686,10 @@ def side(pid, towards):
     part, origin = parts[pid], at[pid]
     d = towards - origin
     dx, dy = abs(d.x), abs(d.y)
-    if dx > .01 and dy > .01 and .5 < dx / dy < 2:
-        # Into the corner rather than at its rounded tip, so the collar sits plugged into the platform.
+    if diagonal(origin, towards):
+        # Seated on the flat face cut into the corner for it.
         along = Vector((d.x, d.y, 0)).normalized()
-        return origin + along * (part['size'] / 2 / max(abs(along.x), abs(along.y)) - .24) + Vector((0, 0, .2))
+        return origin + along * (port_distance(pid) + .02) + Vector((0, 0, .2))
     along = Vector((math.copysign(1, d.x), 0, 0)) if dx >= dy else Vector((0, math.copysign(1, d.y), 0))
     return origin + along * (part['size'] / 2 + .02) + Vector((0, 0, .2))
 
@@ -823,7 +876,7 @@ bpy.ops.object.mode_set(mode='OBJECT')
 atlas_size = int(args[3]) if len(args) > 3 else 2048
 atlas = bpy.data.images.new('atlas', atlas_size, atlas_size, float_buffer=True)
 # Each material bakes into the atlas once, however many objects share it.
-baking = list({slot.material for obj in targets for slot in obj.material_slots})
+baking = list({slot.material for obj in targets for slot in obj.material_slots if slot.material})
 for material_ in baking:
     nodes = material_.node_tree.nodes
     node = nodes.new('ShaderNodeTexImage')
