@@ -478,17 +478,33 @@ def humidifier(part, at):
     return root
 
 
+def dome(radius, height):
+    """A mushroom's cap: the top half of a sphere, flattened a little, open underneath for the gills."""
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1, segments=32, ring_count=16)
+    cap = bpy.context.active_object
+    mesh = bmesh.new()
+    mesh.from_mesh(cap.data)
+    bmesh.ops.delete(mesh, geom=[v for v in mesh.verts if v.co.z < -.001], context='VERTS')
+    mesh.to_mesh(cap.data)
+    mesh.free()
+    cap.scale = (radius, radius, height)
+    bpy.ops.object.transform_apply(scale=True)
+    return finish(cap, 'cap')
+
+
 def lights(part, at):
     # An LED bar on two posts over a small mushroom block: on its turn the bar glows and lights what grows below.
     pid = part['id']
     root = group(f'{pid} lights', at + Vector((0, 0, TOP)), math.radians(45))
-    tag(parent(box('block', (.46, .36, .3), (0, 0, 0), 'substrate', .05), root), 'baked').location = (0, .02, .15)
-    for x, y, z, r in ((-.1, -.06, .34, .1), (.08, .02, .38, .12), (.13, -.12, .32, .08)):
-        tag(parent(cylinder('stem', .025, .1, (0, 0, 0), 'stem', .01, 24), root), 'baked').location = (x, y, z - .03)
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=r, segments=32, ring_count=16)
-        cap = finish(bpy.context.active_object, 'cap')
-        cap.scale = (1, 1, .45)
-        tag(parent(cap, root), 'baked').location = (x, y, z + .02)
+    tag(parent(box('block', (.52, .42, .26), (0, 0, 0), 'substrate', .05), root), 'baked').location = (0, .02, .13)
+    # A cluster of mushrooms growing from the block: domed caps with pale gills beneath, on stems leaning outwards.
+    for x, y, height, radius, lean in ((-.15, -.04, .2, .11, -16), (0, .05, .28, .135, 0), (.16, -.06, .19, .1, 18), (-.05, -.13, .13, .078, -8), (.11, .12, .15, .085, 10)):
+        stalk = group('mushroom', Vector((0, 0, 0)))
+        parent(stalk, root)
+        stalk.location, stalk.rotation_euler = (x, y, .26), (math.radians(lean * .4), math.radians(lean), 0)
+        tag(parent(cylinder('stem', radius * .26, height, (0, 0, 0), 'stem', .008, 24), stalk), 'baked').location = (0, 0, height / 2)
+        tag(parent(cylinder('gills', radius * .96, .012, (0, 0, 0), 'stem', .004, 32), stalk), 'baked').location = (0, 0, height)
+        tag(parent(dome(radius, radius * .62), stalk), 'baked').location = (0, 0, height)
     for x in (-.56, .56):
         tag(parent(box('post', (.05, .05, 1.02), (0, 0, 0), 'dark metal', .015, 3), root), 'baked').location = (x, .08, .51)
     # The bar tilts towards the viewer on its posts, so its glowing face can be seen from above.
@@ -618,8 +634,9 @@ def side(pid, towards):
     d = towards - origin
     dx, dy = abs(d.x), abs(d.y)
     if dx > .01 and dy > .01 and .5 < dx / dy < 2:
+        # Into the corner rather than at its rounded tip, so the collar sits plugged into the platform.
         along = Vector((d.x, d.y, 0)).normalized()
-        return origin + along * (part['size'] / 2 / max(abs(along.x), abs(along.y)) - .02) + Vector((0, 0, .2))
+        return origin + along * (part['size'] / 2 / max(abs(along.x), abs(along.y)) - .24) + Vector((0, 0, .2))
     along = Vector((math.copysign(1, d.x), 0, 0)) if dx >= dy else Vector((0, math.copysign(1, d.y), 0))
     return origin + along * (part['size'] / 2 + .02) + Vector((0, 0, .2))
 
