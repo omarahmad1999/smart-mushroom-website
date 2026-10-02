@@ -31,8 +31,8 @@ try {
       await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(600);
       const name = `${pathway}-diorama${moment === 'start' ? '-start' : ''}${suffix}`, png = join(temporary, `${name}.png`);
-      // The site's fixed page navigation can sit over the drawing on a phone; leave it out of the still.
-      await flow.locator('[data-diorama-viewport]').screenshot({ path: png, style: '.home-paper-nav{visibility:hidden}' });
+      // The page's chapter bar can sit over the model when it is scrolled into view; leave it out of the still.
+      await flow.locator('[data-diorama-viewport]').screenshot({ path: png, style: '.home-contents{visibility:hidden}' });
       execFileSync('python3', ['-c', 'from PIL import Image; import sys; Image.open(sys.argv[1]).convert("RGB").save(sys.argv[2],"WEBP",quality=86,method=6)', png, `public/media/flow/${name}.webp`]);
       await page.close();
     }

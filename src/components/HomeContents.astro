@@ -1,0 +1,112 @@
+---
+import Icon from './Icon.astro';
+
+// The home page's chapters, in reading order. Names match each section's own label.
+const chapters = [
+  { id: 'material-study', name: 'Interactive Habitat', summary: 'Explore the tent and its hardware in 3D.' },
+  { id: 'architecture', name: 'Connected System', summary: 'How readings, commands and photos travel.' },
+  { id: 'experiment', name: 'The Experiment', summary: 'What the project asks, and how it is set up.' },
+  { id: 'cultivation', name: 'Cultivation Cycle', summary: 'The stages of growth, from incubation to harvest.' },
+  { id: 'observations', name: 'Camera & Timelapse', summary: 'Scheduled photographs and an 18-day timelapse.' },
+  { id: 'vision', name: 'Computer Vision', summary: 'Teaching a camera to recognize mushrooms.' },
+];
+const total = String(chapters.length).padStart(2, '0');
+---
+
+<nav class="home-contents" data-home-contents aria-label="Home page contents">
+  <div class="hc-bar">
+    <div class="hc-inner">
+      <p class="hc-label" aria-hidden="true"><span class="hc-marker"></span>Contents</p>
+      <!-- On a phone the bar shows where the reader is and opens the full list. -->
+      <button type="button" class="hc-toggle" aria-expanded="false" aria-controls="home-contents-list" data-contents-toggle>
+        <span class="hc-marker" aria-hidden="true"></span>
+        <span class="sr-only">Chapters. Now reading:</span>
+        <span class="hc-count"><span data-current-number>01</span><span aria-hidden="true"> / {total}</span></span>
+        <span class="hc-current" data-current-name>{chapters[0].name}</span>
+        <span class="hc-open-label" aria-hidden="true">Chapters</span>
+        <Icon name="chevron-down" size={16} class="hc-chevron" />
+      </button>
+      <ol class="hc-list" id="home-contents-list" data-contents-list>
+        {chapters.map((chapter, index) => (
+          <li>
+            <a href={`#${chapter.id}`} data-home-section={chapter.id}>
+              <span class="hc-number">{String(index + 1).padStart(2, '0')}</span>
+              <span class="hc-text"><span class="hc-name">{chapter.name}</span><span class="hc-summary">{chapter.summary}</span></span>
+              <Icon name="arrow-down" size={16} class="hc-arrow" />
+              <span class="hc-meter" aria-hidden="true"></span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </div>
+    <span class="hc-progress" aria-hidden="true"></span>
+  </div>
+  <div class="hc-scrim" data-contents-scrim hidden></div>
+</nav>
+
+<script>
+  import '../scripts/home-contents';
+</script>
+
+<style>
+  /* A chapter bar under the header, in the section labels' language: a small orange square, spaced capitals,
+     thin rules. On a laptop every chapter is one click away; the current one is underlined, and the underline
+     fills as the reader moves through it. */
+  .home-contents{--hc-top:92px;--hc-height:46px;position:sticky;top:var(--hc-top);z-index:29;font-family:var(--font-body);color:var(--ink)}
+  .hc-bar{position:relative;z-index:1;background:var(--paper);border-bottom:1px solid var(--line)}
+  .hc-inner{width:min(var(--page-width),calc(100% - 2 * var(--page-pad)));height:var(--hc-height);margin:auto;display:flex;align-items:stretch;gap:clamp(18px,2.4vw,40px)}
+  .hc-label{display:flex;align-items:center;gap:10px;flex:none;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#68755e}
+  .hc-marker{display:inline-block;width:5px;height:5px;flex:none;background:var(--orange)}
+  .hc-toggle{display:none}
+  .hc-list{display:flex;flex:1;justify-content:space-between;gap:12px;min-width:0;margin:0;padding:0;list-style:none}
+  .hc-list li{display:flex}
+  .hc-list a{position:relative;display:flex;align-items:center;gap:9px;padding:0 1px;color:#626a60;text-decoration:none;font-size:11.5px;white-space:nowrap;transition:color .2s}
+  .hc-list a:hover,.hc-list a[aria-current]{color:var(--ink)}
+  .hc-number{font-size:9px;color:#8b927f;font-variant-numeric:tabular-nums;transition:color .2s}
+  .hc-list a[aria-current] .hc-number{color:var(--orange)}
+  .hc-summary,.hc-list :global(.hc-arrow){display:none}
+  /* The current chapter's underline: a faint track, filled in orange as far as the reader has read. */
+  .hc-meter{position:absolute;left:0;right:0;bottom:-1px;height:2px;background:transparent;transform-origin:left;pointer-events:none}
+  .hc-list a:hover .hc-meter{background:#d9dcd0}
+  .hc-list a[aria-current] .hc-meter{background:linear-gradient(90deg,var(--orange) calc(var(--progress,0) * 100%),#d9dcd0 0)}
+  .hc-progress{display:none}
+  .hc-scrim{position:fixed;inset:0;z-index:0;background:#172b2929}
+
+  /* Every chapter jumps to just below the header and the bar (the sections' own offsets assumed no bar). */
+  :global(html){scroll-padding-top:138px}
+  :global(:is(#material-study,#architecture,#experiment,#cultivation,#observations,#vision)){scroll-margin-top:0}
+
+  @media(max-width:1200px){.hc-label{display:none}.hc-list a{font-size:11px;gap:7px}}
+
+  /* Tablets and phones: the bar names the current chapter; the full list drops down beneath it. */
+  @media(max-width:1000px){
+    .hc-toggle{display:flex;align-items:center;gap:10px;flex:1;min-width:0;min-height:var(--hc-height);padding:0;background:transparent;text-align:left;font-size:12.5px;color:var(--ink)}
+    .hc-count{flex:none;font-size:10px;letter-spacing:.06em;color:#7b8271;font-variant-numeric:tabular-nums}
+    .hc-count>span:first-child{color:var(--orange)}
+    .hc-current{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .hc-open-label{margin-left:auto;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#68755e}
+    .hc-toggle :global(.hc-chevron){flex:none;color:#68755e;transition:transform .25s}
+    .home-contents[data-open] .hc-toggle :global(.hc-chevron){transform:rotate(180deg)}
+    .hc-progress{display:block;position:absolute;left:0;bottom:-1px;width:100%;height:2px;background:var(--orange);transform:scaleX(var(--progress,0));transform-origin:left;pointer-events:none}
+
+    .home-contents[data-ready] .hc-list{display:none;position:absolute;left:0;right:0;top:100%;flex-direction:column;gap:0;max-height:calc(100dvh - var(--hc-top) - var(--hc-height) - 18px);overflow:auto;overscroll-behavior:contain;padding:4px var(--page-pad) 14px;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 22px 40px #172b291f}
+    .home-contents[data-open] .hc-list{display:flex;animation:hc-drop .22s cubic-bezier(.22,.75,.26,1)}
+    .home-contents[data-ready] .hc-list a{flex:1;display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:6px 10px;min-height:62px;padding:10px 2px;border-bottom:1px solid var(--line);white-space:normal;font-size:15px;color:var(--ink)}
+    .home-contents[data-ready] .hc-list li:last-child a{border-bottom:0}
+    .home-contents[data-ready] .hc-number{font-size:10px}
+    .home-contents[data-ready] .hc-text{display:grid;gap:3px}
+    .home-contents[data-ready] .hc-summary{display:block;font-size:11.5px;line-height:1.4;color:var(--muted)}
+    .home-contents[data-ready] .hc-list :global(.hc-arrow){display:block;color:#8b927f}
+    .home-contents[data-ready] .hc-list a[aria-current]{background:linear-gradient(90deg,#ce5b3912,transparent 70%)}
+    .home-contents[data-ready] .hc-list a[aria-current] :global(.hc-arrow){color:var(--orange)}
+    .home-contents[data-ready] .hc-meter{display:none}
+
+    /* Without JavaScript the chapters stay a row of links to scroll along. */
+    .home-contents:not([data-ready]) .hc-toggle{display:none}
+    .home-contents:not([data-ready]) .hc-list{overflow-x:auto;justify-content:flex-start;gap:22px;scrollbar-width:none}
+  }
+  @media(max-width:850px){.home-contents{--hc-top:77px}:global(html){scroll-padding-top:123px}}
+  @keyframes hc-drop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){.home-contents[data-open] .hc-list{animation:none}.hc-list a,.hc-number,.hc-toggle :global(.hc-chevron){transition:none}}
+  @media print{.home-contents{display:none}}
+</style>
