@@ -192,6 +192,16 @@ const routes = [
       flows.set(root.dataset.systemFlow!,flow);
       flow.setActive(root.dataset.systemFlow===tabs[0].dataset.route);
     });
+    // A link to a path's panel (such as #architecture-panel-record from the camera section) opens that path's tab.
+    const openFromHash=()=>{
+      const route=location.hash.match(/^#architecture-panel-(\w+)$/)?.[1];
+      const tab=route&&tabs.find(item=>item.dataset.route===route);
+      if(!tab)return;
+      selectRoute(tab);
+      document.getElementById(`architecture-panel-${route}`)?.scrollIntoView({block:'start'});
+    };
+    openFromHash();
+    window.addEventListener('hashchange',openFromHash);
     // Handwritten cross-links hand the reader to the pathway they mention.
     architecture.querySelectorAll<HTMLButtonElement>('[data-flow-goto]').forEach(button=>{
       button.hidden=false;

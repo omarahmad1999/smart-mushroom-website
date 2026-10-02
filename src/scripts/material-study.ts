@@ -18,6 +18,8 @@ if (section) {
     }
   }, { rootMargin: '350px' });
   observer.observe(section);
-  // A link such as /#study-fan opens the habitat with that part selected.
-  if (/^#study-[\w-]+$/.test(location.hash)) section.scrollIntoView({ block: 'start' });
+  // A link such as /#study-fan opens the habitat with that part selected, from another page or from this one.
+  const toPart = () => { if (/^#study-[\w-]+$/.test(location.hash)) section.scrollIntoView({ block: 'start' }); };
+  toPart();
+  addEventListener('hashchange', toPart);
 }

@@ -124,30 +124,48 @@ test('architecture tabs trace the observation, control, and media pathways', asy
   await expectNoHorizontalOverflow(page);
 });
 
-test('published photographs keep their dates and can be selected with keyboard controls', async ({ page }) => {
+test('the first and last stills can be compared, and every published photograph keeps its date and link', async ({ page }) => {
   await openHome(page);
-  const gallery = page.locator('[data-photo-viewer]');
-  const controls = gallery.getByRole('group', { name: 'Choose a published photograph' });
-  await expect(controls).toBeVisible();
-  await expect(gallery.locator('[data-capture]:visible')).toHaveCount(1);
-  await expect(gallery.locator('#rc-capture-2026-08-19')).toBeVisible();
-  const second = controls.getByRole('button', { name: 'Show photograph from 27 August 2026' });
-  await second.focus();
-  await page.keyboard.press('Enter');
-  await expect(second).toHaveAttribute('aria-pressed', 'true');
-  await expect(gallery.locator('#rc-capture-2026-08-27')).toBeVisible();
-  await expect(gallery.locator('#rc-capture-2026-08-19')).toBeHidden();
-  await expect(gallery.getByRole('status')).toContainText('27 August 2026');
-  const third = controls.getByRole('button', { name: 'Show photograph from 4 September 2026' });
-  await third.click();
-  await expect(third).toHaveAttribute('aria-pressed', 'true');
-  await expect(second).toHaveAttribute('aria-pressed', 'false');
-  const capture = gallery.locator('#rc-capture-2026-09-04');
-  await expect(capture).toBeVisible();
-  await expect(capture.locator('time')).toHaveAttribute('datetime', '2026-09-04');
-  await expect(capture.getByRole('link')).toHaveAttribute('href', '/media/photo-incubation-2026-09-04.webp');
-  await expect(capture.getByRole('img')).toHaveAttribute('alt', /Real camera photograph/);
-  await expect(gallery).toContainText('Cairo time (UTC+3)');
+  const viewer = page.locator('[data-photo-viewer]');
+  const slider = viewer.getByRole('slider', { name: 'Compare the photographs from 19 August 2026 and 4 September 2026' });
+  await expect(slider).toHaveValue('50');
+  await slider.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(slider).toHaveValue('51');
+  await expect(viewer.locator('[data-compare]')).toHaveAttribute('style', /--split:\s*51%/);
+  // Dragging across the photograph moves the dividing line with the pointer.
+  const frame = viewer.locator('.rc-compare-frame');
+  await frame.evaluate(element => element.scrollIntoView({ block: 'center' }));
+  const box = (await frame.boundingBox())!;
+  const at = (share: number) => ({ clientX: box.x + box.width * share, clientY: box.y + box.height / 2, pointerId: 1, isPrimary: true, button: 0, bubbles: true });
+  await frame.dispatchEvent('pointerdown', at(.3));
+  await frame.dispatchEvent('pointermove', at(.6));
+  await frame.dispatchEvent('pointermove', at(.85));
+  await frame.dispatchEvent('pointerup', at(.85));
+  expect(Number(await slider.inputValue())).toBeGreaterThan(80);
+  for (const date of ['2026-08-19', '2026-08-27', '2026-09-04']) {
+    const still = viewer.locator(`#rc-capture-${date}`);
+    await expect(still.locator('time')).toHaveAttribute('datetime', date);
+    await expect(still.getByRole('link')).toHaveAttribute('href', `/media/photo-incubation-${date}.webp`);
+    await expect(still.getByRole('img')).toHaveAttribute('alt', /Real camera photograph/);
+  }
+  await expect(viewer).toContainText('Cairo time (UTC+3)');
+  await expectNoHorizontalOverflow(page);
+});
+
+test('the timelapse steps through its days one photograph at a time', async ({ page }) => {
+  await openHome(page);
+  const film = page.locator('[data-timelapse]');
+  const days = film.getByRole('slider', { name: 'Step through the timelapse, one photograph at a time' });
+  await days.evaluate(element => element.scrollIntoView({ block: 'center' }));
+  await expect(days).toHaveAttribute('aria-valuetext', 'Day 0, 18 August 2026');
+  // Each still is six hours; the film holds each for a sixth of a second.
+  await days.fill('40');
+  await expect(days).toHaveAttribute('aria-valuetext', 'Day 10, 28 August 2026');
+  await expect(film.locator('[data-scrub-day]')).toHaveText('Day 10');
+  await expect.poll(() => film.locator('video').evaluate((video: HTMLVideoElement) => video.currentTime), { timeout: 20000 }).toBeCloseTo(40.5 / 6, 1);
+  await days.fill('72');
+  await expect(days).toHaveAttribute('aria-valuetext', 'Day 18, 5 September 2026');
   await expectNoHorizontalOverflow(page);
 });
 
