@@ -182,6 +182,10 @@ def parent(child, owner):
 # Where a tube runs diagonally it meets its part at a corner. A round collar cannot sit flush against a corner,
 # so that corner is cut back to a small flat face, square to the tube, for the collar to seat on.
 CHAMFER = .26
+# Trial: Respond's platforms are regular octagons, so a tube from any of the eight directions the layouts use
+# meets a flat face the same distance from the middle, with no corner cut specially for it.
+OCTAGON = layout['pathway'] == 'respond'
+DIAGONALS = [Vector((x, y, 0)).normalized() for x, y in ((1, 1), (1, -1), (-1, 1), (-1, -1))]
 
 
 def diagonal(a, b):
@@ -191,14 +195,17 @@ def diagonal(a, b):
 
 def port_distance(pid):
     """How far from a part's middle the flat face of a diagonal port lies."""
+    if OCTAGON and parts[pid]['prop'] != 'valve':
+        return parts[pid]['size'] / 2
     return parts[pid]['size'] / 2 * math.sqrt(2) - CHAMFER
 
 
-def cut_ports(obj, pid):
-    for along in ports.get(pid, []):
+def cut_ports(obj, pid, directions=None, distance=None):
+    """Cuts a flat face across each corner in `directions`, `distance` from the part's middle."""
+    for along in (ports.get(pid, []) if directions is None else directions):
         bpy.ops.mesh.primitive_cube_add(size=2)
         cutter = bpy.context.active_object
-        cutter.location = at[pid] + along * (port_distance(pid) + 1) + Vector((0, 0, .3))
+        cutter.location = at[pid] + along * ((port_distance(pid) if distance is None else distance) + 1) + Vector((0, 0, .3))
         cutter.rotation_euler = (0, 0, math.atan2(along.y, along.x))
         bpy.context.view_layer.update()
         cut = obj.modifiers.new('Port', 'BOOLEAN')
@@ -225,8 +232,13 @@ def platform(part, at_):
     top = tag(parent(box('acrylic top', (s * .86, s * .86, .12), (0, 0, 0), 'acrylic', .06), root), 'baked')
     top.location = (0, 0, .36)
     bpy.context.view_layer.update()
-    for obj in (base, top):
-        cut_ports(obj, part['id'])
+    if OCTAGON:
+        # All four corners cut back to the square's own half-width: eight equal faces, each a tube's seat.
+        cut_ports(base, part['id'], DIAGONALS, s / 2)
+        cut_ports(top, part['id'], DIAGONALS, s * .86 / 2)
+    else:
+        for obj in (base, top):
+            cut_ports(obj, part['id'])
     return root
 
 
