@@ -51,8 +51,8 @@ test('opening habitat, collapsed catalogue, separate notes and photo footer work
   await page.getByRole('tab',{name:'What I build'}).click();
   await page.getByRole('link',{name:'Follow the build'}).click();
   await expect(page).toHaveURL(/\/documentation\/#notebook-journey$/);
-  await page.getByRole('link',{name:'Explore the interactive tent'}).click();
-  await expect(page).toHaveURL(/\/#material-study$/);
+  // The notebook is the whole page: the reference shelf and its closing link are gone.
+  await expect(page.getByRole('link',{name:'Explore the interactive tent'})).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   expect(errors).toEqual([]);
 });

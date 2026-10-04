@@ -235,12 +235,11 @@ test('unconfigured resource links explain their availability in accessible dismi
   }
 });
 
-test('documentation loads with readable notes and a contained schedule table', async ({ page }) => {
+test('documentation loads with the field notebook and nothing beneath it', async ({ page }) => {
   await page.goto('/documentation/');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('inside the system.');
-  await expect(page.getByRole('article', { name: 'System documentation' })).toBeVisible();
-  await expect(page.getByRole('table')).toContainText('Every 6 hours');
-  await expect(page.locator('#publication')).toContainText('Grafana is responsible for displaying actual experiment measurements and history.');
+  await expect(page.locator('[data-notebook]')).toBeVisible();
+  await expect(page.getByText('THE REFERENCE SHELF')).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   await expect(page.getByRole('link', { name: 'Back to the experiment' })).toHaveCount(0);
 });
@@ -294,8 +293,7 @@ test.describe('without JavaScript', () => {
     await expect(page.locator('main')).toContainText('Where data meets cultivation.');
     await expectNoHorizontalOverflow(page);
     await page.goto('/documentation/');
-    await expect(page.locator('#physical-setup')).toContainText('185 cm high');
-    await expect(page.locator('#publication')).toBeVisible();
+    await expect(page.locator('#notebook-build')).toContainText('185 cm high');
     await expectNoHorizontalOverflow(page);
   });
 });

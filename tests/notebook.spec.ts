@@ -44,16 +44,17 @@ test('notebook turns pages, jumps sections, restores history and enlarges photog
   expect(errors).toEqual([]);
 });
 
-test('reduced motion skips folds and reference anchors remain usable',async({page})=>{
+test('reduced motion skips folds and the notebook is all the page holds',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.goto('/documentation/#notebook-vision--notes');
   const book=page.locator('[data-notebook]');
   await expect(book.locator('[data-nb-status]')).toContainText('Vision Lab');
   await book.getByRole('button',{name:'Previous notebook page',exact:true}).click();
   await expect(book.locator('.nb-leaf')).toHaveCount(0);
-  await page.goto('/documentation/#physical-setup');
-  await expect(page.locator('#physical-setup')).toBeInViewport();
-  await expect(page.getByRole('article',{name:'System documentation'})).toContainText('TimescaleDB');
+  // The reference shelf that used to follow the notebook is gone, along with the links into it.
+  await expect(page.locator('#reference-notes,#physical-setup,#limitations')).toHaveCount(0);
+  await expect(page.getByRole('article',{name:'System documentation'})).toHaveCount(0);
+  await expect(page.locator('main a[href*="#reference-notes"],main a[href*="#limitations"]')).toHaveCount(0);
 });
 
 test('all entries and image links remain readable without JavaScript',async({browser},info)=>{

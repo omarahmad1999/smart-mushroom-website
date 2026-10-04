@@ -26,5 +26,3 @@ By **31 August 2026**, the investigation found that sensor records had stopped a
 **Keep uncertainty visible.** Missing records and unfinished integrations belong beside the successful parts of the build.
 
 These are historical notes, not current service status.
-
-[Read the full limitations and open-work notes →](/documentation/#limitations)

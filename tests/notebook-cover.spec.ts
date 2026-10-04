@@ -39,12 +39,14 @@ test('the cover swings open on its spine and closes the same way',async({page},i
   const midway=await book.evaluate(root=>{
     root.querySelector<HTMLButtonElement>('[data-nb-open-cover]')!.click();
     const motion=root.querySelector<HTMLElement>('[data-nb-cover]')!.getAnimations()[0];motion.pause();motion.currentTime=(motion.effect!.getTiming().duration as number)*.6;
-    return {state:(root as HTMLElement).dataset.coverMotion,back:root.querySelector('.nb-cover-back')?.textContent??'',transform:getComputedStyle(root.querySelector('[data-nb-cover]')!).transform};
+    const board=root.querySelector<HTMLElement>('.nb-cover-back'),binding=root.querySelector<HTMLElement>('[data-nb-binding]')!;
+    return {state:(root as HTMLElement).dataset.coverMotion,back:board?.textContent??'',edge:board?getComputedStyle(board).backgroundColor:'',spans:board?[board.offsetLeft,board.offsetTop,board.offsetHeight-binding.clientHeight]:[],transform:getComputedStyle(root.querySelector('[data-nb-cover]')!).transform};
   });
   expect(midway.state).toBe('open');
   expect(midway.transform).toMatch(/^matrix3d\(/);
   // On a spread, the inside of the board is the left page it lands on.
-  if(info.project.name==='desktop')expect(midway.back).toContain('A small space. Plenty of questions.');
+  // It carries the binding's green edge with it, so the left edge does not pop in once the board has landed.
+  if(info.project.name==='desktop'){expect(midway.back).toContain('A small space. Plenty of questions.');expect(midway.edge).toBe('rgb(107, 117, 96)');expect(midway.spans).toEqual([0,0,0]);}
   await book.evaluate(root=>root.querySelector<HTMLElement>('[data-nb-cover]')!.getAnimations().forEach(animation=>animation.play()));
   await expect(cover).toBeHidden();await expect(book).not.toHaveAttribute('data-cover-motion');
   await expect(book.locator('.nb-cover-back')).toHaveCount(0);

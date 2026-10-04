@@ -37,7 +37,7 @@ const journeyMedia=[
     <div><p class="eyebrow"><span class="eyebrow-dot"></span> THE PROJECT NOTEBOOK</p><h1>Notes from<br /><em>inside the system.</em></h1></div>
     <p class="nb-intro-note">A few questions.<br />A lot of looking closely.<svg viewBox="0 0 110 50" fill="none" aria-hidden="true"><path d="M8 7Q84 0 84 38M71 29l14 12 13-15" pathLength="1" /></svg></p>
   </header>
-  <div class="nb-toolbar"><span>FIELD NOTES <span aria-hidden="true">/</span> VOLUME 01</span><button class="nb-show-cover" data-nb-show-cover hidden>View cover</button><details class="nb-contents"><summary>In this notebook <span aria-hidden="true">＋</span></summary><nav aria-label="Notebook contents">{entries.map(({frontmatter:e},i)=><a href={`#notebook-${e.slug}`} data-nb-jump={i}><span>0{i+1}</span>{e.tab}</a>)}<a href="#reference-notes">Full reference notes ↗</a></nav></details></div>
+  <div class="nb-toolbar"><span>FIELD NOTES <span aria-hidden="true">/</span> VOLUME 01</span><button class="nb-show-cover" data-nb-show-cover hidden>View cover</button><details class="nb-contents"><summary>In this notebook <span aria-hidden="true">＋</span></summary><nav aria-label="Notebook contents">{entries.map(({frontmatter:e},i)=><a href={`#notebook-${e.slug}`} data-nb-jump={i}><span>0{i+1}</span>{e.tab}</a>)}</nav></details></div>
   <nav class="nb-tabs" aria-label="Notebook sections">{entries.map(({frontmatter:e},i)=><a href={`#notebook-${e.slug}`} data-nb-jump={i}><span>0{i+1}</span>{e.tab}</a>)}</nav>
   <div class="nb-binding" data-nb-binding tabindex="-1">
     <div class="nb-cover" data-nb-cover hidden>
@@ -244,9 +244,11 @@ const journeyMedia=[
 /* The cover as a hinged board while it swings open or closed (see swingCover). */
 .notebook[data-cover-motion] .nb-cover{border:7px solid #6b7560;border-left:12px solid #58644d;border-radius:5px 11px 11px 5px;box-shadow:inset 7px 0 13px #6b574222;transform-origin:left center;-webkit-backface-visibility:hidden;backface-visibility:hidden}
 .notebook[data-cover-motion] .nb-tabs,.notebook[data-cover-motion] .nb-corner,.notebook[data-cover-motion] .nb-controls,.notebook[data-cover-motion] .nb-hint,.notebook[data-cover-motion] :global(.journey-tabs){visibility:hidden}
-.nb-binding :global(.nb-cover-back){position:absolute;z-index:9;left:7px;top:7px;bottom:12px;width:calc(50% - 7px);transform-origin:right center;-webkit-backface-visibility:hidden;backface-visibility:hidden;pointer-events:none}
-.nb-binding :global(.nb-cover-back>.nb-page){position:absolute;inset:0;height:100%;min-height:0;overflow:hidden}
-@media(min-width:761px){.notebook[data-cover-motion] .nb-cover{left:50%;right:auto;top:0;bottom:0;width:50%}.notebook[data-cover-motion] .nb-binding{background:linear-gradient(90deg,transparent 50%,#6b7560 50%);box-shadow:none}.notebook[data-cover-motion] .nb-spread[data-active] .nb-photo-page{visibility:hidden}}
+/* The inside of the cover carries the left half of the binding with it: its green edge and the page edges beneath
+   arrive with the board instead of appearing once it has landed. */
+.nb-binding :global(.nb-cover-back){position:absolute;z-index:9;left:0;top:0;bottom:0;width:50%;background:#6b7560;border-radius:7px 0 0 12px;box-shadow:0 3px 0 #a5a08e,0 7px 0 -2px #ece1ca,0 10px 0 -2px #7a8169;transform-origin:right center;-webkit-backface-visibility:hidden;backface-visibility:hidden;pointer-events:none}
+.nb-binding :global(.nb-cover-back>.nb-page){position:absolute;inset:7px 0 12px 7px;height:auto;min-height:0;overflow:hidden}
+@media(min-width:761px){.notebook[data-cover-motion] .nb-cover{left:50%;right:auto;top:0;bottom:0;width:50%}.notebook[data-cover-motion] .nb-binding{background:linear-gradient(90deg,transparent 50%,#6b7560 50%);box-shadow:none;outline:0}.notebook[data-cover-motion] .nb-spread[data-active] .nb-photo-page{visibility:hidden}}
 @media(max-width:760px){.notebook[data-cover-motion] .nb-binding{overflow-x:clip}}
 /* Soft paper leaf: flat layers clipped along a moving fold (see notebook-turn.ts). */
 .nb-fold :global(.nb-leaf),.nb-fold :global(.nb-leaf-under),.nb-fold :global(.nb-leaf-flap),.nb-fold :global(.nb-leaf-cast){position:absolute;inset:0}
