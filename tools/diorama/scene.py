@@ -227,7 +227,8 @@ def cut_ports(obj, pid, directions=None, distance=None):
 def platform(part, at_):
     s = part['size']
     root = group(f"{part['id']} platform", at_)
-    base = tag(parent(box('base', (s, s, .3), (0, 0, .15), 'base', .1), root), 'baked')
+    # Octagons keep a tighter edge, so each face stays flat right across where a collar meets it.
+    base = tag(parent(box('base', (s, s, .3), (0, 0, .15), 'base', .04 if OCTAGON else .1), root), 'baked')
     base.location = (0, 0, .15)
     top = tag(parent(box('acrylic top', (s * .86, s * .86, .12), (0, 0, 0), 'acrylic', .06), root), 'baked')
     top.location = (0, 0, .36)
@@ -693,6 +694,11 @@ for pid, part in parts.items():
         screen(part, here_at)
 
 
+# How far past a face a tube's line ends. Its collar begins .005 before that point, so on the octagons the
+# collar starts exactly on the face: touching it, neither sunk in nor standing off.
+SEAT = .005 if OCTAGON else .02
+
+
 def side(pid, towards):
     """Where a tube leaves a part: the side facing its neighbour, or the corner when the tube runs diagonally."""
     part, origin = parts[pid], at[pid]
@@ -701,9 +707,9 @@ def side(pid, towards):
     if diagonal(origin, towards):
         # Seated on the flat face cut into the corner for it.
         along = Vector((d.x, d.y, 0)).normalized()
-        return origin + along * (port_distance(pid) + .02) + Vector((0, 0, .2))
+        return origin + along * (port_distance(pid) + SEAT) + Vector((0, 0, .2))
     along = Vector((math.copysign(1, d.x), 0, 0)) if dx >= dy else Vector((0, math.copysign(1, d.y), 0))
-    return origin + along * (part['size'] / 2 + .02) + Vector((0, 0, .2))
+    return origin + along * (part['size'] / 2 + SEAT) + Vector((0, 0, .2))
 
 
 for link in layout['links']:

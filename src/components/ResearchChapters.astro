@@ -45,7 +45,6 @@ const phases = [
     name: 'Incubation',
     title: 'Much of the work happens out of sight.',
     description: 'Mycelium spreads through the straw inside each bag. What is visible on the surface is only part of the story, so a quiet-looking bag does not tell us everything about colonization.',
-    focus: 'Observe patiently. Follow the developing mycelium and the surrounding conditions.',
     image: '/media/cultivation/stage-incubation.webp',
     alt: 'Rendered illustration of a hanging bag of chopped straw in clear plastic, with white mycelium beginning to spread through it.',
   },
@@ -55,7 +54,6 @@ const phases = [
     name: 'Pinning',
     title: 'The first small signs become visible.',
     description: 'Tiny mushroom initials mark a visible transition. This is a useful moment to look closely at the relationship between the growing environment and what the cameras can actually observe.',
-    focus: 'Look for the transition. Environmental settings and observation schedules can change by phase.',
     image: '/media/cultivation/stage-pinning.webp',
     alt: 'Rendered illustration of the same bag, now white with mycelium, with clusters of tiny grey-tipped mushroom pins at three cuts in the plastic.',
   },
@@ -65,7 +63,6 @@ const phases = [
     name: 'Fruiting & growth',
     title: 'Slow changes start to take shape.',
     description: 'Oyster mushrooms develop into their recognizable clusters. Scheduled photographs can make gradual changes easier to see, while environmental measurements provide a separate record in Grafana.',
-    focus: 'Observe shape and development. A visual impression alone is not a measurement of yield.',
     image: '/media/cultivation/stage-fruiting.webp',
     alt: 'Rendered illustration of the bag with grey-brown oyster mushroom clusters growing from its three openings.',
   },
@@ -75,7 +72,6 @@ const phases = [
     name: 'Harvest',
     title: 'An endpoint, and a new set of questions.',
     description: 'Harvest offers a moment to document the outcome and review the run. Any conclusions need to account for the actual observations, the conditions, and the gaps in the record.',
-    focus: 'Reflect on the evidence. This conceptual stage does not indicate that a harvest has been completed.',
     image: '/media/cultivation/stage-harvest.webp',
     alt: 'Rendered illustration of the bag with cut stems at its openings and the harvested oyster clusters in a dish below; not evidence of an actual harvest.',
   },
@@ -161,7 +157,7 @@ const phases = [
         <div class="rc-phase-tabs" role="tablist" aria-label="Conceptual cultivation stages" hidden>
           {phases.map((phase, index) => (
             <button type="button" class="rc-phase-tab" id={`rc-tab-${phase.id}`} role="tab" aria-selected={index === 0 ? 'true' : 'false'} aria-controls={`rc-panel-${phase.id}`} tabindex={index === 0 ? 0 : -1} data-phase-tab>
-              <span class="rc-tab-number">{phase.number}</span><span>{phase.name}</span><span class="rc-tab-arrow" aria-hidden="true">↗</span>
+              <span class="rc-tab-number">{phase.number}</span><span>{phase.name}</span><span class="rc-tab-dot" aria-hidden="true"></span>
             </button>
           ))}
         </div>
@@ -171,16 +167,13 @@ const phases = [
               <p class="rc-kicker">STAGE {phase.number} / {phase.name.toUpperCase()}</p>
               <h3 id={`rc-stage-title-${phase.id}`}>{phase.title}</h3>
               <p>{phase.description}</p>
-              <p class="rc-phase-focus"><span aria-hidden="true">↳</span>{phase.focus}</p>
             </div>
             <figure class="rc-phase-art">
               <span class="rc-art-ring rc-art-ring-one" aria-hidden="true"></span><span class="rc-art-ring rc-art-ring-two" aria-hidden="true"></span>
               <img src={phase.image} alt={phase.alt} width="780" height="1080" loading="lazy" decoding="async" />
-              <figcaption>RENDERED ILLUSTRATION · CONCEPTUAL, NOT AN OBSERVED RESULT</figcaption>
             </figure>
           </div>
         ))}
-        <p class="rc-phase-note">Explore the stages in any order. This is a guide to the growing process, not a current phase indicator.</p>
       </div>
     </div>
   </section>
@@ -475,31 +468,28 @@ const phases = [
   .rc-hardware-figure figcaption span:first-child { letter-spacing: .08em; }
   .rc-cultivation { background: #ebece2; }
   .rc-section-intro { display: grid; grid-template-columns: 1fr 1fr; gap: 70px; align-items: end; margin-top: 58px; margin-bottom: 48px; }
-  .rc-section-intro > p { max-width: 440px; padding-bottom: 4px; }
+  .rc-section-intro > p { max-width: 400px; justify-self: end; align-self: start; padding-top: 12px; }
   .rc-phase-tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid #172b292b; }
   .rc-phase-tabs[hidden] { display: none; }
   .rc-phase-explorer:not([data-initialized="true"]) .rc-phase-panel + .rc-phase-panel { border-top: 1px solid #172b292b; }
   .rc-phase-tab { appearance: none; border: 0; border-bottom: 2px solid transparent; background: transparent; margin-bottom: -1px; display: flex; align-items: center; text-align: left; gap: 15px; padding: 20px 18px 20px 0; font: inherit; font-size: 13px; color: #5c6558; cursor: pointer; transition: color .2s, border-color .2s; min-height: 62px; }
   .rc-tab-number { font-size: 10px; color: var(--rc-olive); }
-  .rc-tab-arrow { margin-left: auto; font-size: 20px; opacity: 0; transform: translate(-4px, 4px); transition: opacity .2s, transform .2s; }
+  /* The open stage is marked with a dot: a mark of where you are, not an arrow that suggests leaving the page. */
+  .rc-tab-dot { width: 6px; height: 6px; margin-left: auto; border-radius: 50%; background: var(--rc-orange); opacity: 0; transform: scale(.4); transition: opacity .2s, transform .2s; }
   .rc-phase-tab[aria-selected="true"] { color: var(--rc-ink); border-color: var(--rc-orange); }
   .rc-phase-tab[aria-selected="true"] .rc-tab-number { color: var(--rc-orange); }
-  .rc-phase-tab[aria-selected="true"] .rc-tab-arrow { opacity: 1; transform: none; }
+  .rc-phase-tab[aria-selected="true"] .rc-tab-dot { opacity: 1; transform: none; }
   .rc-phase-tab:hover { color: var(--rc-orange); }
   .rc-phase-tab:focus-visible, .rc-phase-panel:focus-visible { outline: 2px solid var(--rc-orange); outline-offset: 5px; }
-  .rc-phase-panel { display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; gap: 60px; min-height: 470px; padding-top: 18px; }
+  .rc-phase-panel { display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; gap: 60px; min-height: 410px; padding-top: 18px; }
   .rc-phase-panel[hidden] { display: none; }
   .rc-phase-content { max-width: 470px; padding-block: 32px; }
   .rc-phase-content .rc-kicker { color: var(--rc-olive); margin-bottom: 22px; }
   .rc-phase-content h3 { font-family: var(--font-display, Georgia, serif); font-size: clamp(29px, 3.1vw, 43px); line-height: 1.1; font-weight: 400; letter-spacing: -.03em; margin-bottom: 23px; text-wrap: balance; }
-  .rc-phase-focus { display: flex; gap: 14px; border-top: 1px solid #172b2920; padding-top: 20px; margin-top: 26px; font-size: 12px; line-height: 1.7; color: var(--rc-ink); }
-  .rc-phase-focus span { color: var(--rc-orange); font-size: 23px; line-height: 1; }
-  .rc-phase-art { position: relative; height: 430px; display: flex; align-items: center; justify-content: center; isolation: isolate; }
+  .rc-phase-art { position: relative; height: 390px; display: flex; align-items: center; justify-content: center; isolation: isolate; }
   .rc-phase-art img { display: block; width: 260px; max-width: 78%; height: 360px; object-fit: contain; position: relative; z-index: 1; }
   .rc-art-ring { width: 270px; height: 270px; border: 1px solid #76815f26; border-radius: 50%; position: absolute; pointer-events: none; }
   .rc-art-ring-two { width: 370px; height: 370px; border-color: #76815f15; }
-  .rc-phase-art figcaption { position: absolute; bottom: 0; text-align: center; font-size: 9px; letter-spacing: .06em; line-height: 1.6; color: var(--rc-muted); }
-  .rc-phase-note { border-top: 1px solid #172b2920; margin-top: 25px; padding-top: 17px; font-size: 11px; }
   .rc-observation-grid { display: grid; grid-template-columns: 1.3fr .85fr; gap: clamp(40px, 6vw, 85px); align-items: center; margin-top: 60px; }
   .rc-compare-frame { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #0f1e1c; cursor: ew-resize; touch-action: pan-y; user-select: none; }
   .rc-compare-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
@@ -605,6 +595,7 @@ const phases = [
     .rc-experiment-facts dd { font-size: 12px; }
     .rc-hardware-figure figcaption { font-size: 8px; }
     .rc-section-intro { gap: 22px; margin-bottom: 30px; }
+    .rc-section-intro > p { justify-self: start; max-width: none; padding-top: 0; }
     .rc-phase-tabs { grid-template-columns: 1fr 1fr; border: 0; gap: 0 15px; }
     .rc-phase-tab { border-bottom: 1px solid #172b292b; margin: 0; min-height: 57px; font-size: 12px; }
     .rc-phase-tab[aria-selected="true"] { border-bottom: 2px solid var(--rc-orange); }
@@ -612,12 +603,9 @@ const phases = [
     .rc-phase-content { max-width: none; padding-top: 30px; padding-bottom: 0; }
     .rc-phase-content h3 { font-size: 32px; }
     .rc-phase-content .rc-kicker { margin-bottom: 18px; }
-    .rc-phase-focus { margin-top: 20px; }
-    .rc-phase-art { height: 355px; margin-top: 10px; }
+    .rc-phase-art { height: 320px; margin-top: 10px; }
     .rc-phase-art img { height: 290px; width: 225px; }
     .rc-art-ring-two { width: 280px; height: 280px; }
-    .rc-phase-art figcaption { font-size: 9px; bottom: 4px; max-width: 290px; }
-    .rc-phase-note { margin-top: 19px; }
     .rc-observation-copy { grid-row: 1; }
     /* On a phone the stills become a strip to swipe, each large enough to see. */
     .rc-still-strip { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 80%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; scrollbar-width: thin; }
@@ -633,7 +621,7 @@ const phases = [
     .rc-vision-footnote { margin-top: 35px; align-items: start; }
     .rc-vision-footnote > p { font-size: 11px; }
   }
-  @media (prefers-reduced-motion: reduce) { .rc-phase-tab, .rc-tab-arrow, .rc-image-expand, .rc-photo-marker, .rc-marker-label, .rc-key-arrow, .rc-compare-grip, :global(.rc-grafana-link) { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .rc-phase-tab, .rc-tab-dot, .rc-image-expand, .rc-photo-marker, .rc-marker-label, .rc-key-arrow, .rc-compare-grip, :global(.rc-grafana-link) { transition: none; } }
   .rc-experiment { padding-top: clamp(32px,4vw,48px); }
   .rc-observations { background: #172b29; color: #f6f3eb; }
   .rc-observations .rc-section-label { color: #b7c0ac; }
