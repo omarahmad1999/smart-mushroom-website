@@ -1,5 +1,5 @@
 ---
-order: 4
+order: 5
 slug: vision
 tab: Vision Lab
 kicker: From an image to a question

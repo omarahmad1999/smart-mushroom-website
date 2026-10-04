@@ -1,23 +1,31 @@
 ---
 import type { MarkdownInstance } from 'astro';
-interface Note {order:number;slug:string;title:string;heading:string;reference:string}
-const notes=Object.values(import.meta.glob<MarkdownInstance<Note>>('../content/journey/*.md',{eager:true})).sort((a,b)=>a.frontmatter.order-b.frontmatter.order);
+interface Note {order:number;slug:string;title:string;tab?:string;heading?:string;reference?:string;color?:string}
+// The same tabbed paper notes serve two sections: the build steps of The Journey and the layers of The Software.
+const {set='journey'}=Astro.props as {set?:'journey'|'software'};
+const files=set==='software'?import.meta.glob<MarkdownInstance<Note>>('../content/software/*.md',{eager:true}):import.meta.glob<MarkdownInstance<Note>>('../content/journey/*.md',{eager:true});
+const notes=Object.values(files).sort((a,b)=>a.frontmatter.order-b.frontmatter.order);
+const words=set==='software'
+  ?{name:'The Software',running:'THE SOFTWARE',chooser:'Layers',choose:'Choose a layer',close:'Close layers',nav:'The Software layers'}
+  :{name:'The Journey',running:'THE JOURNEY',chooser:'Build steps',choose:'Choose a build step',close:'Close build steps',nav:'The Journey mini sections'};
 const colours=['#dce2c2','#eed4b7','#d4dfdd','#dfd3e2','#cee0d8','#f0dfac','#e7e3d5','#d4ddbd','#e3d1bc','#efccbd','#cedce7','#d9dfb8'];
+// A layer's note and tab take the paper of its sticker on the facing page.
+const paper=(n:Note,i:number)=>n.color?`color-mix(in srgb,${n.color} 20%,#fbf6e6)`:colours[i];
 const photoSections=new Set(['pvc-pipes','transparent-plastic','raspberry-pi','fan','humidifier','led','white-car-vinyl','sensors','ups']);
 ---
-<div class="journey-notes">
-  <button type="button" class="journey-chooser" data-journey-chooser aria-haspopup="dialog" aria-controls="journey-chooser-dialog">Build steps <span data-journey-chooser-step>01 / {notes.length}</span></button>
-  <dialog id="journey-chooser-dialog" class="journey-chooser-dialog" data-journey-chooser-dialog aria-labelledby="journey-chooser-title">
-    <header><p>THE JOURNEY</p><h2 id="journey-chooser-title">Choose a build step</h2><button type="button" class="journey-chooser-close" data-journey-chooser-close aria-label="Close build steps">Close <span aria-hidden="true">×</span></button></header>
-    <ol>{notes.map(({frontmatter:n},i)=><li><a href={`#journey-${n.slug}`} data-journey-choose={n.slug} style={`--tab-paper:${colours[i]}`}><span>{String(n.order).padStart(2,'0')}</span>{n.title}</a></li>)}</ol>
+<div class="journey-notes" data-note-set={set} data-note-set-name={words.name}>
+  <button type="button" class="journey-chooser" data-journey-chooser aria-haspopup="dialog" aria-controls={`${set}-chooser-dialog`}>{words.chooser} <span data-journey-chooser-step>01 / {notes.length}</span></button>
+  <dialog id={`${set}-chooser-dialog`} class="journey-chooser-dialog" data-journey-chooser-dialog aria-labelledby={`${set}-chooser-title`}>
+    <header><p>{words.running}</p><h2 id={`${set}-chooser-title`}>{words.choose}</h2><button type="button" class="journey-chooser-close" data-journey-chooser-close aria-label={words.close}>Close <span aria-hidden="true">×</span></button></header>
+    <ol>{notes.map(({frontmatter:n},i)=><li><a href={`#${set}-${n.slug}`} data-journey-choose={n.slug} style={`--tab-paper:${paper(n,i)}`}><span>{String(n.order).padStart(2,'0')}</span>{n.tab??n.title}</a></li>)}</ol>
   </dialog>
-  <nav class="journey-tabs" aria-label="The Journey mini sections">{notes.map(({frontmatter:n},i)=><a href={`#journey-${n.slug}`} data-journey-tab={n.slug} style={`--tab-paper:${colours[i]}`}><span>{String(n.order).padStart(2,'0')}</span><span class="journey-tab-label">{n.title}</span></a>)}</nav>
-  {notes.map(({frontmatter:n,Content},i)=><section id={`journey-${n.slug}`} data-journey-panel={n.slug} class:list={["journey-note",{"journey-note-pvc":n.slug==='pvc-pipes',"journey-note-plastic":n.slug==='transparent-plastic',"journey-note-pi":n.slug==='raspberry-pi'}]} aria-labelledby={`journey-title-${n.slug}`} style={`--tab-paper:${colours[i]}`}>
-    <p class="journey-number">THE JOURNEY <span>/</span> {String(n.order).padStart(2,'0')} OF 12</p>
-    <h3 id={`journey-title-${n.slug}`}>{n.title}</h3>
-    <p class="journey-heading">{n.heading}</p>
+  <nav class="journey-tabs" aria-label={words.nav}>{notes.map(({frontmatter:n},i)=><a href={`#${set}-${n.slug}`} data-journey-tab={n.slug} style={`--tab-paper:${paper(n,i)}`}><span>{String(n.order).padStart(2,'0')}</span><span class="journey-tab-label">{n.tab??n.title}</span></a>)}</nav>
+  {notes.map(({frontmatter:n,Content},i)=><section id={`${set}-${n.slug}`} data-journey-panel={n.slug} class:list={["journey-note",{"journey-note-layer":set==='software',"journey-note-pvc":n.slug==='pvc-pipes',"journey-note-plastic":n.slug==='transparent-plastic',"journey-note-pi":n.slug==='raspberry-pi'}]} aria-labelledby={`${set}-title-${n.slug}`} style={`--tab-paper:${paper(n,i)}`}>
+    <p class="journey-number">{words.running} <span>/</span> {String(n.order).padStart(2,'0')} OF {String(notes.length).padStart(2,'0')}</p>
+    <h3 id={`${set}-title-${n.slug}`}>{n.title}</h3>
+    {n.heading && <p class="journey-heading">{n.heading}</p>}
     <div class="journey-body"><Content /></div>
-    {photoSections.has(n.slug) && <button class="journey-photo-sticker" type="button" data-journey-photos-open={n.slug}>Photos &amp; dates <span aria-hidden="true">↗</span></button>}
+    {set==='journey' && photoSections.has(n.slug) && <button class="journey-photo-sticker" type="button" data-journey-photos-open={n.slug}>Photos &amp; dates <span aria-hidden="true">↗</span></button>}
   </section>)}
 </div>
 <style>
@@ -26,6 +34,9 @@ const photoSections=new Set(['pvc-pipes','transparent-plastic','raspberry-pi','f
 :global(.notebook[data-enhanced]) .journey-note:not([data-active]){display:none}
 /* Outward tabs are absolutely positioned; they reserve no paper or margin space. */
 .journey-note-pvc,.journey-note-plastic,.journey-note-pi{padding:14px 22px;min-height:445px}
+/* A software layer's note carries three labelled parts, so its labels sit closer than a story's margin notes. */
+.journey-note-layer{padding:16px 22px 18px}.journey-note-layer .journey-number{position:absolute;top:13px;right:18px}.journey-note-layer h3{margin:10px 0 2px}
+.journey-note-layer .journey-body :global(h3){font-size:23px;margin:11px 0 2px}.journey-note-layer .journey-body :global(p){margin-bottom:0}.journey-note-layer .journey-body :global(strong){font-weight:inherit;text-decoration:underline;text-decoration-color:#b8815699;text-decoration-thickness:1.5px;text-underline-offset:4px}
 :global(.notebook[data-enhanced]) .journey-note{position:absolute;top:76px;left:28px;right:28px;bottom:46px;margin:0;min-height:0}
 .journey-note-pvc .journey-number,.journey-note-plastic .journey-number,.journey-note-pi .journey-number{position:absolute;top:12px;right:18px}
 .journey-note-pvc h3,.journey-note-plastic h3,.journey-note-pi h3{margin:6px 0 2px}

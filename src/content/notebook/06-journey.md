@@ -1,5 +1,5 @@
 ---
-order: 5
+order: 6
 slug: journey
 tab: The Journey
 kicker: One piece at a time
@@ -15,4 +15,4 @@ x: 48
 y: 30
 reference: physical-setup
 ---
-Follow the materials, hardware, software, and cultivation work that make up this experiment. Each coloured tab opens a separate note.
+Follow the materials, hardware, and cultivation work that make up this experiment. Each coloured tab opens a separate note.

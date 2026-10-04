@@ -72,21 +72,26 @@ if (book) {
   new IntersectionObserver(entries=>{coverInView=entries[0].isIntersecting;syncCoverPlayback();},{threshold:.05}).observe(cover);
   document.addEventListener('visibilitychange',syncCoverPlayback);
   reduced.addEventListener('change',()=>{if(reduced.matches)coverVideo.load();syncCoverPlayback();});
-  const journeyIndex=spreads.findIndex(el=>el.id==='notebook-journey');
-  const journeyTabs=[...book.querySelectorAll<HTMLAnchorElement>('[data-journey-tab]')];
-  const journeyPanels=[...book.querySelectorAll<HTMLElement>('[data-journey-panel]')];
-  const journeyPhotoBoards=[...book.querySelectorAll<HTMLElement>('[data-journey-photo-board]')];
-  let journeySelection=journeyTabs[0]?.dataset.journeyTab;
-  function selectJourney(slug:string) {
-    journeySelection=slug;
-    journeyTabs.forEach(link=>{if(link.dataset.journeyTab===slug)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
-    journeyPanels.forEach(panel=>panel.toggleAttribute('data-active',panel.dataset.journeyPanel===slug));
-    journeyPhotoBoards.forEach(board=>board.hidden=board.dataset.journeyPhotoBoard!==slug);
-    const position=journeyTabs.findIndex(link=>link.dataset.journeyTab===slug);
-    book!.querySelectorAll<HTMLAnchorElement>('[data-journey-choose]').forEach(link=>{if(link.dataset.journeyChoose===slug)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
-    const step=book!.querySelector('[data-journey-chooser-step]');if(step)step.textContent=`${String(position+1).padStart(2,'0')} / ${journeyTabs.length}`;
+  // Tabbed paper notes: The Journey's build steps and The Software's layers work the same way.
+  interface NoteSet {id:string;name:string;index:number;root:HTMLElement;tabs:HTMLAnchorElement[];panels:HTMLElement[];boards:HTMLElement[];picks:HTMLAnchorElement[]}
+  const noteSets:NoteSet[]=[...book.querySelectorAll<HTMLElement>('[data-note-set]')].map(root=>{
+    const spread=root.closest<HTMLElement>('.nb-spread')!;
+    return {id:root.dataset.noteSet!,name:root.dataset.noteSetName!,index:spreads.indexOf(spread),root,
+      tabs:[...root.querySelectorAll<HTMLAnchorElement>('[data-journey-tab]')],panels:[...root.querySelectorAll<HTMLElement>('[data-journey-panel]')],
+      boards:[...spread.querySelectorAll<HTMLElement>('[data-journey-photo-board]')],picks:[...spread.querySelectorAll<HTMLAnchorElement>('[data-note-pick]')]};
+  });
+  const journeyTabs=noteSets.find(set=>set.id==='journey')?.tabs??[];
+  function selectJourney(set:NoteSet,slug:string) {
+    const mark=(link:HTMLElement,on:boolean)=>{if(on)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');};
+    set.tabs.forEach(link=>mark(link,link.dataset.journeyTab===slug));
+    set.picks.forEach(link=>mark(link,link.dataset.notePick===slug));
+    set.panels.forEach(panel=>panel.toggleAttribute('data-active',panel.dataset.journeyPanel===slug));
+    set.boards.forEach(board=>board.hidden=board.dataset.journeyPhotoBoard!==slug);
+    const position=set.tabs.findIndex(link=>link.dataset.journeyTab===slug);
+    set.root.querySelectorAll<HTMLAnchorElement>('[data-journey-choose]').forEach(link=>mark(link,link.dataset.journeyChoose===slug));
+    const step=set.root.querySelector('[data-journey-chooser-step]');if(step)step.textContent=`${String(position+1).padStart(2,'0')} / ${set.tabs.length}`;
   }
-  if(journeySelection)selectJourney(journeySelection);
+  for(const set of noteSets)if(set.tabs[0])selectJourney(set,set.tabs[0].dataset.journeyTab!);
   let current = 0;
   // One paper leaf at a time: an automatic turn, a live drag, or a corner peek.
   let active: { leaf: Leaf; from: number; to: number; kind: 'turn' | 'drag' | 'peek' } | undefined;
@@ -94,7 +99,7 @@ if (book) {
 
   function render() {
     const spread = Math.floor(current / 2);
-    book!.toggleAttribute('data-journey',spread===journeyIndex);
+    book!.toggleAttribute('data-journey',noteSets.some(set=>set.id==='journey'&&set.index===spread));
     spreads.forEach((el,i) => {el.toggleAttribute('data-active',i===spread);el.setAttribute('aria-hidden',String(i!==spread));});
     pages.forEach((el,i) => el.toggleAttribute('data-active',mobile.matches?i===current:Math.floor(i/2)===spread));
     jumps.forEach(link => { if(Number(link.dataset.nbJump)===spread)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current'); });
@@ -164,8 +169,10 @@ if (book) {
   }
   function fromHash() {
     const hash=location.hash.slice(1);
-    const journey=journeyPanels.find(panel=>panel.id===hash);
-    if(journey&&journeyIndex>=0){selectJourney(journey.dataset.journeyPanel!);turn(journeyIndex*2+(mobile.matches?1:0),false,false);return;}
+    for(const set of noteSets){
+      const note=set.panels.find(panel=>panel.id===hash);
+      if(note&&set.index>=0){selectJourney(set,note.dataset.journeyPanel!);turn(set.index*2+(mobile.matches?1:0),false,false);return;}
+    }
     const i=spreads.findIndex(el=>hash===el.id||hash===`${el.id}--notes`);
     if(i>=0)turn(i*2+(mobile.matches&&hash.endsWith('--notes')?1:0),false,false);
   }
@@ -181,17 +188,21 @@ if (book) {
   previous.forEach(button=>button.addEventListener('click',()=>advance(-1)));
   next.forEach(button=>button.addEventListener('click',()=>advance(1)));
   jumps.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();const wasContents=contents.contains(link);contents.open=false;turn(Number(link.dataset.nbJump)*2);if(wasContents)book.querySelector<HTMLElement>(`.nb-tabs [data-nb-jump="${link.dataset.nbJump}"]`)?.focus({preventScroll:true});}));
-  const chooseJourney=(slug:string,hash:string)=>{selectJourney(slug);turn(journeyIndex*2+(mobile.matches?1:0),false,false);ink();history.pushState(null,'',hash);status.textContent=`The Journey · ${journeyTabs.find(tab=>tab.dataset.journeyTab===slug)?.querySelector('.journey-tab-label')?.textContent?.trim()??''}`;};
-  journeyTabs.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();chooseJourney(link.dataset.journeyTab!,link.hash);}));
-  // Build steps sheet: names every step where the tab rail stays collapsed, and closes once one is chosen.
-  const chooserDialog=book.querySelector<HTMLDialogElement>('[data-journey-chooser-dialog]');
-  const chooser=book.querySelector<HTMLButtonElement>('[data-journey-chooser]');
-  if(chooserDialog&&chooser){
-    chooser.addEventListener('click',()=>{chooserDialog.showModal();chooserDialog.querySelector<HTMLElement>('[aria-current=page]')?.focus();});
-    chooserDialog.querySelector('[data-journey-chooser-close]')!.addEventListener('click',()=>chooserDialog.close());
-    chooserDialog.addEventListener('click',event=>{if(event.target===chooserDialog)chooserDialog.close();});
-    chooserDialog.addEventListener('close',()=>chooser.focus({preventScroll:true}));
-    chooserDialog.querySelectorAll<HTMLAnchorElement>('[data-journey-choose]').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();chooserDialog.close();chooseJourney(link.dataset.journeyChoose!,link.hash);}));
+  const chooseJourney=(set:NoteSet,slug:string,hash:string)=>{selectJourney(set,slug);turn(set.index*2+(mobile.matches?1:0),false,false);ink();history.pushState(null,'',hash);status.textContent=`${set.name} · ${set.tabs.find(tab=>tab.dataset.journeyTab===slug)?.querySelector('.journey-tab-label')?.textContent?.trim()??''}`;};
+  for(const set of noteSets){
+    set.tabs.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();chooseJourney(set,link.dataset.journeyTab!,link.hash);}));
+    // The icons on the facing page open the same notes as the tabs.
+    set.picks.forEach(link=>link.addEventListener('click',event=>{event.preventDefault();chooseJourney(set,link.dataset.notePick!,link.hash);}));
+    // Build steps sheet: names every step where the tab rail stays collapsed, and closes once one is chosen.
+    const chooserDialog=set.root.querySelector<HTMLDialogElement>('[data-journey-chooser-dialog]');
+    const chooser=set.root.querySelector<HTMLButtonElement>('[data-journey-chooser]');
+    if(chooserDialog&&chooser){
+      chooser.addEventListener('click',()=>{chooserDialog.showModal();chooserDialog.querySelector<HTMLElement>('[aria-current=page]')?.focus();});
+      chooserDialog.querySelector('[data-journey-chooser-close]')!.addEventListener('click',()=>chooserDialog.close());
+      chooserDialog.addEventListener('click',event=>{if(event.target===chooserDialog)chooserDialog.close();});
+      chooserDialog.addEventListener('close',()=>chooser.focus({preventScroll:true}));
+      chooserDialog.querySelectorAll<HTMLAnchorElement>('[data-journey-choose]').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();chooserDialog.close();chooseJourney(set,link.dataset.journeyChoose!,link.hash);}));
+    }
   }
   mobile.addEventListener('change',()=>turn(current,false,false));
   window.addEventListener('hashchange',fromHash);

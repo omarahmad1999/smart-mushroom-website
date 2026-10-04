@@ -11,7 +11,7 @@ test('notebook turns pages, jumps sections, restores history and enlarges photog
   await expect(book).toHaveAttribute('data-enhanced','true');
   const status=book.locator('[data-nb-status]');
   const mobile=info.project.name==='mobile';
-  await expect(status).toContainText(mobile?'Page 1 / 12':'Pages 1–2 / 12');
+  await expect(status).toContainText(mobile?'Page 1 / 14':'Pages 1–2 / 14');
   await expect(book.getByRole('button',{name:'Previous notebook page',exact:true})).toBeDisabled();
   await book.getByRole('link',{name:/Enlarge photograph/}).first().click();
   const dialog=book.locator('.nb-lightbox');await expect(dialog).toBeVisible();
@@ -21,23 +21,25 @@ test('notebook turns pages, jumps sections, restores history and enlarges photog
   await expect(book.getByRole('link',{name:/Enlarge photograph/}).first()).toBeFocused();
   await book.getByLabel('Photo note: The Idea',{exact:true}).click();
   await expect(book.locator('#notebook-idea .nb-annotation')).toHaveAttribute('open','');
+  // The leaf only lives for the length of the turn, so it is noted as it appears rather than raced against.
+  await book.locator('[data-nb-fold]').evaluate(fold=>new MutationObserver(()=>{if(fold.querySelector('.nb-leaf'))Reflect.set(window,'notebookLeafSeen',true);}).observe(fold,{childList:true}));
   await book.getByRole('button',{name:'Next notebook page',exact:true}).click();
   await expect.poll(()=>page.evaluate(()=>Reflect.get(window,'notebookAudio').find((item:any)=>item.audio.src.endsWith('paper-swipe.mp3'))?.plays??0)).toBeGreaterThan(0);
-  await expect(status).toContainText(mobile?'Page 2 / 12':'Pages 3–4 / 12');
-  await expect(book.locator('[data-nb-fold] .nb-leaf')).toHaveCount(1);
+  await expect(status).toContainText(mobile?'Page 2 / 14':'Pages 3–4 / 14');
+  expect(await page.evaluate(()=>Reflect.get(window,'notebookLeafSeen'))).toBe(true);
   await expect(book.locator('[data-nb-fold] .nb-leaf')).toHaveCount(0);
-  await book.locator('.nb-tabs').getByRole('link',{name:'04 Vision Lab'}).click();
+  await book.locator('.nb-tabs').getByRole('link',{name:'05 Vision Lab'}).click();
   await expect(status).toContainText('Vision Lab');
   await expect(page).toHaveURL(/#notebook-vision$/);
   await page.reload();await expect(status).toContainText('Vision Lab');
-  await book.locator('.nb-tabs').getByRole('link',{name:'06 What Went Wrong'}).click();
+  await book.locator('.nb-tabs').getByRole('link',{name:'07 What Went Wrong'}).click();
   if(mobile)await book.getByRole('button',{name:'Next notebook page',exact:true}).click();
   await expect(book.getByRole('button',{name:'Next notebook page',exact:true})).toBeDisabled();
   await page.goBack();await expect(status).toContainText(mobile?'What Went Wrong':'Vision Lab');
   await book.locator('.nb-contents summary').click();
   await book.getByRole('navigation',{name:'Notebook contents'}).getByRole('link',{name:'02 The Build'}).click();
   await expect(status).toContainText('The Build');
-  await page.keyboard.press('ArrowRight');await expect(status).toContainText(mobile?'Page 4':'Growing Notes');
+  await page.keyboard.press('ArrowRight');await expect(status).toContainText(mobile?'Page 4':'The Software');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   expect(errors).toEqual([]);
 });
@@ -58,7 +60,7 @@ test('all entries and image links remain readable without JavaScript',async({bro
   const context=await browser.newContext({javaScriptEnabled:false,viewport:info.project.use.viewport});
   const page=await context.newPage();await page.goto(`${test.info().project.use.baseURL}/documentation/`);
   const book=page.locator('[data-notebook]');
-  await expect(book.locator('.nb-spread')).toHaveCount(6);
+  await expect(book.locator('.nb-spread')).toHaveCount(7);
   for(const spread of await book.locator('.nb-spread').all())await expect(spread).toBeVisible();
   await expect(book.locator('[data-nb-controls]')).toBeHidden();
   await expect(book.locator('[data-nb-image]').first()).toHaveAttribute('href','/media/photo-incubation-2026-08-19.webp');
@@ -162,10 +164,10 @@ test('the bottom-left corner lifts the left page itself and a drag from it keeps
   await page.waitForTimeout(400);
   const held=await book.locator('.nb-leaf-front').evaluate(el=>(el as HTMLElement).style.clipPath);
   expect(held).not.toBe(lifted.clip);
-  await expect(status).toContainText('Pages 11–12');
+  await expect(status).toContainText('Pages 13–14');
   for(let step=1;step<=6;step++)await page.mouse.move(box.x+322+step*90,box.y-8);
   await page.mouse.up();
-  await expect(status).toContainText('Pages 9–10');
+  await expect(status).toContainText('Pages 11–12');
   await expect(book.locator('.nb-leaf')).toHaveCount(0);
 });
 
@@ -219,15 +221,15 @@ test('Raspberry Pi note keeps its dated photographs accessible without resizing 
 });
 
 
-test('The Journey is fifth with twelve independent paper notes and persistent links',async({page},info)=>{
+test('The Journey is sixth with eleven independent paper notes and persistent links',async({page},info)=>{
   await page.goto('/documentation/#notebook-journey');
   const book=page.locator('[data-notebook]');
   const main=book.locator('.nb-tabs');
-  await expect(main.locator('a').nth(4)).toHaveText('05The Journey');
-  await expect(main.locator('a').nth(5)).toHaveText('06What Went Wrong');
+  await expect(main.locator('a').nth(5)).toHaveText('06The Journey');
+  await expect(main.locator('a').nth(6)).toHaveText('07What Went Wrong');
   if(info.project.name==='mobile')await book.getByRole('button',{name:'Next notebook page',exact:true}).click();
   const tabs=book.getByRole('navigation',{name:'The Journey mini sections'});
-  await expect(tabs.getByRole('link')).toHaveCount(12);
+  await expect(tabs.getByRole('link')).toHaveCount(11);
   for(const tab of await tabs.getByRole('link').all()){
     const slug=await tab.getAttribute('data-journey-tab');await tab.click();
     await expect(book.locator(`[data-journey-panel="${slug}"]`)).toBeVisible();
@@ -236,7 +238,7 @@ test('The Journey is fifth with twelve independent paper notes and persistent li
     await expect(page).toHaveURL(new RegExp(`#journey-${slug}$`));
   }
   await page.reload();await expect(book.locator('[data-journey-panel="mushroom-cultivation"]')).toBeVisible();
-  await page.goBack();await expect(book.locator('[data-journey-panel="software"]')).toBeVisible();
+  await page.goBack();await expect(book.locator('[data-journey-panel="mosfets-wiring"]')).toBeVisible();
   if(info.project.name==='desktop'){
     const paper=await book.locator('[data-nb-binding]').boundingBox();const rail=await tabs.boundingBox();
     expect(rail!.x).toBeGreaterThanOrEqual(paper!.x+paper!.width-5);
@@ -244,10 +246,52 @@ test('The Journey is fifth with twelve independent paper notes and persistent li
   }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   const journeyBox=await book.locator('[data-nb-binding]').boundingBox();
-  await main.getByRole('link',{name:'06 What Went Wrong'}).click();
+  await main.getByRole('link',{name:'07 What Went Wrong'}).click();
   await expect(tabs).not.toBeVisible();
   const otherBox=await book.locator('[data-nb-binding]').boundingBox();
   for(const key of ['x','width','height'] as const)expect(journeyBox![key]).toBeCloseTo(otherBox![key],1);
+});
+
+test('The Software is third: icon stickers and coloured tabs open ten layer notes that fit their paper',async({page},info)=>{
+  const mobile=info.project.name==='mobile';
+  await page.goto('/documentation/#notebook-build');
+  const book=page.locator('[data-notebook]'),status=book.locator('[data-nb-status]');
+  const before=await book.locator('[data-nb-binding]').boundingBox();
+  await book.locator('.nb-tabs').getByRole('link',{name:'03 The Software'}).click();
+  await expect(page).toHaveURL(/#notebook-software$/);
+  await expect(book.locator('[data-nb-fold] .nb-leaf')).toHaveCount(0);
+  // The facing page carries one sticker per layer, each with its icon.
+  const stickers=book.locator('#notebook-software [data-note-pick]');
+  await expect(stickers).toHaveCount(10);
+  for(const sticker of await stickers.all())expect(await sticker.locator('svg').count()).toBeGreaterThan(0);
+  await expect(stickers.first()).toHaveAttribute('aria-current','page');
+  // A sticker opens its layer's note; on a phone it also turns to the note's page.
+  await stickers.filter({hasText:'Controller'}).click();
+  await expect(page).toHaveURL(/#software-controller$/);
+  const note=book.locator('#software-controller');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText('Environment Controller');
+  for(const label of ['What it does','How it works','Output / Destination'])await expect(note.getByRole('heading',{name:label})).toBeVisible();
+  await expect(note).toContainText('low humidity can trigger a humidifier decision');
+  await expect(status).toContainText('The Software · Controller');
+  await expect(book.locator('#notebook-software [data-journey-panel]:visible')).toHaveCount(1);
+  // Every layer's words fit inside its note, and no note changes the notebook's size.
+  const tabs=book.getByRole('navigation',{name:'The Software layers'});
+  await expect(tabs.getByRole('link')).toHaveCount(10);
+  for(const tab of await tabs.getByRole('link').all()){
+    const slug=await tab.getAttribute('data-journey-tab');await tab.click();
+    const panel=book.locator(`#software-${slug}`);
+    await expect(panel).toBeVisible();await expect(tab).toHaveAttribute('aria-current','page');
+    expect(await panel.evaluate(el=>el.lastElementChild!.getBoundingClientRect().bottom<=el.getBoundingClientRect().bottom-parseFloat(getComputedStyle(el).paddingBottom)+1)).toBe(true);
+  }
+  await expect(page).toHaveURL(/#software-grafana$/);
+  if(!mobile)await expect(stickers.last()).toHaveAttribute('aria-current','page');
+  const after=await book.locator('[data-nb-binding]').boundingBox();
+  for(const key of ['x','width','height'] as const)expect(after![key]).toBeCloseTo(before![key],1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  // A layer's link survives a reload, and The Journey no longer carries a software note.
+  await page.reload();await expect(book.locator('#software-grafana')).toBeVisible();
+  await expect(book.locator('#notebook-journey [data-journey-panel="software"]')).toHaveCount(0);
 });
 
 test('the Build table names open each part in the 3D habitat',async({page},info)=>{
@@ -327,7 +371,7 @@ test('a lens magnifies photographs on hover or press-and-hold without turning th
   await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   await expect(lens).not.toHaveAttribute('data-on');
   await expect(book.locator('.nb-lightbox')).toBeHidden();
-  await expect(status).toContainText('Page 1 / 12');
+  await expect(status).toContainText('Page 1 / 14');
 });
 
 test('photo notes are pencilled on, then open from a sticky note',async({page})=>{
@@ -347,20 +391,20 @@ test('on phones a Build steps sheet names every Journey step and closes after a 
   test.skip(info.project.name!=='mobile','The tab rail shows its labels on the wide desktop layout.');
   await page.goto('/documentation/#journey-pvc-pipes');
   const book=page.locator('[data-notebook]'),chooser=book.getByRole('button',{name:/Build steps/});
-  await expect(chooser).toBeVisible();await expect(chooser).toContainText('01 / 12');
+  await expect(chooser).toBeVisible();await expect(chooser).toContainText('01 / 11');
   const before=await book.locator('[data-nb-binding]').boundingBox();
   // The collapsed tab rail no longer spreads its labels over the writing.
   await book.locator('[data-journey-tab="fan"]').click();
-  await expect(book.locator('.journey-tabs')).toHaveCSS('width','28px');
+  await expect(book.locator('#notebook-journey .journey-tabs')).toHaveCSS('width','28px');
   await chooser.click();
   const sheet=page.getByRole('dialog',{name:'Choose a build step'});
-  await expect(sheet.getByRole('link')).toHaveCount(12);
+  await expect(sheet.getByRole('link')).toHaveCount(11);
   await expect(sheet.getByRole('link',{name:/Fan/})).toHaveAttribute('aria-current','page');
   await sheet.getByRole('link',{name:/Sensors/}).click();
   await expect(sheet).toBeHidden();
   await expect(book.locator('[data-journey-panel="sensors"]')).toBeVisible();
   await expect(page).toHaveURL(/#journey-sensors$/);
-  await expect(chooser).toContainText('08 / 12');await expect(chooser).toBeFocused();
+  await expect(chooser).toContainText('08 / 11');await expect(chooser).toBeFocused();
   const after=await book.locator('[data-nb-binding]').boundingBox();
   expect(after!.width).toBeCloseTo(before!.width,1);expect(after!.height).toBeCloseTo(before!.height,1);
 });

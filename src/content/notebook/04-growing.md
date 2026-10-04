@@ -1,5 +1,5 @@
 ---
-order: 3
+order: 4
 slug: growing
 tab: Growing Notes
 kicker: Learning to notice slowly
