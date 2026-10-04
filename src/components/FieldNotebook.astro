@@ -213,6 +213,8 @@ const journeyMedia=[
 /* Soft paper leaf: flat layers clipped along a moving fold (see notebook-turn.ts). */
 .nb-fold :global(.nb-leaf),.nb-fold :global(.nb-leaf-under),.nb-fold :global(.nb-leaf-flap),.nb-fold :global(.nb-leaf-cast){position:absolute;inset:0}
 .nb-fold :global(.nb-leaf-flap){transform-origin:0 0}
+/* Pages beneath the leaf keep their own layers to themselves, so nothing on them rises through the paper above. */
+.nb-fold :global(.nb-leaf-under){isolation:isolate}
 .nb-fold :global(.nb-leaf-cast){filter:drop-shadow(0 0 13px #2a1f1238)}
 .nb-fold :global(.nb-leaf-cast-flat){filter:none}
 .nb-fold :global(.nb-leaf-front),.nb-fold :global(.nb-leaf-reveal),.nb-fold :global(.nb-leaf-back),.nb-fold :global(.nb-leaf-sheen),.nb-fold :global(.nb-leaf-under>.nb-page){position:absolute;top:0;bottom:0;overflow:hidden}

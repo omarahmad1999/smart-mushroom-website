@@ -96,8 +96,8 @@ test('soft page folds keep readable faces in both directions and land on the inc
     expect(state.det).toBeCloseTo(1,3);
     expect(state.front).toMatch(/^polygon\(/);
     expect(state.under).toBe(info.project.name==='desktop'?2:1);
-    // Turning forward, the incoming page is the reverse; turning back, it is the returning front.
-    if(info.project.name==='desktop'){if(direction==='next')expect(state.back).toContain('Follow the wire');else expect(state.frontText).toContain('Why create a controlled habitat?');}
+    // Either way the leaving page is the front and the incoming page is its reverse: going back, the left page lifts.
+    if(info.project.name==='desktop'){if(direction==='next')expect(state.back).toContain('Follow the wire');else{expect(state.frontText).toContain('Follow the wire');expect(state.back).toContain('Why create a controlled habitat?');}}
     await book.locator('.nb-leaf').evaluate(el=>el.getAnimations()[0].finish());
     await expect(book.locator('.nb-leaf')).toHaveCount(0);
   }
@@ -140,6 +140,32 @@ test('hovering a page corner lifts it and clicking continues the turn',async({pa
   await corner.hover();await expect(book.locator('.nb-leaf')).toHaveAttribute('data-kind','peek');
   await corner.click();
   await expect(book.locator('[data-nb-status]')).toContainText('Pages 3–4');
+  await expect(book.locator('.nb-leaf')).toHaveCount(0);
+});
+
+test('the bottom-left corner lifts the left page itself and a drag from it keeps hold of the paper',async({page},info)=>{
+  test.skip(info.project.name!=='desktop','Hover peeks need a fine pointer.');
+  await page.goto('/documentation/#notebook-lessons');
+  const book=page.locator('[data-notebook]'),status=book.locator('[data-nb-status]');
+  await page.waitForTimeout(1200);
+  const corner=book.getByRole('button',{name:'Turn to previous page',exact:true});
+  await corner.hover();
+  await expect(book.locator('.nb-leaf')).toHaveAttribute('data-kind','peek');
+  await page.waitForTimeout(500);
+  // The page still lying on the left is the one being read, not the spread before it.
+  const lifted=await book.locator('.nb-leaf').evaluate(leaf=>({front:leaf.querySelector('.nb-leaf-front')!.textContent??'',left:(leaf.querySelector('.nb-leaf-front') as HTMLElement).style.left,clip:(leaf.querySelector('.nb-leaf-front') as HTMLElement).style.clipPath}));
+  expect(lifted.front).toContain('A restart');expect(lifted.left).toBe('0px');expect(lifted.clip).toMatch(/^polygon\(/);
+  // Dragging on from the peek: the paper stays where the pointer left it instead of dropping back to the corner.
+  const box=(await corner.boundingBox())!;
+  await page.mouse.down();
+  for(let step=1;step<=6;step++)await page.mouse.move(box.x+22+step*50,box.y+22-step*5);
+  await page.waitForTimeout(400);
+  const held=await book.locator('.nb-leaf-front').evaluate(el=>(el as HTMLElement).style.clipPath);
+  expect(held).not.toBe(lifted.clip);
+  await expect(status).toContainText('Pages 11–12');
+  for(let step=1;step<=6;step++)await page.mouse.move(box.x+322+step*90,box.y-8);
+  await page.mouse.up();
+  await expect(status).toContainText('Pages 9–10');
   await expect(book.locator('.nb-leaf')).toHaveCount(0);
 });
 

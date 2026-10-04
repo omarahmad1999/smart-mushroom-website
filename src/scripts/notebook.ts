@@ -125,7 +125,8 @@ if (book) {
         ?{spine:half,width:half,right:copyPage(newLeft+1),left:copyPage(oldLeft),under:[placed(copyPage(newLeft),0,half),placed(copyPage(oldLeft+1),half,half)]}
         :{spine:half,width:half,right:copyPage(oldLeft+1),left:copyPage(newLeft),under:[placed(copyPage(oldLeft),0,half),placed(copyPage(newLeft+1),half,half)]};
     }
-    const leaf=createLeaf({...options,host:fold,height,row,start:backwards?'turned':'flat',shadow:!mobile.matches});
+    // Going back on a spread, the left page lifts from its own outer corner, as the right page does going forward.
+    const leaf=createLeaf({...options,host:fold,height,row,rests:backwards&&!mobile.matches?'left':'right',start:backwards?'turned':'flat',shadow:!mobile.matches});
     leaf.element.dataset.kind=kind;
     active={leaf,from,to,kind};
     return active;
@@ -134,7 +135,8 @@ if (book) {
   /** Plays the active leaf to rest and removes it, unless another leaf has replaced it. */
   function settle(state:LeafState,duration?:number){
     const entry=active!;
-    return entry.leaf.play(state,duration).then(()=>{if(active===entry)dropLeaf();else entry.leaf.destroy();});
+    // A settle that a drag interrupts leaves the leaf in the hand that took it.
+    return entry.leaf.play(state,duration).then(done=>{if(!done&&active===entry)return;if(active===entry)dropLeaf();else entry.leaf.destroy();});
   }
   // Handwriting on the pages at rest writes itself once, after any leaf has landed.
   let inkVisible=false;

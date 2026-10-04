@@ -23,6 +23,9 @@ export interface LeafOptions {
   /** Pages beneath the leaf, already positioned. */
   under: HTMLElement[];
   row: Row;
+  /** Which page the leaf rests on before it turns. A leaf resting on the left lifts from its outer (left) corner:
+   *  the same paper, mirrored about the spine. */
+  rests?: 'right' | 'left';
   start: LeafState;
   shadow: boolean;
 }
@@ -34,7 +37,8 @@ export interface Leaf {
   corner(state: LeafState): Point;
   /** Follows a pointer. The point is constrained so the paper stays bound at the spine. */
   follow(point: Point): void;
-  play(target: LeafState | Point, duration?: number): Promise<void>;
+  /** Resolves true when the leaf reaches its target, false if a drag or another play took over first. */
+  play(target: LeafState | Point, duration?: number): Promise<boolean>;
   destroy(): void;
 }
 
@@ -69,6 +73,11 @@ const box = (className: string, left: number, width: number, child?: HTMLElement
 
 export function createLeaf(options: LeafOptions): Leaf {
   const { spine, width: W, height: H } = options;
+  // A leaf resting on the left is worked out as its mirror image about the spine, then drawn mirrored back.
+  // Callers keep speaking in the notebook's own terms: real points, and 'flat' for lying on the right.
+  const mirror = options.rests === 'left';
+  const flip = (point: Point): Point => mirror ? { x: 2 * spine - point.x, y: point.y } : point;
+  const inner = (state: LeafState): LeafState => mirror ? (state === 'flat' ? 'turned' : 'flat') : state;
   const rowY = options.row === 'bottom' ? H : 0;
   const lift = options.row === 'bottom' ? -1 : 1;
   const flatCorner = { x: spine + W, y: rowY }, turnedCorner = { x: spine - W, y: rowY };
@@ -81,20 +90,21 @@ export function createLeaf(options: LeafOptions): Leaf {
   const under = document.createElement('div');
   under.className = 'nb-leaf-under';
   under.append(...options.under);
-  const front = box('nb-leaf-front', spine, W, options.right);
-  const reveal = box('nb-leaf-reveal', spine, W);
+  const near = mirror ? spine - W : spine, away = mirror ? spine : spine - W;
+  const front = box('nb-leaf-front', near, W, mirror ? options.left : options.right);
+  const reveal = box('nb-leaf-reveal', near, W);
   const flap = document.createElement('div');
   flap.className = 'nb-leaf-flap';
   const cast = document.createElement('div');
   cast.className = options.shadow ? 'nb-leaf-cast' : 'nb-leaf-cast nb-leaf-cast-flat';
-  const back = box('nb-leaf-back', spine - W, W, options.left);
-  const sheen = box('nb-leaf-sheen', spine - W, W);
+  const back = box('nb-leaf-back', away, W, mirror ? options.right : options.left);
+  const sheen = box('nb-leaf-sheen', away, W);
   cast.append(back, sheen);
   flap.append(cast);
   element.append(under, front, reveal, flap);
   options.host.append(element);
 
-  let corner = options.start === 'flat' ? { ...flatCorner } : { ...turnedCorner };
+  let corner = inner(options.start) === 'flat' ? { ...flatCorner } : { ...turnedCorner };
   let clock: Animation | undefined;
   let frame = 0;
   let alive = true;
@@ -120,18 +130,19 @@ export function createLeaf(options: LeafOptions): Leaf {
     const middle = { x: (flatCorner.x + point.x) / 2, y: (flatCorner.y + point.y) / 2 };
     const bound = clipHalf(rightRect, middle, normal, false);
     const lifted = clipHalf(rightRect, middle, normal, true);
-    front.style.clipPath = polygonCss(bound, spine);
-    reveal.style.clipPath = polygonCss(lifted, spine);
-    reveal.style.background = gradientCss(W, H, { x: middle.x - spine, y: middle.y }, normal, [['#2c21134d', 0], ['#2c211300', 46]]);
+    front.style.clipPath = polygonCss(bound.map(flip), near);
+    reveal.style.clipPath = polygonCss(lifted.map(flip), near);
+    reveal.style.background = gradientCss(W, H, { x: flip(middle).x - near, y: middle.y }, { x: mirror ? -normal.x : normal.x, y: normal.y }, [['#2c21134d', 0], ['#2c211300', 46]]);
     // Reverse face: mirror across the spine, then reflect across the fold.
     const along = { x: -normal.y, y: normal.x };
     const a = along.x * along.x - along.y * along.y, b = 2 * along.x * along.y;
     const e = a * (2 * spine - middle.x) - b * middle.y + middle.x;
     const f = b * (2 * spine - middle.x) + a * middle.y + middle.y;
-    flap.style.transform = `matrix(${-a},${-b},${b},${-a},${e},${f})`;
+    // Mirrored, the same two reflections are taken on the other side of the spine.
+    flap.style.transform = mirror ? `matrix(${-a},${b},${-b},${-a},${2 * spine + 2 * a * spine - e},${f - 2 * b * spine})` : `matrix(${-a},${-b},${b},${-a},${e},${f})`;
     const mirrored = lifted.map(p => ({ x: 2 * spine - p.x, y: p.y }));
-    back.style.clipPath = sheen.style.clipPath = polygonCss(mirrored, spine - W);
-    sheen.style.background = gradientCss(W, H, { x: 2 * spine - middle.x - (spine - W), y: middle.y }, { x: -normal.x, y: normal.y },
+    back.style.clipPath = sheen.style.clipPath = polygonCss(mirrored.map(flip), away);
+    sheen.style.background = gradientCss(W, H, { x: flip({ x: 2 * spine - middle.x, y: 0 }).x - away, y: middle.y }, { x: mirror ? normal.x : -normal.x, y: normal.y },
       [['#3b2a1638', 0], ['#3b2a1600', 26], ['#fffdf51c', 70], ['#fffdf500', 170]]);
   }
 
@@ -145,20 +156,22 @@ export function createLeaf(options: LeafOptions): Leaf {
   };
   const shape = (angle: number) => .26 + .74 * Math.abs(Math.cos(angle));
   const fromPolar = (radius: number, angle: number, arc: number) => constrain({ x: anchor.x + radius * Math.cos(angle), y: anchor.y + lift * radius * Math.sin(angle) * arc });
-  const progress = () => Math.min(1, Math.max(0, Math.acos(Math.max(-1, Math.min(1, (corner.x - anchor.x) / W))) / Math.PI));
+  const turned = () => Math.min(1, Math.max(0, Math.acos(Math.max(-1, Math.min(1, (corner.x - anchor.x) / W))) / Math.PI));
+  const progress = () => mirror ? 1 - turned() : turned();
 
   draw(corner);
 
   return {
     element,
     progress,
-    corner: state => ({ ...(state === 'flat' ? flatCorner : turnedCorner) }),
-    follow(point) { if (!alive) return; clock?.cancel(); draw(constrain(point)); },
+    corner: state => flip(inner(state) === 'flat' ? flatCorner : turnedCorner),
+    // Taking the leaf in hand ends any play outright, so its last frame cannot draw over the pointer.
+    follow(point) { if (!alive) return; clock?.cancel(); clock = undefined; cancelAnimationFrame(frame); draw(constrain(flip(point))); },
     play(target, duration = 760) {
-      if (!alive) return Promise.resolve();
+      if (!alive) return Promise.resolve(false);
       clock?.cancel(); cancelAnimationFrame(frame);
       const start = { ...corner };
-      const goal = typeof target === 'string' ? (target === 'flat' ? flatCorner : turnedCorner) : constrain(target);
+      const goal = typeof target === 'string' ? (inner(target) === 'flat' ? flatCorner : turnedCorner) : constrain(flip(target));
       const from = polar(start), to = polar(goal);
       // Keep the arc continuous with where the corner starts and ends, and shaped in between.
       const startBias = from.arc - shape(from.angle), endBias = to.arc - shape(to.angle);
@@ -175,7 +188,7 @@ export function createLeaf(options: LeafOptions): Leaf {
         if (current.playState !== 'finished') frame = requestAnimationFrame(step);
       };
       frame = requestAnimationFrame(step);
-      return current.finished.then(() => { if (clock === current) draw(goal); }, () => undefined);
+      return current.finished.then(() => { if (clock === current) draw(goal); return true; }, () => false);
     },
     destroy() { alive = false; clock?.cancel(); cancelAnimationFrame(frame); element.remove(); },
   };
