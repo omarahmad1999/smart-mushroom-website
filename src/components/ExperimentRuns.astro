@@ -59,6 +59,10 @@ const isVideo = (media: Media) => media.src.endsWith('.mp4');
               <div class="rr-stage">
                 {run.media.map((media, mediaIndex) => (
                   <figure class="rr-item" hidden={mediaIndex > 0} data-run-item>
+                    <figcaption>
+                      <span class="rr-caption">{media.caption}</span>
+                      <a href={media.src} target="_blank" rel="noopener noreferrer">{isVideo(media) ? 'Open the film' : 'Full size'} <span aria-hidden="true">↗</span></a>
+                    </figcaption>
                     <div class="rr-frame">
                       {isVideo(media) ? (
                         <video controls playsinline preload="none" poster={media.poster} width={media.width} height={media.height} aria-label={media.alt}>
@@ -69,10 +73,6 @@ const isVideo = (media: Media) => media.src.endsWith('.mp4');
                         <img src={media.src} alt={media.alt} width={media.width} height={media.height} loading="lazy" decoding="async" />
                       )}
                     </div>
-                    <figcaption>
-                      <span>{media.caption}</span>
-                      <a href={media.src} target="_blank" rel="noopener noreferrer">{isVideo(media) ? 'Open the film' : 'Full size'} <span aria-hidden="true">↗</span></a>
-                    </figcaption>
                     {media.note && <p class="rr-note">{media.note}</p>}
                   </figure>
                 ))}
@@ -208,10 +208,11 @@ const isVideo = (media: Media) => media.src.endsWith('.mp4');
 
   .rr-frame { aspect-ratio: 16 / 9; background: #172b29; display: grid; place-items: center; overflow: hidden; border-radius: 2px; }
   .rr-frame img, .rr-frame video { display: block; width: 100%; height: 100%; object-fit: contain; }
-  .rr-item figcaption { display: flex; justify-content: space-between; gap: 16px; margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--rr-ink); }
+  .rr-item figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 10px; line-height: 1.5; color: var(--rr-ink); }
+  .rr-caption { font-size: 15px; font-weight: 500; }
   .rr-item figcaption a { flex: none; color: var(--rr-muted); font-size: 11px; text-underline-offset: 3px; }
   .rr-item figcaption a:hover { color: var(--rr-orange); }
-  .rr-note { margin-top: 4px; font-size: 11px; line-height: 1.7; }
+  .rr-note { margin-top: 10px; font-size: 11px; line-height: 1.7; }
   .rr-thumbs { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
   .rr-thumbs a { position: relative; display: block; width: 72px; height: 72px; border-radius: 2px; overflow: hidden; background: #172b2926; opacity: .7; transition: opacity .2s; }
   .rr-thumbs a:hover, .rr-thumbs a[aria-current] { opacity: 1; }
