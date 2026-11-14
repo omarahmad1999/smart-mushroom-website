@@ -7,6 +7,7 @@ const chapters = [
   { id: 'architecture', name: 'Connected System', summary: 'How readings, commands and photos travel.' },
   { id: 'experiment', name: 'The Experiment', summary: 'What the project asks, and how it is set up.' },
   { id: 'cultivation', name: 'Cultivation Cycle', summary: 'The stages of growth, from incubation to harvest.' },
+  { id: 'runs', name: 'Experiment Runs', summary: 'What each run tried, what failed, and what changed.' },
   { id: 'observations', name: 'Camera & Timelapse', summary: 'Scheduled photographs and an 18-day timelapse.' },
   { id: 'vision', name: 'Computer Vision', summary: 'Teaching a camera to recognize mushrooms.' },
 ];
@@ -74,7 +75,7 @@ const total = String(chapters.length).padStart(2, '0');
 
   /* Every chapter jumps to just below the header and the bar (the sections' own offsets assumed no bar). */
   :global(html){scroll-padding-top:138px}
-  :global(:is(#material-study,#architecture,#experiment,#cultivation,#observations,#vision)){scroll-margin-top:0}
+  :global(:is(#material-study,#architecture,#experiment,#cultivation,#runs,#observations,#vision)){scroll-margin-top:0}
 
   @media(max-width:1200px){.hc-label{display:none}.hc-list a{font-size:11px;gap:7px}}
 

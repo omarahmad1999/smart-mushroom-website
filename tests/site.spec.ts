@@ -286,8 +286,8 @@ test.describe('without JavaScript', () => {
       await expect(capture).toBeVisible();
       await expect.poll(() => capture.locator('img').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
     }
-    await expect(page.locator('video')).toHaveJSProperty('controls', true);
-    await expect(page.locator('video')).toHaveJSProperty('autoplay', false);
+    await expect(page.locator('#observations video')).toHaveJSProperty('controls', true);
+    await expect(page.locator('#observations video')).toHaveJSProperty('autoplay', false);
     await expect(page.locator('#lessons')).toHaveCount(0);
     await page.goto('/about/');
     await expect(page.locator('main')).toContainText('Where data meets cultivation.');

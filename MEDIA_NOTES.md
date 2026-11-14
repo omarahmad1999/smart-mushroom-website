@@ -29,6 +29,14 @@ Asset: `public/media/incubation-controlled-2026-08-18-to-09-05.mp4`.
 
 The source photographs were not edited. Encoding was performed once outside the website build, and only the finished MP4 is served. No camera scheduler, image discovery process, media metadata API, or sensor-data integration exists in the frontend.
 
+## Experiment runs
+
+The Experiment Runs section reads one Markdown file per run from `src/content/runs/`. Its media in `public/media/runs/` is prepared once by `scripts/prepare_run_media.py`; originals are not altered.
+
+- Run 01: the published 4 September incubation still, plus two 1600×900 WebP stills: the controlled camera's last incubation capture (10 September 2026, 18:40:42 Cairo) and the ambient camera's last capture (14 September 2026, 04:27:38 Cairo), from `oyster_2026_exp01/`.
+- Run 02 rot photographs: the supplied phone photographs `rot1.jpg`, `rot2.jpg` and `rot3.jpg` (EXIF dates 21, 24 and 24 October 2026), turned upright and resized to 1200×1600 WebP.
+- Run 02 fruiting film, `run-02-fruiting-ambient-2026-10-28-to-29.mp4`: 33 ambient-camera scientific stills from `oyster_2026_exp02/phase_5_fruiting/`, stills 1–19 of 28 October and 11–24 of 29 October in each day folder's filename order, played in recorded order. Every frame has the same crop around the bag (28–72% of the width, 42–86% of the height), scaled to 1280×720. Five stills per second, encoded at 30 fps by repeating frames, about 6.6 seconds, H.264, no audio. Nothing is interpolated or generated. The film skips the night between 28 and 29 October, and the bag sits in a different position afterwards. The poster is the same crop of the last still.
+
 ## Full 3D habitat illustration
 
 The scene in `src/scripts/study/` is an authored procedural illustration of the full tent and workbench. Supplied hardware artwork and photographs guide the frame, sensors, cameras, computing equipment, and MOSFET modules. The straw bags and oyster clusters are modelled geometry. The original 2.5D artwork and existing research sections remain unchanged.

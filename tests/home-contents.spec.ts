@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 test.setTimeout(120_000);
 
-const chapters=['Interactive Habitat','Connected System','The Experiment','Cultivation Cycle','Camera & Timelapse','Computer Vision'];
+const chapters=['Interactive Habitat','Connected System','The Experiment','Cultivation Cycle','Experiment Runs','Camera & Timelapse','Computer Vision'];
 
 test('on a laptop the chapter bar lists every chapter, jumps to one and follows the reader',async({page},testInfo)=>{
   test.skip(testInfo.project.name!=='desktop','The laptop layout.');
@@ -9,7 +9,7 @@ test('on a laptop the chapter bar lists every chapter, jumps to one and follows 
   const contents=page.locator('[data-home-contents]');
   await expect(contents).toHaveAttribute('data-ready','');
   const links=contents.locator('[data-home-section]');
-  await expect(links).toHaveCount(6);
+  await expect(links).toHaveCount(7);
   for(const [index,name] of chapters.entries())await expect(links.nth(index)).toContainText(name);
   // Every chapter is one click away: no menu to open on a laptop.
   await expect(contents.locator('[data-contents-toggle]')).toBeHidden();
@@ -40,7 +40,7 @@ test('on a phone the bar names the current chapter and opens the full list',asyn
   await expect(list).toBeVisible();
   // Each chapter is a comfortable tap target, with a line about what it holds.
   const rows=list.locator('[data-home-section]');
-  await expect(rows).toHaveCount(6);
+  await expect(rows).toHaveCount(7);
   for(const row of await rows.all())expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await expect(list.locator('.hc-summary').first()).toBeVisible();
   // Escape closes it and hands focus back.
@@ -53,7 +53,7 @@ test('on a phone the bar names the current chapter and opens the full list',asyn
   await expect(list).toBeHidden();
   await expect(page).toHaveURL(/#vision$/);
   await expect(toggle).toContainText('Computer Vision',{timeout:15000});
-  await expect(toggle).toContainText('06');
+  await expect(toggle).toContainText('07');
   // Tapping outside the open list closes it too.
   await toggle.click();
   await expect(list).toBeVisible();
@@ -69,7 +69,7 @@ test.describe('without JavaScript',()=>{
     const contents=page.locator('[data-home-contents]');
     await expect(contents.locator('[data-contents-toggle]')).toBeHidden();
     const links=contents.locator('[data-home-section]');
-    await expect(links).toHaveCount(6);
+    await expect(links).toHaveCount(7);
     await expect(links.first()).toBeVisible();
     for(const [index,name] of chapters.entries())await expect(links.nth(index)).toContainText(name);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);

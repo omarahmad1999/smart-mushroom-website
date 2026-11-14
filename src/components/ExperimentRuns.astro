@@ -1,0 +1,239 @@
+---
+import type { MarkdownInstance } from 'astro';
+
+interface Media { src: string; poster?: string; caption: string; alt: string; note?: string; width: number; height: number }
+interface Run { order: number; slug: string; status: string; outcome: 'failed' | 'in-progress'; title: string; record: string; carried: string[]; media: Media[] }
+
+// One Markdown file per run in src/content/runs/; a new run is a new file.
+const files = import.meta.glob<MarkdownInstance<Run>>('../content/runs/*.md', { eager: true });
+const runs = Object.values(files).sort((a, b) => a.frontmatter.order - b.frontmatter.order);
+const number = (run: Run) => String(run.order).padStart(2, '0');
+// What each run took from the runs before it.
+const carriedIn = (index: number) => runs.slice(0, index).flatMap(({ frontmatter: run }) => run.carried.map((change) => ({ change, from: number(run) })));
+const isVideo = (media: Media) => media.src.endsWith('.mp4');
+---
+
+<section id="runs" class="rr-section" aria-labelledby="runs-heading">
+  <div class="rr-container">
+    <div class="rr-label"><span class="rr-marker"></span> EXPERIMENT RUNS <span class="rr-label-rule"></span> FIELD LOG</div>
+    <div class="rr-intro">
+      <h2 id="runs-heading">Every run<br /><em>teaches the next.</em></h2>
+      <p>Not every run reaches harvest. Each one is kept here as it happened: what was tried, what went wrong, and what changed before the next run began.</p>
+    </div>
+
+    <div class="rr-explorer" data-runs>
+      <div class="rr-tabs" role="tablist" aria-label="Experiment runs" style={`--runs:${runs.length}`} hidden>
+        {runs.map(({ frontmatter: run }, index) => (
+          <button type="button" class="rr-tab" id={`rr-tab-${run.slug}`} role="tab" aria-selected={index === 0 ? 'true' : 'false'} aria-controls={`rr-panel-${run.slug}`} tabindex={index === 0 ? 0 : -1} data-run-tab>
+            <span class="rr-tab-number">RUN {number(run)}</span>
+            <span class="rr-tab-record">{run.record}</span>
+            <span class="rr-status" data-outcome={run.outcome}><span class="rr-status-dot" aria-hidden="true"></span>{run.status}</span>
+          </button>
+        ))}
+      </div>
+
+      {runs.map(({ frontmatter: run, Content }, index) => (
+        <article class="rr-panel" id={`rr-panel-${run.slug}`} aria-labelledby={`rr-title-${run.slug}`} data-run-panel>
+          <div class="rr-copy">
+            <p class="rr-kicker">RUN {number(run)} / {run.status.toUpperCase()}</p>
+            <h3 id={`rr-title-${run.slug}`}>{run.title}</h3>
+            <p class="rr-record"><span>CAMERA RECORD</span>{run.record}</p>
+            <div class="rr-body"><Content /></div>
+            {carriedIn(index).length > 0 && (
+              <div class="rr-carried rr-carried-in">
+                <p class="rr-kicker">CARRIED IN</p>
+                <ul>{carriedIn(index).map(({ change, from }) => <li><span class="rr-from">RUN {from}</span>{change}</li>)}</ul>
+              </div>
+            )}
+            {run.carried.length > 0 && (
+              <div class="rr-carried rr-carried-forward">
+                <p class="rr-kicker">CARRIED FORWARD</p>
+                <ul>{run.carried.map((change) => <li><span class="rr-arrow" aria-hidden="true">→</span>{change}</li>)}</ul>
+              </div>
+            )}
+          </div>
+
+          {run.media.length > 0 ? (
+            <div class="rr-media" data-run-media>
+              {/* The first item shows on load; the thumbnails switch it, or open the file when scripts are off. */}
+              <div class="rr-stage">
+                {run.media.map((media, mediaIndex) => (
+                  <figure class="rr-item" hidden={mediaIndex > 0} data-run-item>
+                    <div class="rr-frame">
+                      {isVideo(media) ? (
+                        <video controls playsinline preload="none" poster={media.poster} width={media.width} height={media.height} aria-label={media.alt}>
+                          <source src={media.src} type="video/mp4" />
+                          <p>Your browser cannot play this video. <a href={media.src}>Download the film.</a></p>
+                        </video>
+                      ) : (
+                        <img src={media.src} alt={media.alt} width={media.width} height={media.height} loading="lazy" decoding="async" />
+                      )}
+                    </div>
+                    <figcaption>
+                      <span>{media.caption}</span>
+                      <a href={media.src} target="_blank" rel="noopener noreferrer">{isVideo(media) ? 'Open the film' : 'Full size'} <span aria-hidden="true">↗</span></a>
+                    </figcaption>
+                    {media.note && <p class="rr-note">{media.note}</p>}
+                  </figure>
+                ))}
+              </div>
+              {run.media.length > 1 && (
+                <ul class="rr-thumbs" aria-label={`Photographs and films from run ${number(run)}`}>
+                  {run.media.map((media, mediaIndex) => (
+                    <li>
+                      <a href={media.src} target="_blank" rel="noopener noreferrer" aria-current={mediaIndex === 0 ? 'true' : undefined} data-run-thumb>
+                        <img src={media.poster ?? media.src} alt="" width="96" height="96" loading="lazy" decoding="async" />
+                        {isVideo(media) && <span class="rr-play" aria-hidden="true">▶</span>}
+                        <span class="sr-only">Show: {media.caption}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <div class="rr-empty">
+              <p class="rr-kicker">ON CAMERA</p>
+              <p>No photographs published from this run yet. Selected stills will appear here as the run develops.</p>
+            </div>
+          )}
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script>
+  const initializeRuns = () => {
+    document.querySelectorAll<HTMLElement>('[data-runs]').forEach((explorer) => {
+      if (explorer.dataset.initialized === 'true') return;
+      const tabs = Array.from(explorer.querySelectorAll<HTMLButtonElement>('[data-run-tab]'));
+      const panels = Array.from(explorer.querySelectorAll<HTMLElement>('[data-run-panel]'));
+      const tablist = explorer.querySelector<HTMLElement>('[role="tablist"]');
+      if (!tablist || !tabs.length || tabs.length !== panels.length) return;
+      const pauseAll = (scope: HTMLElement) => scope.querySelectorAll('video').forEach((video) => video.pause());
+      const select = (selectedIndex: number, moveFocus = false) => {
+        tabs.forEach((tab, index) => {
+          const selected = index === selectedIndex;
+          tab.setAttribute('aria-selected', String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+          panels[index].hidden = !selected;
+          if (!selected) pauseAll(panels[index]);
+        });
+        if (moveFocus) tabs[selectedIndex]?.focus();
+      };
+      // On a phone the cards scroll sideways; keep the chosen one in view without moving the page.
+      const reveal = (tab: HTMLElement) => tablist.scrollTo({ left: tab.offsetLeft - tablist.offsetLeft - 2, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      tabs.forEach((tab, index) => {
+        panels[index].setAttribute('role', 'tabpanel');
+        panels[index].setAttribute('aria-labelledby', tab.id);
+        tab.addEventListener('click', () => { select(index); reveal(tab); });
+        tab.addEventListener('keydown', (event) => {
+          let next: number | undefined;
+          if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+          if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+          if (event.key === 'Home') next = 0;
+          if (event.key === 'End') next = tabs.length - 1;
+          if (next !== undefined) { event.preventDefault(); select(next, true); reveal(tabs[next]); }
+        });
+      });
+      // A thumbnail shows its photograph or film on the stage instead of opening the file.
+      explorer.querySelectorAll<HTMLElement>('[data-run-media]').forEach((media) => {
+        const items = Array.from(media.querySelectorAll<HTMLElement>('[data-run-item]'));
+        const thumbs = Array.from(media.querySelectorAll<HTMLAnchorElement>('[data-run-thumb]'));
+        thumbs.forEach((thumb, index) => thumb.addEventListener('click', (event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+          event.preventDefault();
+          pauseAll(media);
+          items.forEach((item, itemIndex) => { item.hidden = itemIndex !== index; });
+          thumbs.forEach((other) => (other === thumb ? other.setAttribute('aria-current', 'true') : other.removeAttribute('aria-current')));
+        }));
+      });
+      select(0);
+      tablist.hidden = false;
+      explorer.dataset.initialized = 'true';
+    });
+  };
+  initializeRuns();
+  document.addEventListener('astro:page-load', initializeRuns);
+</script>
+
+<style>
+  .rr-section { --rr-ink: #172b29; --rr-muted: #60665b; --rr-olive: #6f7957; --rr-orange: #d45b36; background: #f6f3eb; color: var(--rr-ink); padding-block: clamp(76px, 8vw, 128px); scroll-margin-top: 86px; font-family: var(--font-body, sans-serif); }
+  .rr-container { width: min(var(--page-width), calc(100% - 2 * var(--page-pad, 5vw))); margin-inline: auto; }
+  .rr-label { display: flex; align-items: center; gap: 12px; font-size: 10px; font-weight: 600; letter-spacing: .12em; line-height: 1.5; }
+  .rr-marker { width: 6px; height: 6px; flex: 0 0 6px; background: var(--rr-orange); }
+  .rr-label-rule { height: 1px; flex: 1; background: currentColor; opacity: .18; margin-inline: 12px; }
+  h2, h3, h4, p, figure, ul { margin: 0; }
+  p { font-size: 14px; line-height: 1.85; color: var(--rr-muted); }
+  h2 { font-family: var(--font-display, Georgia, serif); font-weight: 400; font-size: clamp(40px, 4.65vw, 65px); line-height: 1.04; letter-spacing: -.045em; text-wrap: balance; }
+  h2 em { font-weight: 400; color: var(--rr-olive); }
+  .rr-intro { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(44px, 8vw, 116px); align-items: end; margin-top: 65px; }
+  .rr-intro p { max-width: 460px; }
+  .rr-kicker { font-size: 10px; font-weight: 600; letter-spacing: .12em; line-height: 1.5; color: var(--rr-olive); }
+
+  .rr-explorer { margin-top: 56px; }
+  .rr-tabs { display: grid; grid-template-columns: repeat(var(--runs, 3), 1fr); gap: 34px; }
+  .rr-tabs[hidden] { display: none; }
+  .rr-tab { appearance: none; position: relative; display: grid; gap: 6px; justify-items: start; padding: 18px 20px; border: 1px solid #172b2926; border-radius: 4px; background: transparent; color: var(--rr-ink); font: inherit; text-align: left; cursor: pointer; transition: border-color .2s, background .2s; }
+  /* The arrow from each run to the next. */
+  .rr-tab + .rr-tab::before { content: '→'; position: absolute; left: -27px; top: 50%; transform: translateY(-50%); color: #172b2966; font-size: 17px; pointer-events: none; }
+  .rr-tab:hover { border-color: #172b2966; }
+  .rr-tab[aria-selected="true"] { border-color: var(--rr-orange); background: #fff9; box-shadow: inset 0 -3px 0 var(--rr-orange); }
+  .rr-tab:focus-visible, .rr-thumbs a:focus-visible { outline: 2px solid var(--rr-orange); outline-offset: 4px; }
+  .rr-tab-number { font-size: 11px; font-weight: 600; letter-spacing: .12em; }
+  .rr-tab[aria-selected="true"] .rr-tab-number { color: var(--rr-orange); }
+  .rr-tab-record { font-size: 12px; color: var(--rr-muted); }
+  .rr-status { display: inline-flex; align-items: center; gap: 7px; margin-top: 4px; padding: 4px 9px; border-radius: 99px; background: #d45b3614; color: #9c3d22; font-size: 11px; line-height: 1.3; }
+  .rr-status[data-outcome="in-progress"] { background: #6f795720; color: #4b5537; }
+  .rr-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .rr-panel { display: grid; grid-template-columns: 1fr 1.15fr; gap: clamp(40px, 6vw, 85px); align-items: start; margin-top: 46px; }
+  .rr-panel + .rr-panel { padding-top: 46px; border-top: 1px solid #172b2926; }
+  :global([data-runs][data-initialized]) .rr-panel + .rr-panel { padding-top: 0; border-top: 0; }
+  .rr-panel[hidden] { display: none; }
+  .rr-copy h3 { font-family: var(--font-display, Georgia, serif); font-weight: 400; font-size: clamp(30px, 3vw, 42px); line-height: 1.1; letter-spacing: -.03em; margin: 16px 0 18px; text-wrap: balance; }
+  .rr-record { display: flex; gap: 14px; align-items: baseline; padding-block: 10px; border-block: 1px solid #172b2919; font-size: 13px; color: var(--rr-ink); }
+  .rr-record span { font-size: 9px; font-weight: 600; letter-spacing: .12em; color: var(--rr-muted); }
+  .rr-body { margin-top: 20px; }
+  .rr-body :global(h4) { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--rr-ink); margin: 20px 0 4px; }
+  .rr-body :global(h4:first-child) { margin-top: 0; }
+  .rr-body :global(p) { font-size: 14px; line-height: 1.8; color: var(--rr-muted); margin: 0; }
+  .rr-carried { margin-top: 26px; padding: 16px 18px; border-radius: 4px; background: #ebece2; }
+  .rr-carried-forward { background: #f2dfd3; }
+  .rr-carried ul { list-style: none; padding: 0; margin-top: 8px; display: grid; gap: 8px; }
+  .rr-carried li { display: flex; gap: 10px; align-items: baseline; font-size: 13px; line-height: 1.6; color: var(--rr-ink); }
+  .rr-from { flex: none; font-size: 9px; font-weight: 600; letter-spacing: .1em; color: var(--rr-olive); }
+  .rr-arrow { flex: none; color: var(--rr-orange); }
+
+  .rr-frame { aspect-ratio: 16 / 9; background: #172b29; display: grid; place-items: center; overflow: hidden; border-radius: 2px; }
+  .rr-frame img, .rr-frame video { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .rr-item figcaption { display: flex; justify-content: space-between; gap: 16px; margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--rr-ink); }
+  .rr-item figcaption a { flex: none; color: var(--rr-muted); font-size: 11px; text-underline-offset: 3px; }
+  .rr-item figcaption a:hover { color: var(--rr-orange); }
+  .rr-note { margin-top: 4px; font-size: 11px; line-height: 1.7; }
+  .rr-thumbs { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .rr-thumbs a { position: relative; display: block; width: 72px; height: 72px; border-radius: 2px; overflow: hidden; background: #172b2926; opacity: .7; transition: opacity .2s; }
+  .rr-thumbs a:hover, .rr-thumbs a[aria-current] { opacity: 1; }
+  .rr-thumbs a[aria-current] { box-shadow: 0 0 0 2px var(--rr-orange); }
+  .rr-thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .rr-play { position: absolute; inset: 0; display: grid; place-items: center; color: #f6f3eb; font-size: 18px; background: #172b2955; }
+  .rr-empty { display: grid; align-content: center; gap: 10px; min-height: 200px; padding: 32px; border: 1px dashed #172b2940; border-radius: 4px; }
+
+  @media (max-width: 1000px) {
+    .rr-panel { grid-template-columns: 1fr; gap: 34px; }
+    .rr-tabs { gap: 28px; }
+    .rr-tab + .rr-tab::before { left: -22px; }
+  }
+  @media (max-width: 700px) {
+    .rr-label { font-size: 8px; gap: 9px; letter-spacing: .065em; }
+    .rr-intro { grid-template-columns: 1fr; gap: 22px; margin-top: 38px; }
+    .rr-explorer { margin-top: 38px; }
+    /* On a phone the runs become a row that scrolls sideways. */
+    .rr-tabs { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 74%; gap: 24px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 2px 10px; margin-inline: -2px; scrollbar-width: thin; }
+    .rr-tab { scroll-snap-align: start; padding: 14px 16px; }
+    .rr-tab + .rr-tab::before { left: -19px; font-size: 14px; }
+    .rr-panel { margin-top: 30px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .rr-tab, .rr-thumbs a { transition: none; } }
+</style>
