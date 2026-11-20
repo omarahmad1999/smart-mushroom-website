@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { CONTACT_FROM_EMAIL, CONTACT_TO_EMAIL, RESEND_API_KEY } from 'astro:env/server';
 import { Resend } from 'resend';
 
 export const prerender = false;
@@ -66,9 +67,19 @@ function isRateLimited(address: string) {
   return false;
 }
 
+// Behind the Cloudflare Tunnel the server is reached over plain HTTP while
+// visitors use HTTPS, so the origin check compares hosts rather than schemes.
+function isSameHost(origin: string, url: URL) {
+  try {
+    return new URL(origin).host === url.host;
+  } catch {
+    return false;
+  }
+}
+
 export const POST: APIRoute = async ({ request, url, clientAddress }) => {
   const origin = request.headers.get('origin');
-  if (origin && origin !== url.origin) return json({ message: 'This request was not accepted.' }, 403);
+  if (origin && !isSameHost(origin, url)) return json({ message: 'This request was not accepted.' }, 403);
   if (!request.headers.get('content-type')?.toLowerCase().includes('application/json')) {
     return json({ message: 'Please submit the contact form again.' }, 415);
   }
@@ -85,14 +96,16 @@ export const POST: APIRoute = async ({ request, url, clientAddress }) => {
   // A filled honeypot looks successful so automated submissions do not retry it.
   if (contact.website) return json({ ok: true });
 
-  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-  if (isRateLimited(forwarded || clientAddress || 'unknown')) {
+  // The server only listens on localhost, so these headers can only come from the tunnel.
+  const visitor = request.headers.get('cf-connecting-ip')?.trim()
+    || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  if (isRateLimited(visitor || clientAddress || 'unknown')) {
     return json({ message: 'Too many messages were sent. Please wait a few minutes and try again.' }, 429);
   }
 
-  const apiKey = process.env.RESEND_API_KEY?.trim() || import.meta.env.RESEND_API_KEY?.trim();
-  const to = process.env.CONTACT_TO_EMAIL?.trim() || import.meta.env.CONTACT_TO_EMAIL?.trim();
-  const from = process.env.CONTACT_FROM_EMAIL?.trim() || import.meta.env.CONTACT_FROM_EMAIL?.trim();
+  const apiKey = RESEND_API_KEY?.trim();
+  const to = CONTACT_TO_EMAIL?.trim();
+  const from = CONTACT_FROM_EMAIL?.trim();
   if (!apiKey || !to || !from) {
     console.error('Contact delivery is missing RESEND_API_KEY, CONTACT_TO_EMAIL, or CONTACT_FROM_EMAIL.');
     return json({ message: 'Email is temporarily unavailable. Please try again later.' }, 503);

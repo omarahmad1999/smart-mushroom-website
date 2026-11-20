@@ -22,6 +22,12 @@ npm run serve
 
 The Node adapter writes the pre-rendered site and contact endpoint to `dist/`. Production hosting must run `dist/server/entry.mjs`; `npm run serve` does that locally and reads an ignored `.env` file when present. Set `HOST` and `PORT` in the hosting environment when needed.
 
+## Deployment
+
+`npm run deploy` builds the site here and publishes it to the hosting server (SSH alias `friend`; override with `DEPLOY_HOST`). It copies `dist/`, the package files and `deploy/ensure-running.sh` to `~/micolabs`, reinstalls runtime dependencies when the lockfile changes, restarts the site and confirms it answers.
+
+On the server, everything lives in the home folder and needs no admin rights: Node in `~/.local/opt/node`, `cloudflared` in `~/.local/bin`, the tunnel token in `~/.cloudflared/tunnel-token`, and the contact secrets in `~/micolabs/.env`. The site listens on `127.0.0.1:4321` only. Visitors reach it through a Cloudflare Tunnel, so the server's address never appears in DNS. Cron runs `ensure-running.sh` at boot and every minute to start the site or tunnel if either has stopped; logs are in `~/micolabs/logs`.
+
 ## Project links
 
 Copy `.env.example` to `.env` and set the actual public destinations:
@@ -36,7 +42,7 @@ Rebuild after changing these values. The documentation link defaults to the work
 
 ## Contact email
 
-The About page posts its contact form to `/api/contact`, which validates and escapes the message before sending it through Resend. Copy the private settings from `.env.example` into an ignored `.env` file for local development, or add them to the hosting provider's server environment:
+The About page posts its contact form to `/api/contact`, which validates and escapes the message before sending it through Resend. Copy the private settings from `.env.example` into an ignored `.env` file for local development, or add them to `~/micolabs/.env` on the hosting server. They are read when a message is sent and are never copied into the build output:
 
 ```dotenv
 RESEND_API_KEY=your-new-sending-only-key
@@ -44,7 +50,7 @@ CONTACT_TO_EMAIL=omarahmadmohamed@gmail.com
 CONTACT_FROM_EMAIL=Smart Mushroom Hub <onboarding@resend.dev>
 ```
 
-Never prefix the API key with `PUBLIC_`, place it in browser code, paste it into chat, or commit `.env`. `onboarding@resend.dev` is useful for an initial test to the Resend account owner. Replace it with an address on a verified sending domain for production. The form sets the visitor's address as `Reply-To` and includes a same-origin check, field limits, a honeypot, and an in-memory rate limit.
+Never prefix the API key with `PUBLIC_`, place it in browser code, paste it into chat, or commit `.env`. `onboarding@resend.dev` is useful for an initial test to the Resend account owner. Replace it with an address on a verified sending domain for production. The form sets the visitor's address as `Reply-To` and includes a same-host check, field limits, a honeypot, and an in-memory rate limit.
 
 ## Architecture boundary
 
