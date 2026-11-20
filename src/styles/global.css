@@ -6,3 +6,21 @@
 
 .desktop-nav{gap:60px}
 @media(min-width:1001px) and (max-width:1200px){.desktop-nav{gap:34px}}
+/* Dark mode: the page, header and text go dark; paper objects keep their own light tokens. */
+:root{color-scheme:light}
+[data-theme=dark]{color-scheme:dark;--paper:#111b19;--paper-deep:#17231f;--ink:#e9e5d9;--muted:#9aa398;--olive:#a9b68e;--orange:#e27a55;--line:#2b3934}
+[data-theme=dark] ::selection{background:#3b4a3a;color:var(--ink)}
+[data-theme=dark] .button-dark:hover{background:#d3cec1}
+[data-theme=dark] .button-outline{border-color:#41504a}
+[data-theme=dark] .button-outline:hover{background:#1d2a26}
+[data-theme=dark] .desktop-nav a{color:#b9c0b4}
+[data-theme=dark] .skip-link{color:var(--paper)}
+[data-theme=dark] .resource-dialog{box-shadow:0 25px 100px #0008}
+[data-theme=dark] .resource-dialog::backdrop{background:#050b0aaa}
+.header-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.theme-toggle{color:var(--ink);transition:background .2s,border-color .2s}
+.theme-toggle:hover{background:var(--paper-deep)}
+.theme-icon-sun,[data-theme=dark] .theme-icon-moon{display:none}
+[data-theme=dark] .theme-icon-sun{display:block}
+/* Paper objects keep light paper and dark ink in dark mode, like a notebook on a dark desk. */
+[data-theme=dark] :is(.nb-binding,.nb-tabs,.nb-cover,.nb-contents nav,.notebook dialog,.nb-loupe,.profile,.social-paper){--paper:#f6f3eb;--paper-deep:#eeece2;--ink:#172b29;--muted:#6f756d;--olive:#738060;--orange:#ce5b39;--line:#d9dcd0;color-scheme:light}

@@ -237,4 +237,17 @@ const isVideo = (media: Media) => media.src.endsWith('.mp4');
     .rr-panel { margin-top: 30px; }
   }
   @media (prefers-reduced-motion: reduce) { .rr-tab, .rr-thumbs a { transition: none; } }
+  /* Dark mode. */
+  :global([data-theme="dark"]) .rr-section { --rr-ink: #e9e5d9; --rr-muted: #9fa79c; --rr-olive: #aab78f; --rr-orange: #e5805b; background: #111b19; }
+  :global([data-theme="dark"]) .rr-tab, :global([data-theme="dark"]) .rr-panel + .rr-panel, :global([data-theme="dark"]) .rr-record { border-color: #e9e5d921; }
+  :global([data-theme="dark"]) .rr-tab + .rr-tab::before { color: #e9e5d955; }
+  :global([data-theme="dark"]) .rr-tab:hover { border-color: #e9e5d955; }
+  :global([data-theme="dark"]) .rr-tab[aria-selected="true"] { border-color: var(--rr-orange); background: #e9e5d90d; }
+  :global([data-theme="dark"]) .rr-status { background: #e5805b24; color: #f0a585; }
+  :global([data-theme="dark"]) .rr-status[data-outcome="in-progress"] { background: #aab78f24; color: #c5d1a8; }
+  :global([data-theme="dark"]) .rr-carried { background: #19251f; }
+  :global([data-theme="dark"]) .rr-carried-forward { background: #2b1e17; }
+  :global([data-theme="dark"]) .rr-frame { background: #0a1210; }
+  :global([data-theme="dark"]) .rr-thumbs a { background: #e9e5d91a; }
+  :global([data-theme="dark"]) .rr-empty { border-color: #e9e5d933; }
 </style>

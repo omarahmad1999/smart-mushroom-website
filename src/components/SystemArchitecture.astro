@@ -148,6 +148,21 @@ const routes = [
   @media (prefers-reduced-motion: reduce) {
     .flow-tabs button { transition: none; }
   }
+  /* Dark mode. */
+  :global([data-theme="dark"]) .system-architecture { background: #111b19; color: #e9e5d9; }
+  :global([data-theme="dark"]) .architecture-eyebrow { color: #a9b39c; }
+  :global([data-theme="dark"]) .architecture-heading h2 em { color: #aab78f; }
+  :global([data-theme="dark"]) .architecture-introduction, :global([data-theme="dark"]) .flow-tabs button, :global([data-theme="dark"]) .route-description { color: #a9b1a3; }
+  :global([data-theme="dark"]) .architecture-schematic { border-color: #2b3934; background: #16211e; }
+  :global([data-theme="dark"]) .schematic-toolbar, :global([data-theme="dark"]) .route-panel + .route-panel, :global([data-theme="dark"]) .schematic-label { border-color: #2b3934; }
+  :global([data-theme="dark"]) .flow-tabs button:hover, :global([data-theme="dark"]) .flow-tabs button[aria-selected="true"] { color: #e9e5d9; }
+  :global([data-theme="dark"]) .tab-number, :global([data-theme="dark"]) .route-eyebrow { color: #9aa98a; }
+  :global([data-theme="dark"]) .schematic-label { color: #9aa396; }
+  :global([data-theme="dark"]) .schematic-mark { color: #aab78f; }
+  :global([data-theme="dark"]) .route-panel { background: #121c1a; }
+  :global([data-theme="dark"]) .flow-sound { color: #aab39f; }
+  :global([data-theme="dark"]) .flow-sound[aria-pressed="true"] { color: #f0a070; background: #2b1e17; border-color: #5a3a28; }
+  :global([data-theme="dark"]) .flow-sound:hover { color: #f0a070; }
 </style>
 
 <script>

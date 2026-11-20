@@ -269,4 +269,10 @@ const journeyMedia=[
 /* Preserve the accepted book dimensions independently of the page gutters. */
 .notebook{--page-pad:var(--notebook-pad);--book-width:calc(min(100vw,1380px) - 2 * var(--notebook-pad))}
 .nb-toolbar,.nb-tabs,.nb-binding,.nb-controls,.nb-hint{width:var(--book-width);margin-inline:auto}
+/* Dark mode: the words around the notebook turn light; the notebook itself stays paper. */
+:global([data-theme="dark"]) .notebook{--nb-ink:#dcd8cb;--nb-rust:#e5946a}
+:global([data-theme="dark"]) .notebook :is(.nb-binding,.nb-tabs,.nb-cover,.nb-contents nav,dialog){--nb-ink:#39473c;--nb-rust:#a64e30;color:var(--nb-ink)}
+:global([data-theme="dark"]) .nb-show-cover{color:#cfae86}
+:global([data-theme="dark"]) .nb-controls p{color:#a2a99a}
+:global([data-theme="dark"]) .nb-hint{color:#a3a38f}
 </style>

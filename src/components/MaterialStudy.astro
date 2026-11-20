@@ -133,4 +133,42 @@ import { site } from '../config/site';
 .ms-viewport :global([data-study-hotspot][data-device-active=true]::before){background:#cc702d;border-color:#a95120;box-shadow:0 0 10px #e5914e66}
 .ms-component-group button[data-device-active=true]{color:#a95320;border-bottom-color:#d58a50}
 .ms-viewport :global([data-study-hotspot][data-device-active=false][aria-pressed=true]::before){background:#df9556;border-color:#ba632d}
+/* Dark mode: the page, panels and labels go dark; the 3D model keeps its own lighting. */
+:global([data-theme="dark"]) .material-study{--ms-ink:#e9e5d9;--ms-muted:#a2ab9c;--ms-olive:#aab78f;--ms-accent:#e5805b;--ms-line:#2b3934;background:#111b19}
+:global([data-theme="dark"]) .ms-eyebrow,:global([data-theme="dark"]) .ms-scene-caption{color:#a9b39c}
+:global([data-theme="dark"]) .ms-scene-shell,:global([data-theme="dark"]) .ms-fallback{background:#18241f;border-color:#2b3934}
+:global([data-theme="dark"]) .material-study[data-study-sketch=true]:not([data-study-lighting=tent]) .ms-scene-shell{background-color:#18231f;background-image:radial-gradient(#e9e5d914 .6px,transparent .8px)}
+:global([data-theme="dark"]) .ms-region-bar button[aria-pressed=true]{background:#22302b;border-color:#34433d;color:#dfe6d4}
+:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot]){color:#c5cfba}
+:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot]::before){background:#18241fd9;border-color:#56634f}
+:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot][aria-pressed=true]::before){background:#8d9b78;border-color:#8d9b78}
+:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot]::after),:global([data-theme="dark"]) .ms-viewport :global(.ms-hover-label),:global([data-theme="dark"]) .ms-viewport :global(.ms-group-marker){background:#1d2925f0;border-color:#34433d;color:#dfe6d4;box-shadow:0 4px 14px #0006}
+:global([data-theme="dark"]) .ms-viewport :global(.ms-group-marker b){background:#2b3833;color:#c9d4bc}
+:global([data-theme="dark"]) .ms-viewport :global(.ms-group-marker:hover),:global([data-theme="dark"]) .ms-viewport :global(.ms-group-marker:focus-visible){background:#24322c}
+:global([data-theme="dark"]) .ms-viewport :global([data-study-leaders]){stroke:#8d9a7f}
+:global([data-theme="dark"]) .ms-detail,:global([data-theme="dark"]) .ms-tour,:global([data-theme="dark"]) .ms-growth,:global([data-theme="dark"]) .ms-menu-panel{background:#1a2622f5;border-color:#2f3d38;box-shadow:0 12px 40px #0008}
+:global([data-theme="dark"]) .ms-detail p,:global([data-theme="dark"]) .ms-tour-text,:global([data-theme="dark"]) .ms-terminal-table{color:#b6bfae}
+:global([data-theme="dark"]) .ms-detail .ms-detail-note{border-left-color:#3b4943;color:#9aa396}
+:global([data-theme="dark"]) .ms-detail-close,:global([data-theme="dark"]) .ms-growth-close,:global([data-theme="dark"]) .ms-picker-hint,:global([data-theme="dark"]) .ms-menu-count,:global([data-theme="dark"]) .ms-menu-mark,:global([data-theme="dark"]) .ms-pairing-caption p{color:#9aa396}
+:global([data-theme="dark"]) .ms-demo-button{background:#24322c;color:#d6dfca;border-color:#3b4a42}
+:global([data-theme="dark"]) .ms-demo-button[aria-pressed=true]{background:#77866b;color:#fffdf5;border-color:#77866b}
+:global([data-theme="dark"]) .ms-detail-link,:global([data-theme="dark"]) .ms-screen-preview :global(.ms-screen-link){color:#b9c8a6}
+:global([data-theme="dark"]) .ms-control,:global([data-theme="dark"]) .ms-zoom-button{color:#c9d2be}
+:global([data-theme="dark"]) .ms-zoom-button:hover,:global([data-theme="dark"]) .ms-menu-panel .ms-control:hover{background:#24322c;color:#e9e5d9}
+:global([data-theme="dark"]) .ms-switch{background:#3a4842}
+:global([data-theme="dark"]) .ms-switch::after{background:#e9e5d9}
+:global([data-theme="dark"]) .ms-state-control[aria-pressed=true] .ms-switch{background:#8d9b78}
+:global([data-theme="dark"]) .ms-instructions>span{color:#7f8a79}
+:global([data-theme="dark"]) .ms-component-group h3{color:#b3c2a2}
+:global([data-theme="dark"]) .ms-component-group button{border-bottom-color:#26332f}
+:global([data-theme="dark"]) .ms-component-index{color:#9aa98a}
+:global([data-theme="dark"]) .ms-tour-dots span,:global([data-theme="dark"]) .ms-detail:before,:global([data-theme="dark"]) .ms-tour:before{background:#3b4943}
+:global([data-theme="dark"]) .ms-tour-controls button{background:#24322c;color:#d6dfca}
+:global([data-theme="dark"]) .ms-tour-controls button:hover{background:#2c3b35}
+:global([data-theme="dark"]) .ms-tour-controls .ms-tour-next{background:#77866b;color:#fffdf5}
+:global([data-theme="dark"]) .ms-terminal-table th,:global([data-theme="dark"]) .ms-terminal-table td{border-bottom-color:#2b3934}
+:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot="fan"]),:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot="cooler"]),:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot="humidity"]),:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot="light"]),:global([data-theme="dark"]) .ms-component-group button[data-device-active=true]{color:#f0a070}
+:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot="fan"]::before),:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot="cooler"]::before),:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot="humidity"]::before),:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot="light"]::before){background:#3a2617d9}
+:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot][data-device-active=true]){color:#fff9ef}
+:global([data-theme="dark"]) .ms-viewport :global([data-study-hotspot][data-device-active=true]::before){background:#cc702d}
 </style>

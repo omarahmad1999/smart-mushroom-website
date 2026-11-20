@@ -20,6 +20,16 @@ const { title = site.title, description = site.description } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#f6f3eb" />
+    {/* Applies the saved or system theme before the first paint, so the page never flashes the wrong colours. */}
+    <script is:inline>
+      (() => {
+        let theme;
+        try { theme = localStorage.getItem('theme'); } catch {}
+        if (theme !== 'dark' && theme !== 'light') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = theme;
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#111b19' : '#f6f3eb');
+      })();
+    </script>
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -36,8 +46,11 @@ const { title = site.title, description = site.description } = Astro.props;
           <a href="/documentation/">Field notes</a>
           <a href="/about/">About me</a>
         </nav>
-        <div class="header-resources"><ResourceLink href={site.githubUrl} resource="GitHub" class="button button-dark header-github" label="GitHub"><Icon name="github" /></ResourceLink><ResourceLink href={site.grafanaUrl} resource="Grafana" class="button button-dark header-grafana" label="View Data in Grafana" /></div>
-        <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-navigation"><Icon name="menu" /></button>
+        <div class="header-actions">
+          <div class="header-resources"><ResourceLink href={site.githubUrl} resource="GitHub" class="button button-dark header-github" label="GitHub"><Icon name="github" /></ResourceLink><ResourceLink href={site.grafanaUrl} resource="Grafana" class="button button-dark header-grafana" label="View Data in Grafana" /></div>
+          <button class="theme-toggle icon-button" type="button" aria-label="Switch to dark mode" data-theme-toggle><Icon name="moon" size={18} class="theme-icon-moon" /><Icon name="sun" size={18} class="theme-icon-sun" /></button>
+          <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-navigation"><Icon name="menu" /></button>
+        </div>
       </div>
       <nav id="mobile-navigation" class="mobile-nav" aria-label="Mobile navigation" hidden>
         <a href="/">Home <Icon name="arrow-right" /></a>

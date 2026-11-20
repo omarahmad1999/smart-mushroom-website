@@ -39,3 +39,23 @@ resourceDialog?.addEventListener('click', event => { if (event.target === resour
   const bounds = resourceDialog.getBoundingClientRect();
   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) resourceDialog.close();
 }});
+
+// Light or dark: follows the device until the visitor picks one with the header button.
+const root = document.documentElement;
+const systemDark = matchMedia('(prefers-color-scheme: dark)');
+const themeButtons = document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]');
+const storedTheme = () => { try { const value = localStorage.getItem('theme'); return value === 'dark' || value === 'light' ? value : undefined; } catch { return undefined; } };
+function applyTheme(theme: 'dark' | 'light') {
+  root.dataset.theme = theme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#111b19' : '#f6f3eb');
+  themeButtons.forEach(button => button.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'));
+  window.dispatchEvent(new CustomEvent('themechange', { detail: theme }));
+}
+applyTheme(root.dataset.theme === 'dark' ? 'dark' : 'light');
+themeButtons.forEach(button => button.addEventListener('click', () => {
+  const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+  // Picking what the device already uses goes back to following the device.
+  try { if (next === (systemDark.matches ? 'dark' : 'light')) localStorage.removeItem('theme'); else localStorage.setItem('theme', next); } catch { /* the choice lasts for this page */ }
+  applyTheme(next);
+}));
+systemDark.addEventListener('change', () => { if (!storedTheme()) applyTheme(systemDark.matches ? 'dark' : 'light'); });

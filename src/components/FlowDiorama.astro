@@ -75,4 +75,16 @@ const named = diorama.parts.filter(part => part.name);
     :global([data-enhanced]) .diorama-flow .diorama-poster[data-poster=start]{display:none}
     :global([data-enhanced]) .diorama-flow .diorama-poster[data-poster=done]{display:block}
   }
+  /* Dark mode: the scene keeps its lighting on a dark backdrop. */
+  :global([data-theme="dark"]) .diorama-viewport { background: radial-gradient(ellipse 75% 90% at 50% 38%, #1f2b26 0%, #18231f 58%, #121c1a 100%); }
+  :global([data-theme="dark"]) .diorama-name { color: #8c9486; }
+  :global([data-theme="dark"]) .diorama-detail { color: #79817a; }
+  :global([data-theme="dark"]) .diorama-label[data-state=lit] .diorama-name { color: #e9e5d9; }
+  :global([data-theme="dark"]) .diorama-label[data-state=lit] .diorama-detail { color: #b8c79a; }
+  :global([data-theme="dark"]) .diorama-name, :global([data-theme="dark"]) .diorama-detail { text-shadow: 0 0 5px #121c1a, 0 0 2px #121c1a; }
+  :global([data-theme="dark"]) .diorama-caption { background: #1a2622d9; box-shadow: 0 1px 3px #0006; color: #c3cbb9; }
+  :global([data-theme="dark"]) .diorama-crosslink { color: #e5946a; }
+  :global([data-theme="dark"]) .diorama-crosslink:hover { color: #e9e5d9; }
+  :global([data-theme="dark"]) .diorama-playback button { color: #aab79c; }
+  :global([data-theme="dark"]) .diorama-playback button:hover { color: #e5946a; }
 </style>
