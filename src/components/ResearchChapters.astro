@@ -21,7 +21,7 @@ const captureDetails = [
 const ledger = [
   { label: 'MEASURED', what: 'Temperature, humidity and CO₂', detail: 'In the tent and in the room around it.' },
   { label: 'CONTROLLED', what: 'Fan, humidifier and LEDs', detail: 'Adjusted to the cultivation phase.' },
-  { label: 'RECORDED', what: 'Photographs and timelapses', detail: 'A still every six hours during incubation.' },
+  { label: 'RECORDED', what: 'Photographs and timelapses', detail: 'From both cameras, on a schedule set by the phase.' },
 ];
 // Parts that can be picked out on the workbench photograph, with where they sit on it (percent of the shown crop).
 const workbench = [
@@ -33,10 +33,10 @@ const workbench = [
 const facts = [
   ['THE SPECIES', 'Oyster mushrooms'],
   ['THE SUBSTRATE', 'Pasteurized straw'],
-  ['THE FIRST RUN', 'Incubation began 28 July 2026'],
   ['THE TENT', '185 × 82 × 55 cm'],
   ['THE SENSORS', 'Two SHT31 and two SCD41: one of each in the tent and in the room'],
   ['THE CAMERAS', 'Two Raspberry Pi Camera Module 3 Wide'],
+  ['THE COMPUTER', 'Raspberry Pi 5 with an AI HAT+ 2'],
 ];
 
 const phases = [
@@ -85,37 +85,15 @@ const phases = [
   <section id="experiment" class="rc-section rc-experiment" aria-labelledby="experiment-heading">
     <div class="rc-container">
       <div class="rc-section-label"><span class="rc-marker"></span> THE EXPERIMENT <span class="rc-label-rule"></span> FIELD NOTES / 01</div>
-      <div class="rc-experiment-grid">
-        <div class="rc-experiment-copy">
-          <h2 id="experiment-heading">A small environment.<br /><em>A bigger question.</em></h2>
+      <div class="rc-section-intro rc-experiment-intro">
+        <h2 id="experiment-heading">A small environment.<br /><em>A bigger question.</em></h2>
+        <div>
           <p class="rc-lead">What can we learn when we make the growing environment observable?</p>
           <p>Smart Mushroom Hub brings oyster mushroom cultivation, environmental sensing, and a little automation into one carefully observed space. A Raspberry Pi connects the physical experiment to its digital record.</p>
-          <dl class="rc-ledger">
-            {ledger.map(entry => (
-              <div><dt><span class="rc-ledger-mark" aria-hidden="true"></span>{entry.label}</dt><dd><strong>{entry.what}</strong><span>{entry.detail}</span></dd></div>
-            ))}
-          </dl>
-          <ResourceLink href={site.grafanaUrl} resource="Grafana" class="rc-grafana-link" label="See the measurements in Grafana" />
         </div>
-        <figure class="rc-hardware-figure">
-          <div class="rc-photo-wrap">
-            <img src="/media/hardware-setup.webp" alt="The project's workbench from above: the APC UPS, the Raspberry Pi 5 in its case, the breadboard with its T-cobbler and ribbon cable, and the Wago junctions joining the sensor wires." loading="lazy" width="1200" height="1600" />
-            {/* Numbered markers on the photograph; the list beneath carries the same links for keyboards and screen readers. */}
-            {workbench.map((part, index) => (
-              <a class="rc-photo-marker" href={`#study-${part.id}`} style={`left:${part.x}%;top:${part.y}%`} tabindex="-1" aria-hidden="true">
-                <span>{index + 1}</span><span class="rc-marker-label">{part.name}</span>
-              </a>
-            ))}
-          </div>
-          <ol class="rc-photo-key" aria-label="Parts on the workbench, each shown in the interactive habitat">
-            {workbench.map((part, index) => (
-              <li><a href={`#study-${part.id}`}><span class="rc-key-number">{index + 1}</span><span>{part.name}</span><span class="rc-key-arrow" aria-hidden="true">↗</span></a></li>
-            ))}
-          </ol>
-          <figcaption><span>01 / FROM THE WORKBENCH</span><span>Real hardware. Select a part to find it in the habitat.</span></figcaption>
-        </figure>
       </div>
-      <div class="rc-experiment-band">
+      {/* The design first: what is compared, and what is measured, adjusted and recorded. */}
+      <div class="rc-experiment-design">
         <figure class="rc-comparison">
           <svg viewBox="0 0 340 214" role="img" aria-labelledby="rc-comparison-title rc-comparison-text">
             <title id="rc-comparison-title">The tent and the room around it</title>
@@ -135,14 +113,47 @@ const phases = [
             <path class="rc-sketch-head" d="M255 98l7 6-9 3" />
             <text class="rc-sketch-act" x="212" y="82" text-anchor="middle">compared</text>
           </svg>
-          <figcaption><p class="rc-kicker">THE COMPARISON</p><p>The tent is read against the room around it: the same pair of sensors sits in each, so a change inside can be told apart from a change in the room. Only the tent is ventilated, humidified and lit.</p></figcaption>
+          <figcaption>Two matching sensor pairs: one in the tent, one in the room.</figcaption>
         </figure>
+        <div class="rc-design-copy">
+          <p class="rc-kicker">01 / THE DESIGN</p>
+          <h3>The tent, read against <em>the room around it.</em></h3>
+          <p>The same pair of sensors sits in each, so a change inside the tent can be told apart from a change in the room. Only the tent is ventilated, humidified and lit.</p>
+          <dl class="rc-ledger">
+            {ledger.map(entry => (
+              <div><dt><span class="rc-ledger-mark" aria-hidden="true"></span>{entry.label}</dt><dd><strong>{entry.what}</strong><span>{entry.detail}</span></dd></div>
+            ))}
+          </dl>
+          <ResourceLink href={site.grafanaUrl} resource="Grafana" class="rc-grafana-link" label="See the measurements in Grafana" />
+        </div>
+      </div>
+      {/* Then the setup: what is growing, in what, and the hardware that runs it. */}
+      <div class="rc-experiment-setup">
         <div class="rc-facts-block">
-          <p class="rc-kicker">AT A GLANCE</p>
+          <p class="rc-kicker">02 / THE SETUP</p>
+          <h3>What grows, <em>and what runs it.</em></h3>
           <dl class="rc-experiment-facts">
             {facts.map(([name, value]) => <div><dt>{name}</dt><dd>{value}</dd></div>)}
           </dl>
+          <p class="rc-setup-note">Each run's dates, what went wrong and what it changed are logged in <a href="#runs">Experiment Runs <span aria-hidden="true">→</span></a></p>
         </div>
+        <figure class="rc-hardware-figure">
+          <div class="rc-photo-wrap">
+            <img src="/media/hardware-setup.webp" alt="The project's workbench from above: the APC UPS, the Raspberry Pi 5 in its case, the breadboard with its T-cobbler and ribbon cable, and the Wago junctions joining the sensor wires." loading="lazy" width="1200" height="1600" />
+            {/* Numbered markers on the photograph; the list beneath carries the same links for keyboards and screen readers. */}
+            {workbench.map((part, index) => (
+              <a class="rc-photo-marker" href={`#study-${part.id}`} style={`left:${part.x}%;top:${part.y}%`} tabindex="-1" aria-hidden="true">
+                <span>{index + 1}</span><span class="rc-marker-label">{part.name}</span>
+              </a>
+            ))}
+          </div>
+          <ol class="rc-photo-key" aria-label="Parts on the workbench, each shown in the interactive habitat">
+            {workbench.map((part, index) => (
+              <li><a href={`#study-${part.id}`}><span class="rc-key-number">{index + 1}</span><span>{part.name}</span><span class="rc-key-arrow" aria-hidden="true">↗</span></a></li>
+            ))}
+          </ol>
+          <figcaption><span>FROM THE WORKBENCH</span><span>Real hardware. Select a part to find it in the habitat.</span></figcaption>
+        </figure>
       </div>
     </div>
   </section>
@@ -254,26 +265,84 @@ const phases = [
       <div class="rc-vision-grid">
         <div class="rc-vision-copy">
           <h2 id="vision-heading">From looking<br /><em>to recognizing.</em></h2>
-          <p class="rc-lead">Can a camera help us observe mushrooms more consistently?</p>
-          <p>A YOLOv8s model has been trained to detect mushrooms. The next ambition is to bring inference onto the Raspberry Pi using the Hailo-10H accelerator, then examine what the detections can reliably tell us.</p>
-          <p class="rc-vision-principle">A detection is an observation.<br />It is not, by itself, a growth measurement.</p>
+          <p class="rc-lead">Can the Pi tell me when the mushrooms are ready to harvest?</p>
+          <p>The chamber already photographs the bags every hour from two cameras. The aim is for the Raspberry Pi's AI HAT+ 2, with its Hailo-10H accelerator, to run a detector on those photos on the device itself.</p>
+          {/* The mushroom dot is to scale (5 of 320 units = 10 of 640 px); the bag is only a sketch. */}
+          <figure class="rc-vision-scale">
+            <svg viewBox="0 0 330 200" role="img" aria-labelledby="rc-scale-title rc-scale-text">
+              <title id="rc-scale-title">What the model receives</title>
+              <desc id="rc-scale-text">A camera photo of 4608 by 2592 pixels is shrunk to the model's 640-pixel input. At that size the single young mushroom on the straw bag is about 10 pixels wide, roughly one sixty-fourth of the frame's width.</desc>
+              <text class="rc-scale-label" x="5" y="11">640 PX · WHAT THE MODEL RECEIVES</text>
+              <rect class="rc-scale-frame" x="5" y="19" width="320" height="180" />
+              <path class="rc-scale-hang" d="M165 19v31" />
+              <rect class="rc-scale-bag" x="140" y="50" width="50" height="112" rx="14" />
+              <circle class="rc-scale-ring" cx="171" cy="96" r="14" />
+              <circle class="rc-scale-dot" cx="171" cy="96" r="2.5" />
+              <path class="rc-scale-lead" d="M186 92c22-8 40-14 58-14" />
+              <text class="rc-scale-note" x="248" y="76">the mushroom</text>
+              <text class="rc-scale-note" x="248" y="88">≈ 10 px wide</text>
+            </svg>
+            <figcaption>The dot is to scale: 10 of 640 pixels across, from a 4608 × 2592 photo. The bag is a sketch.</figcaption>
+          </figure>
+          <p class="rc-vision-principle">A model is only as good as how closely its training data matches the real setup.</p>
         </div>
         <div class="rc-vision-work">
           <div class="rc-vision-step">
             <span class="rc-vision-index">01</span>
-            <div><p class="rc-vision-status">TRAINED</p><h3>A mushroom detector</h3><p>YOLOv8s, with mushroom as the primary class. The reported model result is <strong>mAP50 ≈ 0.9443</strong>.</p><p class="rc-vision-caveat">Evaluation-set details are not supplied here, so this figure does not establish performance in the tent.</p></div>
+            <div><p class="rc-vision-status">DONE · PUBLIC DATA</p><h3>Trained on a commercial farm</h3><p>About 555 photos with 8,281 labelled oyster mushrooms from a farm in Turkey, each marked mature or immature. A small YOLO11 detector trained on them found <strong>about two-thirds</strong> of the mushrooms in that farm's own test photos and sorted them correctly.</p></div>
           </div>
           <div class="rc-vision-step">
             <span class="rc-vision-index">02</span>
-            <div><p class="rc-vision-status rc-status-planned">PLANNED INTEGRATION</p><h3>Inference at the edge</h3><p>The Raspberry Pi AI HAT 2 is intended to run the model locally. A complete deployed inference workflow is not yet demonstrated here.</p></div>
+            <div><p class="rc-vision-status">DONE · ON THE PI</p><h3>Compiled for the Hailo chip</h3><p>On the AI HAT+ 2 the chip ran the model at about <strong>240 frames per second</strong>, and a full detection took about <strong>36 ms</strong>. On paper, it worked.</p></div>
           </div>
           <div class="rc-vision-step">
             <span class="rc-vision-index">03</span>
-            <div><p class="rc-vision-status rc-status-planned">FUTURE WORK</p><h3>From detections to evidence</h3><p>Publish real annotated examples, inspect errors, and investigate whether visible counts or area can support useful observations over time.</p></div>
+            <div><p class="rc-vision-status rc-status-failed">FAILED · IN MY CHAMBER</p><h3>Tested on a day of my photos</h3><p>A full day of hourly photos of one straw bag with a single young mushroom.</p>
+              <ul class="rc-vision-findings">
+                <li><strong>It missed the real mushroom.</strong> At the model's input size the mushroom is about 10 pixels wide, too small to recognise. Even cropped to just the bag, it was found in only 2 of 10 clear frames.</li>
+                <li><strong>It saw mushrooms that weren't there.</strong> On a night the lens fogged, it reported the pale grey haze as a large mature cluster.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="rc-vision-step">
+            <span class="rc-vision-index">04</span>
+            <div><p class="rc-vision-status rc-status-planned">NEXT · MY OWN DATA</p><h3>Training on my own fruiting</h3><p>The current batch is photographed hourly by both cameras from the first pins to harvest: roughly 250–350 photos of this chamber, its lighting and its substrate, with a note of when each mushroom was actually ready to pick.</p>
+              <ol class="rc-vision-plan">
+                <li>Label the photos, correcting first-guess boxes drawn by the current model.</li>
+                <li>Retrain the model on my own fruiting sequence.</li>
+                <li>Crop each photo to the bag, so the mushrooms are large enough to see.</li>
+                <li>Compile for the Hailo chip again and run it live on both cameras.</li>
+              </ol>
+            </div>
           </div>
         </div>
       </div>
-      <div class="rc-vision-footnote"><span aria-hidden="true">↗</span><p>Annotated predictions will appear here when actual outputs are ready to share. No demonstration detections are presented as experiment results.</p></div>
+      {/* Why the public model failed, and why no other public data would do. */}
+      <div class="rc-vision-why">
+        <div>
+          <p class="rc-kicker">WHY IT FAILED</p>
+          <table class="rc-vision-compare">
+            <caption>The farm the model learned from, against the chamber it was tested in</caption>
+            <thead><tr><td></td><th scope="col">The training farm</th><th scope="col">My chamber</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Bags</th><td>Dark plastic</td><td>A golden straw bag</td></tr>
+              <tr><th scope="row">Growth</th><td>Dense clusters</td><td>A single mushroom</td></tr>
+              <tr><th scope="row">Light</th><td>Night-vision lighting</td><td>A bright white tent</td></tr>
+            </tbody>
+          </table>
+          <p class="rc-vision-why-note">Detection models learn the look of their training photos, not the general idea of “a mushroom”.</p>
+        </div>
+        <div>
+          <p class="rc-kicker">NO MATCHING PUBLIC DATA</p>
+          <ul class="rc-vision-datasets">
+            <li><strong>Indoor grow tents</strong>, but mostly pink oysters on stacked buckets.</li>
+            <li><strong>White oysters on hanging bags</strong>, but every frame from a single 20-minute video.</li>
+            <li><strong>Close-ups</strong> with no maturity labels, or behind a paywall.</li>
+          </ul>
+          <p class="rc-vision-why-note">None shows a white oyster mushroom growing from pin to harvest on a straw bag in a setup like this one.</p>
+        </div>
+      </div>
+      <div class="rc-vision-footnote"><span aria-hidden="true">↗</span><p>Annotated detections from my own fruiting sequence will appear here once the batch has been labelled and the model retrained. Nothing shown here is a demonstration detection.</p></div>
     </div>
   </section>
 
@@ -420,9 +489,18 @@ const phases = [
   p strong { color: var(--rc-ink); font-weight: 600; }
   .rc-lead { color: var(--rc-ink); font-size: 18px; line-height: 1.6; }
   .rc-kicker { font-size: 10px; font-weight: 600; letter-spacing: .12em; line-height: 1.5; }
-  .rc-experiment-grid { display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; gap: clamp(44px, 8vw, 116px); margin-top: 65px; }
-  .rc-experiment-copy h2 { margin-bottom: 29px; }
-  .rc-experiment-copy .rc-lead { max-width: 420px; margin-bottom: 19px; }
+  /* The experiment reads in order: the question, the design, then the setup. */
+  .rc-experiment-intro { margin-bottom: 64px; }
+  .rc-experiment-intro > div { max-width: 460px; justify-self: end; align-self: start; padding-top: 12px; }
+  .rc-experiment-intro .rc-lead { margin-bottom: 14px; }
+  .rc-experiment h3 { font-family: var(--font-display, Georgia, serif); font-size: clamp(30px, 3vw, 40px); line-height: 1.12; font-weight: 400; letter-spacing: -.02em; color: var(--rc-ink); margin: 14px 0 18px; }
+  .rc-experiment h3 em { color: var(--rc-olive); }
+  .rc-experiment .rc-kicker { color: var(--rc-olive); }
+  .rc-experiment-design, .rc-experiment-setup { display: grid; gap: clamp(44px, 7vw, 100px); align-items: center; }
+  .rc-experiment-design { grid-template-columns: minmax(0, .85fr) minmax(0, 1fr); }
+  .rc-experiment-setup { grid-template-columns: minmax(0, 1fr) minmax(0, .72fr); margin-top: 72px; padding-top: 56px; border-top: 1px solid #172b2926; }
+  .rc-design-copy > p:not(.rc-kicker) { max-width: 480px; }
+  .rc-design-copy .rc-ledger { margin-top: 26px; }
   /* What is measured, controlled and recorded: a small ledger in the section labels' language. */
   .rc-ledger { margin: 30px 0 0; border-top: 1px solid #172b2926; }
   .rc-ledger > div { display: grid; grid-template-columns: 118px 1fr; gap: 18px; padding: 14px 0; border-bottom: 1px solid #172b291a; }
@@ -446,12 +524,10 @@ const phases = [
   .rc-key-arrow { margin-left: auto; color: var(--rc-orange); opacity: 0; transition: opacity .2s; }
   .rc-photo-key a:hover .rc-key-arrow, .rc-photo-key a:focus-visible .rc-key-arrow { opacity: 1; }
   .rc-photo-key a:focus-visible { outline: 2px solid var(--rc-orange); outline-offset: 3px; }
-  /* The tent read against the room, and the facts at a glance. */
-  .rc-experiment-band { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(44px, 8vw, 116px); align-items: start; margin-top: 64px; padding-top: 34px; border-top: 1px solid #172b2926; }
-  .rc-comparison { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 28px; align-items: center; }
+  /* The tent read against the room. */
+  .rc-comparison { margin: 0; }
   .rc-comparison svg { display: block; width: 100%; height: auto; }
-  .rc-comparison .rc-kicker, .rc-facts-block .rc-kicker { color: var(--rc-olive); margin-bottom: 12px; }
-  .rc-comparison figcaption p:not(.rc-kicker) { font-size: 13px; line-height: 1.75; }
+  .rc-comparison figcaption { margin-top: 12px; font-size: 11px; line-height: 1.6; color: var(--rc-muted); }
   .rc-room { fill: #ebece2; stroke: #172b2940; stroke-dasharray: 5 5; }
   .rc-tent { fill: var(--rc-paper); stroke: #172b2980; stroke-width: 1.2; }
   .rc-bag { fill: #e8dcc0; stroke: #172b2966; stroke-width: 1; }
@@ -462,9 +538,12 @@ const phases = [
   .rc-sketch-act { font: italic 400 9px var(--font-display, Georgia, serif); fill: var(--rc-olive); }
   .rc-sketch-link, .rc-sketch-head { fill: none; stroke: var(--rc-orange); stroke-width: 1.2; }
   .rc-sketch-link { stroke-dasharray: 3 3; }
-  .rc-experiment-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 24px; margin: 0; padding-top: 4px; }
-  .rc-experiment-facts dt { font-size: 9px; letter-spacing: .1em; color: var(--rc-muted); margin-bottom: 7px; }
-  .rc-experiment-facts dd { font-size: 12px; line-height: 1.6; margin: 0; }
+  .rc-experiment-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; margin: 26px 0 0; border-top: 1px solid #172b2926; }
+  .rc-experiment-facts > div { padding: 14px 0; border-bottom: 1px solid #172b291a; }
+  .rc-experiment-facts dt { font-size: 9px; letter-spacing: .1em; color: var(--rc-muted); margin-bottom: 6px; }
+  .rc-experiment-facts dd { font-size: 14px; line-height: 1.55; margin: 0; color: var(--rc-ink); }
+  .rc-setup-note { margin-top: 22px; font-size: 13px; }
+  .rc-setup-note a { color: var(--rc-ink); font-weight: 500; text-underline-offset: 3px; }
   .rc-hardware-figure figcaption { display: flex; justify-content: space-between; gap: 20px; margin-top: 15px; font-size: 9px; color: var(--rc-muted); line-height: 1.6; }
   .rc-hardware-figure figcaption span:first-child { letter-spacing: .08em; }
   .rc-cultivation { background: #ebece2; }
@@ -568,9 +647,7 @@ const phases = [
   .rc-vision-footnote > p { font-size: 11px; max-width: 770px; }
   @media (min-width: 1450px) { .rc-section { padding-block: 125px; } }
   @media (max-width: 1000px) {
-    .rc-experiment-grid, .rc-observation-grid { gap: 40px; }
-    .rc-experiment-band { grid-template-columns: 1fr; gap: 40px; }
-    .rc-experiment-facts { grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .rc-observation-grid, .rc-experiment-design, .rc-experiment-setup { gap: 40px; }
     .rc-section-intro { gap: 40px; }
     .rc-phase-panel { gap: 28px; }
     .rc-phase-tab { gap: 9px; font-size: 11px; padding-right: 12px; }
@@ -587,13 +664,16 @@ const phases = [
     h2 { font-size: clamp(38px, 9.2vw, 52px); }
     p { font-size: 14px; }
     .rc-lead { font-size: 17px; }
-    .rc-experiment-grid, .rc-observation-grid, .rc-vision-grid, .rc-section-intro { grid-template-columns: 1fr; gap: 38px; margin-top: 38px; }
+    .rc-observation-grid, .rc-vision-grid, .rc-section-intro { grid-template-columns: 1fr; gap: 38px; margin-top: 38px; }
+    .rc-experiment-design, .rc-experiment-setup { grid-template-columns: 1fr; gap: 34px; }
+    .rc-experiment-intro { margin-bottom: 40px; }
+    .rc-experiment-intro > div { justify-self: start; max-width: none; padding-top: 0; }
+    .rc-experiment-setup { margin-top: 56px; padding-top: 40px; }
     .rc-ledger > div { grid-template-columns: 1fr; gap: 6px; }
     .rc-photo-key { grid-template-columns: 1fr; }
-    .rc-comparison { grid-template-columns: 1fr; gap: 18px; }
-    .rc-experiment-facts { grid-template-columns: 1fr 1fr; gap: 16px; }
+    .rc-experiment-facts { gap: 0 18px; }
     .rc-experiment-facts dt { font-size: 8px; }
-    .rc-experiment-facts dd { font-size: 12px; }
+    .rc-experiment-facts dd { font-size: 13px; }
     .rc-hardware-figure figcaption { font-size: 8px; }
     .rc-section-intro { gap: 22px; margin-bottom: 30px; }
     .rc-section-intro > p { justify-self: start; max-width: none; padding-top: 0; }
@@ -645,4 +725,38 @@ const phases = [
   .rc-vision .rc-status-planned, .rc-vision-step .rc-vision-caveat { color: var(--rc-muted); }
   .rc-vision-step h3 { color: var(--rc-ink); }
   .rc-vision-step p strong { color: var(--rc-ink); }
+  .rc-vision .rc-status-failed { color: var(--rc-orange); }
+  .rc-vision-step p + p, .rc-vision-step p + ul, .rc-vision-step p + ol { margin-top: 12px; }
+  .rc-vision-findings { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .rc-vision-findings li { position: relative; padding-left: 16px; font-size: 12px; line-height: 1.8; color: var(--rc-muted); }
+  .rc-vision-findings li::before { content: ''; position: absolute; left: 0; top: .72em; width: 6px; height: 6px; background: var(--rc-orange); }
+  .rc-vision-findings strong, .rc-vision-datasets strong { color: var(--rc-ink); font-weight: 500; }
+  .rc-vision-plan { display: grid; gap: 6px; margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.7; color: var(--rc-muted); }
+  .rc-vision-plan li::marker { color: var(--rc-olive); font-size: 10px; }
+  .rc-vision-scale { margin: 34px 0 0; max-width: 460px; }
+  .rc-vision-scale svg { display: block; width: 100%; height: auto; }
+  .rc-vision-scale figcaption { margin-top: 10px; font-size: 11px; line-height: 1.6; color: var(--rc-muted); }
+  .rc-scale-frame { fill: #ebece2; stroke: #172b2940; }
+  .rc-scale-bag { fill: #e8dcc0; stroke: #172b2959; }
+  .rc-scale-hang { stroke: #172b2959; }
+  .rc-scale-dot { fill: var(--rc-orange); }
+  .rc-scale-ring, .rc-scale-lead { fill: none; stroke: var(--rc-orange); stroke-width: 1; stroke-dasharray: 2.5 2.5; }
+  .rc-scale-label { font: 600 7px var(--font-body, sans-serif); letter-spacing: .12em; fill: #60665b; }
+  .rc-scale-note { font: italic 400 10px var(--font-display, Georgia, serif); fill: var(--rc-olive); }
+  .rc-vision-why { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: clamp(44px, 7vw, 100px); margin-top: 60px; padding-top: 36px; border-top: 1px solid #172b2920; }
+  .rc-vision-why .rc-kicker { color: var(--rc-olive); margin-bottom: 14px; }
+  .rc-vision-compare { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .rc-vision-compare caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .rc-vision-compare th, .rc-vision-compare td { padding: 11px 12px 11px 0; border-bottom: 1px solid #172b291a; text-align: left; vertical-align: top; line-height: 1.5; }
+  .rc-vision-compare thead th { font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--rc-muted); border-bottom-color: #172b2933; }
+  .rc-vision-compare tbody th { width: 22%; font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--rc-olive); }
+  .rc-vision-compare tbody td { color: var(--rc-muted); }
+  .rc-vision-compare tbody td:last-child { color: var(--rc-ink); }
+  .rc-vision-datasets { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid #172b2933; }
+  .rc-vision-datasets li { padding: 11px 0; border-bottom: 1px solid #172b291a; font-size: 13px; line-height: 1.6; color: var(--rc-muted); }
+  .rc-vision-why-note { margin-top: 16px; font-size: 13px; line-height: 1.7; }
+  @media (max-width: 700px) {
+    .rc-vision-why { grid-template-columns: 1fr; gap: 36px; margin-top: 44px; }
+    .rc-vision-findings li, .rc-vision-plan { font-size: 13px; }
+  }
 </style>

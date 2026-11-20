@@ -36,6 +36,21 @@ test('the camera section explains how the stills are taken and opens the Record 
   await expect.poll(()=>page.locator('#architecture-panel-record').evaluate(panel=>Math.round(panel.getBoundingClientRect().top)),{timeout:15000}).toBeLessThan(260);
 });
 
+test('computer vision tells the public-data attempt, why it failed in the chamber, and the plan for its own data',async({page})=>{
+  await page.goto('/');
+  const vision=page.locator('#vision');
+  const statuses=vision.locator('.rc-vision-status');
+  await expect(statuses).toHaveText(['DONE · PUBLIC DATA','DONE · ON THE PI','FAILED · IN MY CHAMBER','NEXT · MY OWN DATA']);
+  await expect(vision).toContainText('240 frames per second');
+  await expect(vision).toContainText('2 of 10 clear frames');
+  await expect(vision.getByRole('img',{name:'What the model receives'})).toBeVisible();
+  const compare=vision.getByRole('table',{name:/The farm the model learned from/});
+  await expect(compare.getByRole('row')).toHaveCount(4);
+  await expect(compare).toContainText('A golden straw bag');
+  await expect(vision.locator('.rc-vision-plan li')).toHaveCount(4);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
 test.describe('without JavaScript',()=>{
   test.use({javaScriptEnabled:false});
   test('the comparison shows both stills split down the middle, and the film keeps its own controls',async({page})=>{
