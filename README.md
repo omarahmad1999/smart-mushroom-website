@@ -1,4 +1,6 @@
-# Smart Mushroom Hub
+# Smart Mushroom Hub: the website
+
+**Live at [micolabs.dev](https://micolabs.dev).** The code that runs the tent itself (sensors, controllers, cameras and database) is in **[smart-mushroom-hub](https://github.com/omarahmad1999/smart-mushroom-hub)**, and the measurements are on a [read-only Grafana dashboard](https://grafana.micolabs.dev/public-dashboards/40bb16eb47d94967a3b7c62815763862).
 
 A mostly static, interactive case study about an oyster mushroom cultivation experiment. The homepage opens with the interactive Three.js habitat and workbench, followed by the Connected System animation, experiment narrative, cultivation phases, photographs, timelapse, and computer-vision work. All pages are pre-rendered; one small server endpoint sends the About page contact form through Resend.
 
@@ -46,7 +48,7 @@ The About page posts its contact form to `/api/contact`, which validates and esc
 
 ```dotenv
 RESEND_API_KEY=your-new-sending-only-key
-CONTACT_TO_EMAIL=omarahmadmohamed@gmail.com
+CONTACT_TO_EMAIL=you@example.com
 CONTACT_FROM_EMAIL=Smart Mushroom Hub <onboarding@resend.dev>
 ```
 
@@ -66,7 +68,7 @@ The system diagram explains the existing experiment infrastructure. It does not 
 - `src/scripts/material-study.ts`: loads the optional 3D renderer as its section approaches the viewport.
 - `src/scripts/study/`: authored component explanations, procedural tent/workbench geometry, and local visual interactions.
 - `src/pages/documentation.astro`: static system notes, linked as Field Notes.
-- `src/pages/learning-log.astro`: historical failures and lessons from the first run.
+- `src/components/ExperimentRuns.astro` and `src/content/runs/`: each experiment run, what failed and what it changed.
 - `src/components/SiteFooter.astro`: supplied mushroom photograph with navigation and GitHub/Grafana icons.
 - `src/config/site.ts`: public destination links and editorial site metadata.
 - `public/media/`: prepared images and video served as static files.
@@ -76,7 +78,7 @@ The mushroom bags, UPS and storage drawings are illustrations. They are not expe
 
 The 12.17-second incubation timelapse was prepared offline from 73 actual controlled-camera scientific stills, from 18 August through 5 September 2026. Six source stills play each second; the encoded video is 30 fps with repeated frames, not AI-interpolated growth. This is a finished media artifact. See `MEDIA_NOTES.md` for provenance.
 
-No actual YOLO predictions were supplied; the site documents the reported trained model and explicitly separates future edge integration and growth-analysis work.
+The computer-vision chapter tells the public-data attempt as it happened: a YOLO11 model trained on another farm's photos ran on the Pi's Hailo-10H but failed in this tent. No detections are shown until the model has been retrained on the project's own photographs.
 
 ## Browser checks
 
