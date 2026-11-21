@@ -14,7 +14,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:4322. The project uses Astro's static output and GSAP for visual animation. The contact form is the only server-side route.
+Open http://localhost:4322. Pages are pre-rendered, and GSAP drives the visual animation. The contact form is the only server-side route.
 
 ```sh
 npm run check
